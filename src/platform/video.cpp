@@ -72,7 +72,7 @@ void Video::present(bool force) {
         for (int y = 0; y < kScreenH; ++y) {
             auto* dst = reinterpret_cast<Uint32*>(static_cast<u8*>(pixels) + y * pitch);
             for (int x = 0; x < kScreenW; ++x) {
-                const u32 addr = (displayStart_ + u32(y * kScreenW + x)) % kVramSize;
+                const u32 addr = (scanoutStart() + u32(y * kScreenW + x)) % kVramSize;
                 dst[x] = lut[vram_[addr]];
             }
         }

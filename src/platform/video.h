@@ -41,6 +41,12 @@ public:
     // Linear pixel index of the displayed page (CRTC start address * 4).
     void setDisplayStart(u32 linearPixel) { displayStart_ = linearPixel; dirty_ = true; }
     u32 displayStart() const { return displayStart_; }
+    // Extra start offset (screen shake writes CRTC start-low on top of the page start).
+    void setDisplayOffset(u32 linearPixels) {
+        if (displayOffset_ != linearPixels) dirty_ = true;
+        displayOffset_ = linearPixels;
+    }
+    u32 scanoutStart() const { return displayStart_ + displayOffset_; }
 
     // DAC access, 6-bit components like the hardware (0..63).
     void setPalette(const u8* rgb6, int first, int count);
@@ -59,6 +65,7 @@ private:
     std::array<u8, kVramSize> vram_{};
     std::array<u8, 768> dac_{};
     u32 displayStart_ = 0;
+    u32 displayOffset_ = 0;
     bool dirty_ = true;
     bool fullscreen_ = false;
 

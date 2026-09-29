@@ -7,6 +7,8 @@
 #include "platform/timer.h"
 #include "platform/video.h"
 
+#include <functional>
+
 namespace st {
 
 class System {
@@ -27,6 +29,13 @@ public:
     void waitRetrace();
     // Block for a number of BIOS ticks / milliseconds while keeping the window alive.
     void delayMs(u32 ms);
+    // One iteration of a busy-wait loop: pump, then yield the CPU briefly.
+    void idle();
+
+    // Periodic timer "interrupt" at PIT rate 1193182/divisor. Due ticks are
+    // delivered from pump(), in order, so the handler never runs concurrently
+    // with game code. One service, like the single AIL timer the game uses.
+    void installTickService(u32 divisor, std::function<void()> handler);
 
     // Testing aid: after `afterSeconds`, save the displayed frame as a BMP
     // and quit (used to verify screens without interaction).
@@ -34,6 +43,12 @@ public:
     bool saveScreenshot(const std::string& path);
 
 private:
+    void runTicks();
+
+    std::function<void()> tickHandler_;
+    double tickHz_ = 0.0;
+    double tickEpoch_ = 0.0;
+    u64 ticksDelivered_ = 0;
     std::string shotPath_;
     double shotAt_ = 0.0;
     Video video_;

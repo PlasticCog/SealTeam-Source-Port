@@ -41,6 +41,7 @@ void System::pump() {
         SDL_ConvertEventToRenderCoordinates(video_.renderer(), &ev);
         input_.handleEvent(ev, kScreenW, logicalH_);
     }
+    runTicks();
     video_.present();
     if (!shotPath_.empty() && timer_.seconds() >= shotAt_) {
         saveScreenshot(shotPath_);
@@ -70,7 +71,7 @@ bool System::saveScreenshot(const std::string& path) {
     const u8* vram = video_.vram();
     for (int y = 0; y < kScreenH; ++y) {
         u8* dst = static_cast<u8*>(s->pixels) + y * s->pitch;
-        for (int x = 0; x < kScreenW; ++x) dst[x] = vram[(video_.displayStart() + u32(y * kScreenW + x)) % kVramSize];
+        for (int x = 0; x < kScreenW; ++x) dst[x] = vram[(video_.scanoutStart() + u32(y * kScreenW + x)) % kVramSize];
     }
     const bool ok = SDL_SaveBMP(s, path.c_str());
     SDL_DestroySurface(s);
@@ -88,6 +89,31 @@ void System::waitRetrace() {
             return;
         }
         SDL_Delay(1);
+    }
+}
+
+void System::idle() {
+    pump();
+    SDL_Delay(1);
+}
+
+void System::installTickService(u32 divisor, std::function<void()> handler) {
+    tickHandler_ = std::move(handler);
+    tickHz_ = kPitHz / double(divisor ? divisor : 65536);
+    tickEpoch_ = timer_.seconds();
+    ticksDelivered_ = 0;
+}
+
+void System::runTicks() {
+    if (!tickHandler_) return;
+    const u64 due = u64((timer_.seconds() - tickEpoch_) * tickHz_);
+    // After a long stall (debugger, window drag) don't replay seconds of
+    // interrupts in one burst; drop anything beyond a quarter second.
+    const u64 maxBurst = u64(tickHz_ / 4) + 1;
+    if (due > ticksDelivered_ + maxBurst) ticksDelivered_ = due - maxBurst;
+    while (ticksDelivered_ < due) {
+        ++ticksDelivered_;
+        tickHandler_();
     }
 }
 
