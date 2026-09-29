@@ -7,7 +7,7 @@ DGROUP (DS) is Ghidra segment 0x56bf == file offset 0x4a8e0 in st.exe.
 import re, sys, os, collections
 ROOT = os.path.join(os.path.dirname(__file__), '..', '..')
 EXP = os.path.join(ROOT, 're', 'export')
-EXE = os.path.join(ROOT, 'SealTeam-DOS', 'st.exe')
+EXE = os.path.join(ROOT, 'Game', 'st.exe')
 DG_FILE = 0x3cf0 + (0x56bf - 0x1000) * 16
 
 exe = open(EXE, 'rb').read()

@@ -1,6 +1,6 @@
 #include "platform/input.h"
 
-#include <SDL.h>
+#include <SDL3/SDL.h>
 
 #include <algorithm>
 
@@ -114,25 +114,25 @@ u8 controlAscii(u8 scancode) {
 
 void Input::handleEvent(const SDL_Event& ev, int logicalW, int logicalH) {
     switch (ev.type) {
-    case SDL_KEYDOWN:
-    case SDL_KEYUP: {
-        const u8 code = toSet1(ev.key.keysym.scancode);
+    case SDL_EVENT_KEY_DOWN:
+    case SDL_EVENT_KEY_UP: {
+        const u8 code = toSet1(ev.key.scancode);
         if (!code) break;
-        const bool down = ev.type == SDL_KEYDOWN;
+        const bool down = ev.type == SDL_EVENT_KEY_DOWN;
         keys_[code] = down;
         lastScancode_ = down ? code : u8(code | 0x80);
         if (!down) break;
-        const SDL_Keymod mod = SDL_GetModState();
+        const SDL_Keymod mod = ev.key.mod;
         u8 ascii = controlAscii(code);
-        const SDL_Keycode kc = ev.key.keysym.sym;
+        const SDL_Keycode kc = ev.key.key;  // unshifted, layout aware
         if (!ascii && kc >= 32 && kc < 127) {
             ascii = u8(kc);
-            const bool shift = (mod & KMOD_SHIFT) != 0;
-            const bool caps = (mod & KMOD_CAPS) != 0;
+            const bool shift = (mod & SDL_KMOD_SHIFT) != 0;
+            const bool caps = (mod & SDL_KMOD_CAPS) != 0;
             if (ascii >= 'a' && ascii <= 'z') {
                 if (shift != caps) ascii = u8(ascii - 32);
-                if (mod & KMOD_CTRL) ascii = u8(ascii - 'a' + 1);
-                if (mod & KMOD_ALT) ascii = 0;  // BIOS reports Alt+letter as scancode only
+                if (mod & SDL_KMOD_CTRL) ascii = u8(ascii - 'a' + 1);
+                if (mod & SDL_KMOD_ALT) ascii = 0;  // BIOS reports Alt+letter as scancode only
             } else if (shift) {
                 static const char* kPlain = "1234567890-=[];'`\\,./";
                 static const char* kShift = "!@#$%^&*()_+{}:\"~|<>?";
@@ -143,17 +143,17 @@ void Input::handleEvent(const SDL_Event& ev, int logicalW, int logicalH) {
         if (queue_.size() < 16) queue_.push_back(u16((code << 8) | ascii));  // BIOS buffer holds 15
         break;
     }
-    case SDL_MOUSEMOTION:
-        // SDL reports motion in renderer logical coordinates (320 x logicalH).
-        setMousePos(ev.motion.x * 320 / logicalW, ev.motion.y * 200 / logicalH);
+    case SDL_EVENT_MOUSE_MOTION:
+        // The caller converts events to render coordinates (320 x logicalH).
+        setMousePos(int(ev.motion.x * 320.0f / float(logicalW)), int(ev.motion.y * 200.0f / float(logicalH)));
         break;
-    case SDL_MOUSEBUTTONDOWN:
-    case SDL_MOUSEBUTTONUP: {
+    case SDL_EVENT_MOUSE_BUTTON_DOWN:
+    case SDL_EVENT_MOUSE_BUTTON_UP: {
         u8 bit = 0;
         if (ev.button.button == SDL_BUTTON_LEFT) bit = 1;
         else if (ev.button.button == SDL_BUTTON_RIGHT) bit = 2;
         else if (ev.button.button == SDL_BUTTON_MIDDLE) bit = 4;
-        if (ev.type == SDL_MOUSEBUTTONDOWN) mouse_.buttons |= bit;
+        if (ev.type == SDL_EVENT_MOUSE_BUTTON_DOWN) mouse_.buttons |= bit;
         else mouse_.buttons &= u8(~bit);
         break;
     }

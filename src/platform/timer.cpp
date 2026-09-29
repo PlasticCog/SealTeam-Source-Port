@@ -1,6 +1,6 @@
 #include "platform/timer.h"
 
-#include <SDL.h>
+#include <SDL3/SDL.h>
 
 namespace st {
 

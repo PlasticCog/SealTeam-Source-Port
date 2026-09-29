@@ -1,5 +1,8 @@
 // SEAL Team source port - entry point.
 //
+// The original game files must be copied into a folder named "Game" next to
+// the executable (or in the working directory).
+//
 // Usage: sealteam [--data DIR] [--scale N] [--fullscreen] [--no-aspect] [original options]
 // Original options (see st.exe "Command Line Options"): ? / h help, d digital
 // sound off, t title screen off, NN start mission NN.
@@ -11,7 +14,8 @@
 #include "game/game.h"
 #include "platform/system.h"
 
-#include <SDL.h>
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_main.h>
 
 #include <cstdio>
 #include <cstdlib>
@@ -23,11 +27,18 @@ using namespace st;
 
 namespace {
 
+bool g_interactive = true;  // false for scripted --shot runs: no modal dialogs
+
+void startupError(const char* msg) {
+    std::fprintf(stderr, "%s\n", msg);
+    if (g_interactive) SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "SEAL Team", msg, nullptr);
+}
+
 void usage() {
     std::printf(
         "SEAL Team source port\n"
         "usage: sealteam [--data DIR] [--scale N] [--fullscreen] [--no-aspect] [options]\n"
-        "  --data DIR    directory containing the original game (st.exe and *.lib)\n"
+        "  --data DIR    use DIR instead of the Game folder for the original files\n"
         "  --scale N     window scale factor (default 3)\n"
         "  --fullscreen  start in fullscreen (Alt+Enter toggles)\n"
         "  --no-aspect   show square pixels instead of 4:3\n"
@@ -56,16 +67,23 @@ int main(int argc, char** argv) {
         else gameArgs.push_back(a);
     }
 
-    if (!gameFS().init(dataDir)) {
-        std::fprintf(stderr, "Could not find the SEAL Team game files (st.exe). Use --data DIR.\n");
+    g_interactive = shotPath.empty();
+    std::string exeDir;
+    if (const char* base = SDL_GetBasePath()) exeDir = base;  // owned by SDL
+    if (!gameFS().init(dataDir, exeDir)) {
+        startupError(dataDir.empty()
+            ? "Could not find the original SEAL Team files.\n\n"
+              "Copy all files from your SEAL Team installation (st.exe, *.lib, *.fnt, ...) "
+              "into a folder named \"Game\" next to sealteam.exe."
+            : "Could not find st.exe in the directory given with --data.");
         return 1;
     }
     if (!exe().load("st.exe")) {
-        std::fprintf(stderr, "Could not read st.exe\n");
+        startupError("Could not read st.exe from the Game folder.");
         return 1;
     }
     if (!exe().looksLikeSealTeam()) {
-        std::fprintf(stderr, "st.exe is not the SEAL Team V1.0 executable this port supports.\n");
+        startupError("Game/st.exe is not the SEAL Team V1.0 executable this port supports.");
         return 1;
     }
 
@@ -78,7 +96,7 @@ int main(int argc, char** argv) {
         rc = 0;
     } catch (const FatalError& e) {
         logError("%s", e.what());
-        if (shotPath.empty()) SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "SEAL Team", e.what(), nullptr);
+        if (g_interactive) SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "SEAL Team", e.what(), nullptr);
         rc = 1;
     }
     sys().shutdown();

@@ -53,6 +53,8 @@ public:
 
     void toggleFullscreen();
 
+    SDL_Renderer* renderer() const { return renderer_; }
+
 private:
     std::array<u8, kVramSize> vram_{};
     std::array<u8, 768> dac_{};

@@ -1,6 +1,6 @@
 #include "platform/system.h"
 
-#include <SDL.h>
+#include <SDL3/SDL.h>
 
 namespace st {
 
@@ -10,7 +10,7 @@ System& sys() {
 }
 
 bool System::init(const VideoConfig& vcfg) {
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_EVENTS) != 0) {
+    if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS)) {
         logError("SDL_Init: %s", SDL_GetError());
         return false;
     }
@@ -27,23 +27,19 @@ void System::shutdown() {
 void System::pump() {
     SDL_Event ev;
     while (SDL_PollEvent(&ev)) {
-        switch (ev.type) {
-        case SDL_QUIT:
-            throw QuitRequested{};
-        case SDL_KEYDOWN:
-            if (ev.key.keysym.sym == SDLK_RETURN && (ev.key.keysym.mod & KMOD_ALT)) {
-                video_.toggleFullscreen();
-                break;
-            }
-            input_.handleEvent(ev, 320, logicalH_);
-            break;
-        case SDL_WINDOWEVENT:
+        if (ev.type == SDL_EVENT_QUIT) throw QuitRequested{};
+        if (ev.type >= SDL_EVENT_WINDOW_FIRST && ev.type <= SDL_EVENT_WINDOW_LAST) {
             video_.markDirty();
-            break;
-        default:
-            input_.handleEvent(ev, 320, logicalH_);
-            break;
+            continue;
         }
+        if (ev.type == SDL_EVENT_KEY_DOWN && ev.key.key == SDLK_RETURN && (ev.key.mod & SDL_KMOD_ALT)) {
+            video_.toggleFullscreen();
+            continue;
+        }
+        // Mouse positions arrive in window pixels; map them to the logical
+        // 320 x logicalH area (letterboxing and scaling removed).
+        SDL_ConvertEventToRenderCoordinates(video_.renderer(), &ev);
+        input_.handleEvent(ev, kScreenW, logicalH_);
     }
     video_.present();
     if (!shotPath_.empty() && timer_.seconds() >= shotAt_) {
@@ -59,8 +55,9 @@ void System::scheduleScreenshot(const std::string& path, double afterSeconds) {
 }
 
 bool System::saveScreenshot(const std::string& path) {
-    SDL_Surface* s = SDL_CreateRGBSurfaceWithFormat(0, kScreenW, kScreenH, 8, SDL_PIXELFORMAT_INDEX8);
+    SDL_Surface* s = SDL_CreateSurface(kScreenW, kScreenH, SDL_PIXELFORMAT_INDEX8);
     if (!s) return false;
+    SDL_Palette* palette = SDL_CreateSurfacePalette(s);
     SDL_Color colors[256];
     const u8* dac = video_.palette();
     for (int i = 0; i < 256; ++i) {
@@ -69,14 +66,14 @@ bool System::saveScreenshot(const std::string& path) {
         colors[i].b = u8((dac[i * 3 + 2] << 2) | (dac[i * 3 + 2] >> 4));
         colors[i].a = 255;
     }
-    SDL_SetPaletteColors(s->format->palette, colors, 0, 256);
+    if (palette) SDL_SetPaletteColors(palette, colors, 0, 256);
     const u8* vram = video_.vram();
     for (int y = 0; y < kScreenH; ++y) {
         u8* dst = static_cast<u8*>(s->pixels) + y * s->pitch;
         for (int x = 0; x < kScreenW; ++x) dst[x] = vram[(video_.displayStart() + u32(y * kScreenW + x)) % kVramSize];
     }
-    const bool ok = SDL_SaveBMP(s, path.c_str()) == 0;
-    SDL_FreeSurface(s);
+    const bool ok = SDL_SaveBMP(s, path.c_str());
+    SDL_DestroySurface(s);
     logInfo("screenshot %s: %s", path.c_str(), ok ? "saved" : SDL_GetError());
     return ok;
 }

@@ -27,12 +27,18 @@ static bool hasExe(const fs::path& dir) {
     return false;
 }
 
-bool GameFS::init(const std::string& explicitDir) {
+bool GameFS::init(const std::string& explicitDir, const std::string& exeDir) {
     std::vector<fs::path> candidates;
     if (!explicitDir.empty()) {
         candidates.emplace_back(explicitDir);
     } else {
-        candidates = {"SealTeam-DOS", "Game", ".", "../SealTeam-DOS", "../../SealTeam-DOS"};
+        std::vector<fs::path> bases;
+        if (!exeDir.empty()) {
+            const fs::path exe = fs::path(exeDir).lexically_normal();
+            bases = {exe, exe.parent_path(), exe.parent_path().parent_path()};
+        }
+        bases.emplace_back(".");
+        for (const auto& b : bases) candidates.push_back(b / kFolderName);
     }
     for (const auto& c : candidates) {
         if (hasExe(c)) {

@@ -1,6 +1,6 @@
 #include "platform/video.h"
 
-#include <SDL.h>
+#include <SDL3/SDL.h>
 
 #include <algorithm>
 
@@ -9,30 +9,26 @@ namespace st {
 bool Video::init(const VideoConfig& cfg) {
     const int logicalH = cfg.aspectCorrect ? 240 : kScreenH;
     fullscreen_ = cfg.fullscreen;
-    Uint32 flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI;
-    if (fullscreen_) flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
+    SDL_WindowFlags flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY;
+    if (fullscreen_) flags |= SDL_WINDOW_FULLSCREEN;
 
-    window_ = SDL_CreateWindow("SEAL Team", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-                               kScreenW * cfg.scale, logicalH * cfg.scale, flags);
-    if (!window_) {
-        logError("SDL_CreateWindow: %s", SDL_GetError());
+    if (!SDL_CreateWindowAndRenderer("SEAL Team", kScreenW * cfg.scale, logicalH * cfg.scale, flags,
+                                     &window_, &renderer_)) {
+        logError("SDL_CreateWindowAndRenderer: %s", SDL_GetError());
         return false;
     }
-    renderer_ = SDL_CreateRenderer(window_, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-    if (!renderer_) renderer_ = SDL_CreateRenderer(window_, -1, 0);
-    if (!renderer_) {
-        logError("SDL_CreateRenderer: %s", SDL_GetError());
-        return false;
-    }
-    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "nearest");
-    SDL_RenderSetLogicalSize(renderer_, kScreenW, logicalH);
+    SDL_SetRenderVSync(renderer_, 1);
+    // The 320x200 frame is stretched over a 320x240 logical area when
+    // aspect correction is on, reproducing the non-square pixels of a CRT.
+    SDL_SetRenderLogicalPresentation(renderer_, kScreenW, logicalH, SDL_LOGICAL_PRESENTATION_LETTERBOX);
     texture_ = SDL_CreateTexture(renderer_, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING,
                                  kScreenW, kScreenH);
     if (!texture_) {
         logError("SDL_CreateTexture: %s", SDL_GetError());
         return false;
     }
-    SDL_ShowCursor(SDL_DISABLE);  // the game draws its own cursor
+    SDL_SetTextureScaleMode(texture_, SDL_SCALEMODE_NEAREST);
+    SDL_HideCursor();  // the game draws its own cursor
     present(true);
     return true;
 }
@@ -72,7 +68,7 @@ void Video::present(bool force) {
 
     void* pixels = nullptr;
     int pitch = 0;
-    if (SDL_LockTexture(texture_, nullptr, &pixels, &pitch) == 0) {
+    if (SDL_LockTexture(texture_, nullptr, &pixels, &pitch)) {
         for (int y = 0; y < kScreenH; ++y) {
             auto* dst = reinterpret_cast<Uint32*>(static_cast<u8*>(pixels) + y * pitch);
             for (int x = 0; x < kScreenW; ++x) {
@@ -84,13 +80,13 @@ void Video::present(bool force) {
     }
     SDL_SetRenderDrawColor(renderer_, 0, 0, 0, 255);
     SDL_RenderClear(renderer_);
-    SDL_RenderCopy(renderer_, texture_, nullptr, nullptr);
+    SDL_RenderTexture(renderer_, texture_, nullptr, nullptr);
     SDL_RenderPresent(renderer_);
 }
 
 void Video::toggleFullscreen() {
     fullscreen_ = !fullscreen_;
-    SDL_SetWindowFullscreen(window_, fullscreen_ ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
+    SDL_SetWindowFullscreen(window_, fullscreen_);
     dirty_ = true;
 }
 

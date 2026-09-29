@@ -48,7 +48,7 @@ code copied from the original program.
 
 ## Data policy
 
-The original game files (`SealTeam-DOS/`), the Ghidra install and everything
+The original game files (`Game/`), the Ghidra install and everything
 under `re/` (Ghidra projects, exports, extracted assets) are git-ignored and
 must never be committed. The source port loads all game data, including text
 and tables stored inside `st.exe`, from the user's own copy at runtime.

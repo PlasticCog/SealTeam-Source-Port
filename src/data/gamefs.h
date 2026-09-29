@@ -11,9 +11,11 @@ namespace st {
 
 class GameFS {
 public:
-    // Pick the data directory: explicit path, else ./SealTeam-DOS, ./Game, or
-    // the working directory, whichever contains st.exe.
-    bool init(const std::string& explicitDir);
+    // The original game files live in a folder named "Game". It is looked up
+    // next to the executable, one or two levels above it (build trees), then
+    // in the working directory. `explicitDir` (--data) overrides the search.
+    static constexpr const char* kFolderName = "Game";
+    bool init(const std::string& explicitDir, const std::string& exeDir);
 
     const std::string& dir() const { return dir_; }
 
