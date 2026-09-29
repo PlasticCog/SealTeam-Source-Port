@@ -772,7 +772,9 @@ Button list: array of 16-byte records terminated by key == 0:
 Labels are a parallel array of near string pointers. `ui_draw_buttons`
 centres the label horizontally ((w - textwidth)/2, never negative) in font
 DS:eef8; normal buttons: frame 0x18, inner 0x16, face 0x14 (2255:25ce), dark
-edges 0x12/0x10, label white on black shadow; focused (and pressed or
+edges 0x12/0x10, label in colour 0x00 over a colour-0x0F shadow (black text,
+light shadow: `font_draw_text_shadow(.., 0x0f, 0x00)`, verified from the pushes
+at 365e:344c/35a0); focused (and pressed or
 releasing) or flag 0x10: face 0x16, frame 0x18, edges 0x12/0x10 moved one
 pixel; disabled: hatch pattern 0x5a14 over the face. When +0a != -1 a
 hot-key underline is drawn under the first letter of the label (from label x

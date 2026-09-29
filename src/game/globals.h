@@ -4,15 +4,9 @@
 #pragma once
 
 #include "core/common.h"
+#include "game/types.h"
 
 namespace st::game {
-
-enum class GameMode : s16 {  // g_game_mode (DS:D7E4)
-    Campaign = 1,            // continue a campaign
-    Menu = 2,                // main menu / start a new campaign
-    Practice = 3,            // practice mission
-    Demo = 6,                // mission given on the command line, then exit
-};
 
 struct Globals {
     GameMode gameMode = GameMode::Menu;  // D7E4
