@@ -1,0 +1,9 @@
+49f8:0098	pal_reset_level	Set target and current fade level to 0 and re-upload the palette
+49f8:00a6	pal_fade_init	Enable fading only with >=16 colours and a VGA (g_vga_flags & 0x50); reset level; for 256 colours remember colour index DS:07A5 and its RGB for single-colour updates
+49f8:0112	pal_fade_shutdown	If fading is enabled: disable it and upload the unfaded palette
+49f8:0124	pal_set_level	Immediately set target=current=AX (register arg; 0x100 = black, 0 = normal, -0x100 = red) and upload
+49f8:0138	pal_request_fade	Debounced fade request (AX): >=0x600 for 256 accumulated ticks -> target black (0x100); <=-0x400 for 256 ticks -> target red (-0x100); otherwise reset accumulators and target 0
+49f8:01a0	pal_reset_if_faded	If the current level is non-zero reset it to 0 (no direct callers found)
+49f8:01ae	pal_fade_tick	Timer-driven (every 8 ticks = 32 Hz) fade step: move current level towards target by 5 (snap when within 5) and upload; at target optionally re-upload the single tracked colour
+49f8:0218	pal_suspend_fade	With interrupts off save target/current levels, set both to 0 and upload (show the unfaded palette)
+49f8:0238	pal_resume_fade	With interrupts off restore the levels saved by pal_suspend_fade and upload

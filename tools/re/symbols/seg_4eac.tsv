@@ -1,0 +1,4 @@
+4eac:0002	fatal_exit	Fatal error exit: restore the original video mode (2255:0D92), release the far-heap DOS block and exit(g_exit_code); BX = message (not printed here)
+4eac:001c	fatal_no_memory	fatal_exit with 'Not enough memory.'
+4eac:0026	fatal_internal	fatal_exit with an empty message (heap/archive consistency errors; AX = error code)
+4eac:0030	fatal_no_memory_far	Far wrapper for fatal_no_memory

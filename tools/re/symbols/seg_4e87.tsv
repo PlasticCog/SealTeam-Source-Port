@@ -1,0 +1,1 @@
+4e87:0006	pos_move_polar	Add a 3D displacement to an int32 position[3]: distance d rotated by pitch gives (h,v): y+=v; (0,h) rotated by heading gives the x,z deltas; d>0x4000 uses d>>8 and scales results <<8 (pascal)

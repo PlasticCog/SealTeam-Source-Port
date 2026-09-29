@@ -1,0 +1,7 @@
+481c:0004	ems_query_free_bytes	Return free EMS bytes (DX:AX) = unallocated EMS pages*16K + free fragments (482e:11C8); 0 on error; error code kept in g_ems_last_error
+481c:002a	ems_init	Reset the running EMS allocated-bytes counter (53ba:2688) and probe EMS via ems_query_free_bytes (lazily initialises the EMS manager)
+481c:003d	ems_shutdown	Release all EMS memory and handles (482e:19A1); stores error in g_ems_last_error
+481c:0046	ems_alloc	Allocate an EMS block of n bytes (<=64K); returns block handle or -1; adds n to the allocated-bytes counter
+481c:0082	ems_map	Map EMS block handle into the page frame and return its far pointer (NULL on error or handle -1); invalidates pointers from previous maps
+481c:00bd	ems_free	Free EMS block handle (subtracting its size from the counter); returns 1 on success
+481c:010b	ems_copy	Far memcpy(dst, src, n) wrapper (2255:0E02) used to move data between conventional memory and a mapped EMS block

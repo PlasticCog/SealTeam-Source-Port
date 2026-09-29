@@ -1,0 +1,1 @@
+4e0c:0008	vga_detect	INT 10h AH=12h/BL=10h then AX=1A00h (BIOS equipment byte temporarily set to colour): g_is_vga=1 if the display combination code is 7 or 8; g_vga_flags=0x40 if VGA else 0

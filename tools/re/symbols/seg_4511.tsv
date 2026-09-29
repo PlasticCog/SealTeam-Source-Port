@@ -1,0 +1,12 @@
+4511:000c	mem_fatal_out_of_memory	Fatal exit for a failed allocation: calls the global shutdown/exit path (1959:045F) with message DS:3440 (an empty string)
+4511:0027	mem_far_free	Free a far-heap block given as a far pointer (seg:0); ignores NULL; forwards the segment to heap_far_free (4e16:0152)
+4511:0049	mem_far_calloc	Allocate n bytes from the far heap (4e16:0145), zero-fill them, return far ptr seg:0000; fatal exit when out of memory
+4511:00a4	ent_free	Free an entity created by ent_alloc: releases optional sub-blocks at +6,+0xA,+0xE,+0x12 (far ptrs, cleared) then the 0x34-byte block
+4511:019e	ent_alloc	Allocate a zeroed 0x34-byte entity; flag bit0 adds a 0x1C-byte block at +6, bit1 0x48 bytes at +0xA, bit2 0x26 bytes at +0xE, bit3 0xD0 bytes at +0x12; returns far ptr or NULL
+4511:037d	ent2_free	Free an entity created by ent2_alloc: releases the optional 0x8E-byte order block at +0x28 then the 0x34-byte block
+4511:03d0	ent2_alloc	Allocate a zeroed 0x34-byte entity; flag bit3 adds a zeroed 0x8E-byte order/path block at +0x28; returns far ptr or NULL
+4511:0480	ent_clear_waypoints	Free the doubly linked waypoint list of entity->(+0x28 block): walk to the tail via +0x10, free nodes back via +0xC; clear list head (+0x88) and cursor (+0x84)
+4511:0554	ent_add_waypoint	Append a 0x14-byte node holding a copy of a 12-byte record (3 x int32 position) to entity->(+0x28)->list at +0x88; the first node also becomes the cursor at +0x84
+4511:070b	fx_free	Free an object created by fx_alloc: optional 0x48-byte block at +6, then the 0x50-byte block
+4511:0763	fx_alloc	Allocate a zeroed 0x50-byte object; flag bit1 adds a zeroed 0x48-byte block at +6 (used for a pool of 32 objects at DS:2670); returns far ptr or NULL
+4511:0816	snd_listener_table_ptr	Return far pointer 520d:0000 = listener position (3 x int32) at the start of the sound-effect descriptor table

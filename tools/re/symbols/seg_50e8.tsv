@@ -1,0 +1,19 @@
+50e8:000e	ems_get_frame	EMS 41h: store the page-frame segment in *out; returns EMS status
+50ea:0004	ems_map_page	EMS 44h: map logical page BX of handle DX into physical page AL; returns status
+50eb:000a	ems_map_multiple	EMS 50h: map CX (logical,physical) pairs from a far array for handle DX (AL subfunction); returns status
+50ed:0008	ems_alloc_pages	EMS 43h: allocate n pages, store the handle in *out; returns status
+50ee:000e	ems_set_page_map	EMS 4E01h: restore the full page-mapping context from a buffer
+50f0:0004	ems_restore_page_map	EMS 48h: restore the mapping saved for handle DX
+50f1:0004	ems_free_pages	EMS 42h: store the number of unallocated pages in *out; returns status
+50f2:0012	ems_detect	Check the INT 67h vector's device name for 'EMMXXXX0'; returns 0 if present, 0x80 otherwise
+50f5:000a	ems_realloc_pages	EMS 51h: reallocate handle DX to *count pages; stores the resulting count; returns status
+50f7:0008	ems_filter_phys_pages	Copy (segment,page#) pairs whose segment is within [AX,BX] (max 64 entries); returns the count in CX
+50f7:009e	ems_conv_phys_pages	EMS 5800h/5801h: copy mappable physical pages below A000h into a caller array; *count = n
+50f7:00f7	ems_upper_phys_pages	EMS 5800h/5801h: copy mappable physical pages at or above A000h into a caller array; *count = n
+50f7:0150	ems_count_conv_phys_pages	Count mappable physical pages below A000h
+50f7:01ac	ems_count_upper_phys_pages	Count mappable physical pages at or above A000h
+50f7:0208	ems_count_frame_pages	Count contiguous mappable physical pages starting at the page frame (segments 0x400 apart)
+511f:0004	ems_save_page_map	EMS 47h: save the page mapping for handle DX
+5120:0004	ems_partial_map_size	EMS 4F02h: size of a partial page-map save for n segments, stored in *out
+5121:000c	ems_dealloc	EMS 45h: release handle DX
+5122:000c	ems_get_page_map	EMS 4E00h: save the full page-mapping context into a buffer

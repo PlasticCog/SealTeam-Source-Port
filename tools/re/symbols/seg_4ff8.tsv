@@ -1,0 +1,16 @@
+4ff8:000c	los_init	Build both collision quadtrees: los_build_tree(0x1000) -> g_los_tree_a (sight-blocking features), los_build_tree(0x0100) -> g_los_tree_b
+4ff8:0021	los_build_tree	Allocate a 5000-byte block, build a quadtree of the world objects matching the flag mask with los_build_node, shrink the block to the used size; returns its segment (near)
+4ff8:006c	los_free_trees	Free both quadtree blocks and zero g_los_tree_a/b
+4ff8:0098	los_obj_coarse_overlap	Coarse reject: object centre +- (model radius) vs the endpoints +- query radius, compared on the high 16 bits per axis; CF=1 = may overlap (near)
+4ff8:0148	los_trace	Segment query (pascal: ignore obj, from, to, radius, hit out, mask, include-flagged, test ground, test dynamic list, unused): tests objects of the two endpoint leaves, the dynamic list and the ground; returns hit object, 0xFFFF for ground, or 0
+4ff8:0384	los_outcode_p1	Cohen-Sutherland 6-bit outcode of local point p1 against the grown model box (near)
+4ff8:03ca	los_outcode_p2	Cohen-Sutherland 6-bit outcode of local point p2 (near)
+4ff8:0410	los_hmap_sample	Sample the model heightmap at local (x,z); CF=1 if y <= surface height, then p1 = (x, h, z) (near pascal)
+4ff8:0478	los_hmap_test_segment	Test clipped p1, the midpoint and p2 against the model heightmap; CF=1 on the first hit (near)
+4ff8:04bc	los_rotate_segment	Rotate the (x,z) of p1 and p2 by -AX around (0,0) with 2255:62D0 (near)
+4ff8:050c	los_test_object	Precise object test: transform the segment into model space (heading), clip it against the model box grown by the radius (Cohen-Sutherland, max 15 steps), optional heightmap test, write the world hit point; CF=1 hit (near)
+4ff8:0a2c	los_test_ground	Ground plane y=0 test (y<0 underground): writes the crossing point; CF=1 hit (near)
+4ff8:0b36	los_test_leaf	Walk a quadtree leaf's zero-terminated object list and return the first object hit (containers recurse into their child list) or 0 (near)
+4ff8:0bf6	los_test_list	Same filtering and testing over a linked object list (next at +4); recursive for containers (near)
+4ff8:0caa	los_find_leaf	Descend the quadtree in DS from node 0 by (x_hi >= midX) + 2*(z_hi >= midZ) (unsigned) to a leaf; returns its offset (near)
+4ff8:0cd0	los_build_node	Recursive quadtree node builder over (xmin,zmin,xmax,zmax) in high-16 units: leaf with up to 9 objects, else 4 children split at the midpoints (near)

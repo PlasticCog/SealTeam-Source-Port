@@ -1,0 +1,22 @@
+482e:000a	emsm_enter	Enter EMS critical section: lazily run emsm_init, then save the page map of the descriptor handle (EMS 47h); *saved=1 on success
+482e:004c	emsm_map_desc_page	Map logical page n of the descriptor handle (g_ems_desc_handle) into physical page p (EMS 50h, one pair)
+482e:0077	emsm_leave	Leave EMS critical section: restore the saved page map (EMS 48h); returns the incoming error if non-zero
+482e:0094	emsm_check_handle	Validate a block handle: error 0xD0 if manager not initialised, handle==0xFFFF or beyond the descriptor table
+482e:00d0	emsm_init	Detect EMM (EMMXXXX0), require >=2 free pages, allocate data and descriptor handles, locate the page frame, init one page of 0x492 free descriptors, count contiguous physical pages
+482e:0294	emsm_grow_desc_table	Grow the descriptor handle by one 16K page (EMS 51h) and mark its 0x492 descriptors free; 0xD2 if the table would exceed 64K entries
+482e:033e	emsm_alloc_pages	Allocate ceil(size/16K) new data pages (EMS 51h realloc) for descriptor d; a trailing partial page becomes a free-fragment descriptor
+482e:052c	emsm_alloc_in_fragment	Satisfy an allocation from an existing free fragment descriptor, taking over its pages and splitting off the remainder (?)
+482e:074b	emsm_advance_free_hint	Advance g_emsm_first_free (F080) to the next descriptor whose id is 0xFFFF
+482e:080a	emsm_split_fragment	Create a new free-fragment descriptor for the unused tail of a page after an allocation; updates the high-water mark
+482e:09c9	emsm_find_slot	Best-fit search over descriptors for a free fragment/empty slot able to hold n bytes; returns slot index and waste
+482e:0c08	emsm_all_free	Set *flag=1 if every descriptor in the table is free (used to tear down EMS when the last block is freed)
+482e:0c8a	emsm_merge_fragments	Merge two adjacent free fragments if their pages fit in 4 (saves/restores the whole page map with EMS 4E00h/4E01h)
+482e:0e76	emsm_coalesce_prev	Find the free fragment that precedes a freed block and merge it (?)
+482e:101c	emsm_coalesce_next	Find the free fragment that follows a freed block and merge it (?)
+482e:11c8	emsm_query_free	Compute free EMS bytes: unallocated pages (EMS 42h) * 16K plus the sizes of free-fragment descriptors
+482e:129d	emsm_block_size	Return the byte size stored in a block's descriptor (error 0xD0 if the handle does not match)
+482e:134a	emsm_alloc	Allocate an EMS block of n bytes (0<n<=64K): find slot, allocate pages or reuse a fragment, stamp descriptor {id=index,size=n}; returns the handle
+482e:1472	emsm_free	Free a block: mark descriptor free, lower the free hint, tear everything down if all blocks are free, else coalesce neighbouring fragments
+482e:16ef	emsm_map_blocks	Map up to N blocks at once: pick a run of free physical pages per block, build the logical/physical pair table (DS:461C) and issue EMS 50h; returns far ptrs
+482e:1966	emsm_map	Map one block (emsm_map_blocks with count 1) and return its far pointer
+482e:19a1	emsm_shutdown	Unmap all physical pages, deallocate descriptor and data handles (EMS 45h), clear the initialised flag and free cached near buffers

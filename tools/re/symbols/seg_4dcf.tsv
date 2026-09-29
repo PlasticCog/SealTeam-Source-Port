@@ -1,0 +1,2 @@
+4dcf:000e	text4x6_draw_string	Draw a NUL-terminated DS string with the 4x6 font at (x,y), x a multiple of 4; colour g_text_fg, background rect in g_text_bg when g_text_opaque; sets g_row_state[y..y+5]=0xFF (pascal str,x,y)
+4dcf:00e6	text4x6_draw_char	Draw one 4x6 glyph at any x: aligned x goes through text4x6_draw_string, unaligned x splits the nibble across two byte columns (pascal ch,x,y)

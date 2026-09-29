@@ -1,0 +1,9 @@
+49d2:000a	mouse_init	Detect INT 33h driver (vector non-null, reset AX=0); set mickey ratio (4,6 if arg==3 else 8,12) and double-speed threshold (x8); install event handler; returns 1 if present (pascal)
+49d2:008f	mouse_shutdown	If a mouse was initialised: clear g_mouse_present and remove the INT 33h event handler
+49d2:00a1	mouse_set_range	Store limits and set INT 33h horizontal/vertical ranges to 0..2*xmax / 0..2*ymax (coordinates are kept doubled; near pascal)
+49d2:00f6	mouse_set_pos	Store (x,y) in g_mouse_x/g_mouse_y and move the driver cursor to (2x,2y) (INT 33h AX=4; far pascal)
+49d2:0133	mouse_center	Move the mouse to the centre of its range (xmax/2, ymax/2)
+49d2:0144	mouse_event_callback	C-level mouse event handler: x=cx/2, y=dx/2 -> g_mouse_x/y, buttons -> g_mouse_buttons; in mouse control mode sets analog axes (x-105, y-105) and counts button-1/2 press edges
+49d2:01a2	mouse_int33	Call INT 33h through int86 with the BIOS video-mode byte (0040:0049) temporarily set to 4 so the driver uses a 640x200 virtual grid (near)
+49d2:01d9	mouse_init_screen	Init mouse (mode 4), set its range to the full screen (g_screen_w-1, g_screen_h-1), centre it (no direct callers found)
+49d2:01fa	mouse_init_stick	If a mouse is present set range 0..211 x 0..211 (virtual joystick, centre 105) and centre it

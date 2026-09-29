@@ -1,0 +1,26 @@
+4e16:0006	heap_far_init	Size the largest free DOS block by walking the MCB chain, allocate it with _dos_allocmem (retrying 4 paragraphs smaller) and make it the far heap; fatal if < 4 paragraphs
+4e16:0051	heap_far_release	Return the far-heap DOS block (_dos_freemem) and mark the far heap uninitialised
+4e16:0061	heap_near_free_bytes	Total free bytes of the near heap (free paragraphs * 16) (no direct callers found)
+4e16:006d	heap_far_free_paras	Total free paragraphs of the far heap (no direct callers found)
+4e16:0075	dos_free_paras	Walk the DOS MCB chain (first MCB from 2255:109E) and sum the sizes of free blocks (owner 0)
+4e16:00ba	heap_largest_free	Largest free block (paragraphs) of heap BX: scan the circular block list for type 0x0F (near)
+4e16:0104	heap_total_free	Sum of free block sizes (paragraphs) of heap BX (near)
+4e16:0145	heap_far_alloc	Allocate AX bytes from the far heap; returns data segment (offset 0) or 0
+4e16:0152	heap_far_free	Free far-heap block with data segment AX (0 ignored); fatal error 0x58 if the heap rejects it
+4e16:016f	heap_far_realloc	Resize far-heap block (AX=segment, DX=new byte size) in place; returns non-zero on success
+4e16:0181	heap_near_init	Create the near heap in the DGROUP gap between the end of data (DS:0048 rounded up to 16) and DS:004C
+4e16:01be	heap_near_disable	Mark the near heap uninitialised (no direct callers found)
+4e16:01c4	heap_near_alloc	Allocate AX bytes from the near heap; returns a DS-relative offset or 0
+4e16:01ef	heap_near_free	Free near-heap block at DS offset BX
+4e16:0215	heap_near_free2	Identical copy of heap_near_free (free near-heap block at DS offset BX)
+4e16:023b	heap_vga_init	Create the VGA heap (flags 7: VGA memory, allocate from top, fill freed blocks with 0xAA) at segment AX, DX paragraphs
+4e16:0250	heap_vga_disable	Mark the VGA heap uninitialised
+4e16:0256	heap_vga_alloc	Allocate AX bytes of off-screen VGA memory; returns segment or 0
+4e16:0263	heap_vga_free	Free VGA-heap block with segment AX
+4e16:0274	heap_set_alloc_top	Set flag bit1 (allocate from the top of free blocks) on the near, far and VGA heaps
+4e16:0284	heap_clear_alloc_top	Clear flag bit1 on the near, far and VGA heaps
+4e16:0294	heap_set_owner_tag	Set the owner tag stamped into new blocks of all heaps to AX (remembered in DS:549A) (no direct callers found)
+4e16:02c7	heap_get_owner_tag	Return the current owner tag (no direct callers found)
+4e16:02cb	heap_free_by_owner	Free every block with owner tag AX in the near, far and VGA heaps (no direct callers found)
+4e16:02fb	mem_draw_report	Debug overlay: build 'RAM Blk:<largest far> Far:<total far> Near:<n> bytes VGA:... EMS:...' (Kb above 0x7FF paragraphs) and draw it with text4x6_draw_string
+4e16:06f6	mem_far_free_bytes	Total free bytes of the far heap as a 32-bit value (paragraphs*16)

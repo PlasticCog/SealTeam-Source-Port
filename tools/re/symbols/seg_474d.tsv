@@ -1,0 +1,78 @@
+474d:03c4	ail_find_driver_fn	Look up function number AX in the (fn#,offset) table of registered driver BX (0..15); returns far ptr into the driver image or NULL
+474d:03fc	ail_call_driver	Common stub target: dispatch API function AX to the driver whose handle is the first stack argument (tail-jumps into the driver; returns 0 if unsupported)
+474d:0414	ail_timer_isr	INT 08h handler: re-entrancy guard, own stack in CS, for each of 17 timer slots in state 2 add the PIT period (us) to its accumulator and call it when >= its period; EOI; integrity check of the CS 'Test' marker
+474d:04eb	ail_timer_reset	Clear all timer states/accumulators/periods and set the current PIT period to 0xFFFFFFFF
+474d:0527	ail_bios_tick_chain	Timer slot 16 callback: chain to the original INT 08h handler (BIOS clock) via PUSHF + far call
+474d:052e	ail_hook_int08	Save the INT 08h vector and install ail_timer_isr; slot 16 callback = ail_bios_tick_chain
+474d:057a	ail_unhook_int08	Restore the saved INT 08h vector and stop servicing timers
+474d:05aa	ail_pit_program	Program PIT channel 0 in mode 3 with the given 16-bit divisor (0 = 65536) and remember it
+474d:05d3	ail_pit_set_period_us	Set PIT period in microseconds: divisor = us*10000/8380, or 0 (18.2 Hz) when us >= 54925
+474d:05fd	ail_udiv32	Unsigned 32/32 division helper (shift-subtract loop when the divisor exceeds 16 bits)
+474d:0648	ail_timer_update_rate	Find the smallest period among allocated timers; if it changed reprogram the PIT and clear all accumulators
+474d:06dd	ail_startup	Initialise AIL: clear the 16 driver slots, their timer handles (-1) and initialised flags
+474d:0721	ail_shutdown	For every registered driver release its service timer and shut it down (passing the sign-off message), then release all timers
+474d:0786	ail_register_timer	Allocate a timer slot (0..15) for a far callback; on the first timer reset the table, create the BIOS-chain slot 16 (54925 us) and hook INT 08h; returns handle or -1
+474d:0832	ail_release_timer_handle	Free a timer slot; when none remain restore the default PIT rate and unhook INT 08h
+474d:087b	ail_release_all_timers	Release timer handles 15..0
+474d:0899	ail_start_timer	Timer state 1 (allocated) -> 2 (running)
+474d:08c1	ail_start_all_timers	Start timers 15..0
+474d:08df	ail_stop_timer	Timer state 2 (running) -> 1 (stopped)
+474d:0907	ail_stop_all_timers	Stop timers 15..0
+474d:0925	ail_set_timer_period	Set a timer period in microseconds (32-bit), reset its accumulator and recompute the PIT rate
+474d:097a	ail_set_timer_frequency	Set a timer frequency in Hz (32-bit): period = 1000000/Hz
+474d:09bb	ail_set_timer_divisor	Set a timer by PIT divisor: period = divisor*10000/11932 us (0 -> 54925 us)
+474d:09f7	ail_interrupt_divisor	Return the PIT divisor currently programmed (callback handed to drivers)
+474d:0a0b	ail_register_driver	Register a loaded driver image: must contain 'Copy' at +2 (function table at +[0]); describe it and check its minimum API version <= 0xD3; returns handle 0..15 or -1
+474d:0a95	ail_release_driver_handle	Forget driver slot n
+474d:0ac3	ail_describe_driver	Driver function 100: return far ptr to the driver descriptor (type, data suffix, default IO/IRQ/DMA/DRQ, service rate)
+474d:0ae9	ail_detect_device	Driver function 101 (driver, IO, IRQ, DMA, DRQ): non-zero if the hardware responds
+474d:0aef	ail_init_driver	If the driver has a service rate register a timer for its function 103 at that frequency, call function 102 (driver, IO, IRQ, DMA, DRQ), mark initialised and start the timer
+474d:0ba1	ail_shutdown_driver	If initialised: release the driver's service timer and call function 104 (sign-off message)
+474d:0bd4	ail_index_voc_block	Digital fn 0x78: locate a VOC block (marker -1 = first) and fill a sound-buffer descriptor
+474d:0bda	ail_register_sound_buffer	Digital fn 0x79: register sound buffer n (0/1) for double-buffered playback
+474d:0be0	ail_format_sound_buffer	Digital fn 0x86: convert a sound buffer to the card's native format
+474d:0be6	ail_sound_buffer_status	Digital fn 0x7A: status of buffer n (3 = free/done)
+474d:0bec	ail_play_voc_file	Digital fn 0x7B: play a whole in-memory VOC file (used directly by 365e)
+474d:0bf2	ail_format_voc_file	Digital fn 0x85: convert an in-memory VOC file to native format
+474d:0bf8	ail_voc_playback_status	Digital fn 0x7C: playback status of the VOC file
+474d:0bfe	ail_start_digital_playback	Digital fn 0x7D: start playing the registered buffers
+474d:0c04	ail_stop_digital_playback	Digital fn 0x7E: stop digital playback
+474d:0c0a	ail_pause_digital_playback	Digital fn 0x7F (unused by the game)
+474d:0c10	ail_resume_digital_playback	Digital fn 0x80 (unused by the game)
+474d:0c16	ail_set_digital_playback_volume	Digital fn 0x81: set volume 0..127
+474d:0c1c	ail_digital_playback_volume	Digital fn 0x82 (unused by the game)
+474d:0c22	ail_set_digital_playback_panpot	Digital fn 0x83 (unused by the game)
+474d:0c28	ail_digital_playback_panpot	Digital fn 0x84 (unused by the game)
+474d:0c2e	ail_state_table_size	XMIDI fn 0x96: bytes needed for a sequence state table
+474d:0c34	ail_register_sequence	XMIDI fn 0x97 (driver, XMI image, sequence#, state table, controller table): returns sequence handle or -1
+474d:0c3a	ail_release_sequence_handle	XMIDI fn 0x98: release a sequence handle
+474d:0c40	ail_default_timbre_cache_size	XMIDI fn 0x99: size of the timbre cache the driver wants (0 = none)
+474d:0c46	ail_define_timbre_cache	XMIDI fn 0x9A: hand the driver a timbre cache buffer
+474d:0c4c	ail_timbre_request	XMIDI fn 0x9B: next (bank<<8|patch) the sequence needs, 0xFFFF when none
+474d:0c52	ail_install_timbre	XMIDI fn 0x9C (driver, bank, patch, timbre data)
+474d:0c58	ail_protect_timbre	XMIDI fn 0x9D (unused by the game)
+474d:0c5e	ail_unprotect_timbre	XMIDI fn 0x9E (unused by the game)
+474d:0c64	ail_timbre_status	XMIDI fn 0x9F (unused by the game)
+474d:0c6a	ail_start_sequence	XMIDI fn 0xAA: start a registered sequence
+474d:0c70	ail_stop_sequence	XMIDI fn 0xAB: stop a sequence
+474d:0c76	ail_resume_sequence	XMIDI fn 0xAD (unused by the game)
+474d:0c7c	ail_sequence_status	XMIDI fn 0xAE: 0 stopped, 1 playing, 2 done
+474d:0c82	ail_relative_volume	XMIDI fn 0xAF (unused by the game)
+474d:0c88	ail_relative_tempo	XMIDI fn 0xB0 (unused by the game)
+474d:0c8e	ail_set_relative_volume	XMIDI fn 0xB1 (driver, sequence, percent, ms): set sequence volume percentage
+474d:0c94	ail_set_relative_tempo	XMIDI driver API stub for function 0xB2 (unused by the game)
+474d:0c9a	ail_xmidi_fn_b3	XMIDI driver API stub for function 0xB3 (unused by the game)
+474d:0ca0	ail_xmidi_fn_b4	XMIDI driver API stub for function 0xB4 (unused by the game)
+474d:0ca6	ail_xmidi_fn_b5	XMIDI driver API stub for function 0xB5 (unused by the game)
+474d:0cac	ail_xmidi_fn_b6	XMIDI driver API stub for function 0xB6 (unused by the game)
+474d:0cb2	ail_xmidi_fn_b7	XMIDI driver API stub for function 0xB7 (unused by the game)
+474d:0cb8	ail_xmidi_fn_b9	XMIDI driver API stub for function 0xB9 (unused by the game)
+474d:0cbe	ail_xmidi_fn_ba	XMIDI driver API stub for function 0xBA (unused by the game)
+474d:0cc4	ail_xmidi_fn_bb	XMIDI driver API stub for function 0xBB (unused by the game)
+474d:0cca	ail_xmidi_fn_bc	XMIDI driver API stub for function 0xBC (unused by the game)
+474d:0cd0	ail_xmidi_fn_bd	XMIDI driver API stub for function 0xBD (unused by the game)
+474d:0cd6	ail_xmidi_fn_be	XMIDI driver API stub for function 0xBE (unused by the game)
+474d:0cdc	ail_xmidi_fn_bf	XMIDI driver API stub for function 0xBF (unused by the game)
+474d:0ce2	ail_xmidi_fn_c0	XMIDI driver API stub for function 0xC0 (unused by the game)
+474d:0ce8	ail_xmidi_fn_c1	XMIDI driver API stub for function 0xC1 (unused by the game)
+474d:0cee	ail_xmidi_fn_c2	XMIDI driver API stub for function 0xC2 (unused by the game)

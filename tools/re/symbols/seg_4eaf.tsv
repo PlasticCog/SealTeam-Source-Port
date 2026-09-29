@@ -1,0 +1,4 @@
+4eaf:0006	file_load_near	Load a whole DOS file (<64K) into a new near-heap block; returns far ptr DS:off or NULL (pascal name,size*) (no direct callers found)
+4eaf:0021	file_load_far	Load a whole DOS file (<64K) into a new far-heap block; returns far ptr or NULL (pascal name,size*)
+4eaf:003c	file_load	Load a DOS file: mode 0xFF = into caller buffer, 1 = new far block, 0 = new near block; stores the size in *size_out; fails on >=64K, open/read error or critical error (pascal)
+4eaf:012f	file_save	Create a DOS file and write n bytes from a far buffer; deletes the file on a short write; returns 1 on success

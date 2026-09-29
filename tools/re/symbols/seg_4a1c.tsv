@@ -1,0 +1,11 @@
+4a1c:000e	tick_init	Reset the 32-bit 256 Hz tick counter (g_ticks) and the frame tick counter, enable the frame limiter
+4a1c:0028	tick_callback	256 Hz AIL timer callback: ++g_ticks, ++g_frame_ticks, set g_tick_flag; every 8 ticks run screen shake + palette fade step; in joystick mode poll buttons every 4 ticks and count press edges
+4a1c:00a0	shake_reset_vars	Clear screen-shake end times and g_crtc_start_lo without touching the CRTC
+4a1c:00b2	shake_apply	In mode 6 write CRTC start-address-low = h_flag + (v_flag & 0x50) (1 byte = 4 px sideways, 0x50 = one row down)
+4a1c:00d0	shake_stop	Clear shake end times and flags and re-apply (CRTC start low back to 0)
+4a1c:00ea	shake_stop_far	Far wrapper for shake_stop (used at shutdown)
+4a1c:00f0	shake_horizontal	Extend horizontal shake until g_time + n ticks (keeps the later end time)
+4a1c:011c	shake_vertical	Extend vertical shake until g_time + n ticks (keeps the later end time)
+4a1c:0148	shake_tick	Toggle the horizontal (0/1) and vertical (0/FF) shake flags while g_time is before their end times, else clear them; then shake_apply (near)
+4a1c:0192	frame_limit_wait	If the limiter is enabled and bit1 of DS:F23A is set, busy-wait until at least 5 ticks (~19.5 ms) have elapsed since frame_limit_reset
+4a1c:01a8	frame_limit_reset	Reset the frame tick counter (start of a new frame)

@@ -1,0 +1,278 @@
+0048	g_dgroup_heap_lo	u16	C runtime DGROUP variable: end of static data; near heap starts at (value+15)&~15
+004c	g_dgroup_heap_hi	u16	C runtime DGROUP variable: top of the DGROUP area available for the near heap
+0130	g_palette	u8 far*	Current palette (6-bit RGB triplets, g_pal_count entries) used by the fade code (offset at 0130, segment at 0132)
+02ba	g_ai_enabled	u8	AI enabled flag gating ai_update (read by the caller in segment 1000)
+07a5	g_pal_track_index	u8	Palette index remembered by pal_fade_init for single-colour updates (256-colour mode); set by segment 1000 (flat sky colour according to that module)
+07a8	g_world_grid_w	s16	World grid width in cells (world struct at 07A4, read by the LOS builder)
+07aa	g_world_grid_d	s16	World grid depth in cells
+07ac	g_world_cells_off	u16	Offset of the cell table (4 bytes per cell, word 0 = object list head)
+07ae	g_world_obj_seg	u16	Segment of the object heap
+07b0	g_world_dynamic_list	u16	Head of the dynamic (non-static) object list
+07b2	g_world_cells_seg	u16	Segment of the cell table
+12e2	g_groups	void far*[]	Null-terminated table of group-object far pointers; [0] is the player's SEAL squad, whose member[0] is the player
+1d2e	g_midi_driver_name	char*	Near pointer to the XMIDI driver base name (default 'midpak'; table 1D2E..1D40 lists midpak/pcspkr/adlib/adlibg/sbfm/sbpfm/pasfm/pasopl/mt32mpu/scfm)
+1d30	g_midi_fallback_name	char*	Near pointer to the fallback XMIDI driver name 'pcspkr' (music disabled when used)
+1d4c	g_digi_driver_name	char*	Near pointer to the digital driver base name 'soundrv' (table 1D44..1D4A: sbdig/sbpdig/algdig/pasdig)
+2670	g_fx_pool	void far*[32]	Pool of 32 objects allocated with fx_alloc(2) by 1000:4291 and freed by 1000:4544
+3440	g_str_empty_fatal	char[]	Empty message passed to the fatal exit on allocation failure
+39ce	g_mission_groups	void far*	Far pointer to the 0x66-byte mission group records passed to ai_group_orders_from_mission
+45c0	g_snd_enabled	u8	Master sound-effect enable (initialised 1); snd_play_sfx does nothing when 0
+45c1	g_music_enabled	u8	Music enabled (initialised 1; cleared when only the pcspkr fallback driver loads)
+45c2	g_fm_sfx_ok	u8	An XMIDI driver is loaded, so FM/MIDI versions of effects can play
+45c3	g_digi_ok	u8	Digital driver loaded and initialised
+45c4	g_digi_busy	u8	The single digital voice is in use
+45c6	g_digi_channel	s16	Channel index (0..5) owning the digital voice, -1 if none
+45c8	g_digi_chan	snd_channel far*	Far pointer to the channel record owning the digital voice
+45cc	g_digi_wanted	u8	Try to load the digital driver (initialised 1)
+45cd	g_snd_debug	u8	Show the 'SFX:' debug text in snd_update (initialised 0)
+45ce	g_snd_bank	u8	Effects bank number: 1 -> msc01.xmi (default), 2 -> msc02.xmi for drivers whose data suffix starts with 'M' (Roland MT-32/MPU); 0 disables FM effects
+45cf	g_digi_max_vol	s8	Maximum digital effect volume (0x50)
+45d0	g_fm_max_vol	s8	Maximum FM effect volume (0x7F)
+45d1	g_music_volume	u8	Music relative volume in percent passed to AIL_set_relative_volume (0x60 = 96)
+45d2	g_str_sfx_debug	char[]	'SFX:' debug label
+45d7	g_str_adv_ext	char[]	'.adv' driver file extension (a second copy is at 45DC)
+45e1	g_str_adi_ext	char[]	'.adi' driver override file extension (4 bytes: IO, IRQ words; -1 = keep default)
+45e6	g_str_sfx_name	char[]	'sfx00' name template (digits patched to the effect number) followed by '.voc' at 45EC
+45f2	g_music_xmi	void far*	Currently loaded XMI image (effects bank or music file)
+45f6	g_music_started	u8	Set by snd_music_start_once; cleared by snd_load_music
+45f8	g_timbres_installed	u16	Count of timbres copied out of the GTL
+45fa	g_timbres_on_register	u8	If set, music/effect registration also installs timbres (never set)
+45fc	g_gtl	void far*	Loaded Global Timbre Library (SAMPLE.<suffix>), or the EMS-mapped copy
+4600	g_gtl_ems	s16	EMS handle holding the GTL, -1 if it stays in conventional memory
+4602	g_str_sample	char[]	'SAMPLE.' GTL name prefix (the driver's data suffix is appended)
+460a	g_str_msc_name	char[]	'msc00' music file template followed by '.xmi' at 4610
+4615	g_str_empty_fatal2	char[4]	Four empty fatal-error messages used by the timbre loaders (4615..4618)
+461a	g_emsm_initialised	u16	EMS manager initialised
+461c	g_emsm_map_pairs	u16[2*n]	(logical page, physical page) pairs for EMS function 50h, one per physical page (-1 = unused)
+467c	g_emsm_map_count	u16	Number of pairs in use for the next EMS 50h call
+467e	g_mouse_present	u8	Mouse driver initialised
+467f	g_mouse_buttons	u8	Last button state from the mouse event handler
+4684	g_pal_fade_enabled	u8	Palette fading possible (>=16 colours and VGA)
+4685	g_pal_target	s16	Target fade level (0 normal, 0x100 black, -0x100 red)
+4687	g_pal_level	s16	Current fade level used by pal_apply
+4689	g_pal_saved_target	s16	Target saved by pal_suspend_fade
+468b	g_pal_saved_level	s16	Level saved by pal_suspend_fade
+468d	g_pal_black_accum	u16	Ticks accumulated towards a fade-to-black request
+468f	g_pal_red_accum	u16	Ticks accumulated towards a fade-to-red request
+4691	g_pal_tick_enabled	u8	Allow the 32 Hz fade step (initialised 1)
+4692	g_pal_is_256	u8	Palette has 256 colours
+4693	g_pal_track_ptr	u16	Offset of the tracked colour inside g_palette
+4695	g_pal_track_idx	u8	Tracked colour index
+4696	g_pal_track_rgb	u8[3]	Original RGB of the tracked colour
+4699	g_pal_track_level	u16	Level for the tracked colour (0x100)
+469b	g_pal_track_dirty	u8	Request to re-upload only the tracked colour (never set)
+469c	g_tick_div8	s8	Counter for the every-8-ticks work in tick_callback
+469d	g_tick_div4	s8	Counter for the every-4-ticks joystick poll
+469e	g_shake_h	u8	Horizontal shake phase (0/1 byte offset)
+469f	g_shake_v	u8	Vertical shake phase (0/0xFF, masked with 0x50)
+46a0	g_shake_h_end	s32	g_time until which horizontal shake runs
+46a4	g_shake_v_end	s32	g_time until which vertical shake runs
+46a8	g_tick_flag	u8	Set to 1 by every tick
+46a9	g_frame_limit_on	u8	Frame limiter enabled (set by tick_init)
+46aa	g_frame_ticks	u16	Ticks since frame_limit_reset
+46ac	g_ai_delay_thr_a	u8[4]	Reaction-delay thresholds {0,2,5} for body attribute +0x0c (never compared: lookup quirk)
+46b0	g_ai_delay_add_a	s16[3]	Intended reaction-delay additions {0x200,0x100,0}; the lookup actually returns byte 46b6 (=30)
+46b6	g_ai_delay_thr_b	u8[4]	Thresholds {30,60,100} for body attribute +0x0b (never compared)
+46ba	g_ai_delay_add_b	s16[3]	{0x200,0x100,0}; lookup actually returns byte 46c0 (=30)
+46c0	g_ai_delay_thr_c	u8[4]	Thresholds {30,60,100} for body attribute +0x06 (never compared)
+46c4	g_ai_delay_add_c	s16[3]	{0x200,0x100,0}; lookup actually returns byte 46ca (=0x4d, first char of "M3A1")
+4902	g_weapon_types	struct weapon_type[] (0x22 bytes each)	Weapon type table indexed by weapon type byte: +0x00 class (10,12,13,14 get ballistic aim correction), +0x08 max range, +0x0e >0 for explosive/area (?), +0x1a reload time in ticks
+4f92	g_video_mode	s16	Video driver index (-1 none; 6 = Mode X 320x200x256, the only one with drawing entries)
+4f98	g_screen_w	u16	Screen width in pixels (used by mouse_init_screen)
+4f9a	g_screen_h	u16	Screen height in pixels
+4f9c	g_video_4px_align	u8	Forces 4-pixel alignment rules in some routines
+4fd6	g_crtc_start_lo	u16	Value written to CRTC register 0Dh by shake_apply
+5057	g_orig_video_mode	u8	BIOS video mode restored at exit
+5058	g_orig_equip_byte	u8	BIOS equipment byte (0040:0010) restored at exit
+5059	g_vsync_wait_state	u8	Value (bit 3 of port 3DA) the palette upload waits for before writing the DAC
+506a	g_str_4x6_fnt	char[]	'4x6.fnt'
+5072	g_font4x6_seg	u16	Segment of the converted 4x6 glyph table (6 bytes per glyph, glyph = ch-0x15)
+5074	g_text_fg	u8	Text colour (initialised 15)
+5075	g_text_bg	u8	Text background colour for opaque 4x6 text
+5076	g_nibble_to_planes	u8[16]	Bit-reversal table: 4-pixel nibble (MSB = left pixel) -> Mode-X plane mask
+50e0	g_text4x6_opaque_tbl	u16[7]	Per video mode entry of the opaque 4x6 string routine (only mode 6 set)
+50ee	g_text4x6_tbl	u16[7]	Per video mode entry of the transparent 4x6 string routine
+50fc	g_text4x6_char_tbl	u16[7]	Per video mode entry of the unaligned 4x6 char routine
+510c	g_text_col	u16	Current byte column while drawing 4x6 text
+510e	g_text_ptr	u16	Current string pointer
+5110	g_text_rowptr	u16	Pointer into g_row_offsets for the text row
+5112	g_char_buf	char[2]	One-character string buffer used by text4x6_draw_char
+5422	g_font_draw_tbl	u16[8]	Per video mode inner routine of font_draw_char (only mode 6 set)
+543a	g_mask_right	u8[8]	Right-edge bit masks FF,7F,..,01
+5442	g_mask_left	u8[8]	Left-aligned bit masks 80,C0,..,FF
+544a	g_glyph_w	u16	Width of the glyph being drawn
+544c	g_glyph_stride	u16	Font bitmap bytes per row
+544e	g_glyph_rows	u16	Rows left to draw (font height)
+5450	g_glyph_seg	u16	Segment of the font bitmap
+5452	g_glyph_bit0	u16	Start bit (loc & 7)
+5456	g_glyph_byte0	u16	First source byte (loc >> 3)
+5458	g_glyph_byte1	u16	Last source byte
+5462	g_glyph_x0	u16	loc[c] (first bit column of the glyph)
+5464	g_glyph_x1	u16	loc[c+1]-1 (last bit column)
+5476	g_heap_near	heap_t	Near heap descriptor (12 bytes: base, anchor, rover, end, flags, initialised, owner tag)
+5482	g_heap_far	heap_t	Far heap descriptor (DOS memory block)
+548e	g_heap_vga	heap_t	VGA (off-screen video memory) heap descriptor
+549a	g_heap_owner_tag	u16	Owner tag last set with heap_set_owner_tag
+549c	g_str_mem_report	char[]	Memory report strings 'RAM', '  Blk:', ' Kb', ' bytes', '  Far:', '  Near:', '  VGA:', '  EMS:' (549C..)
+54f6	g_origin_2d	s16[2]	(0,0) rotation origin passed to 2255:62D0
+55c4	g_joy_desc	joy_desc[2]	Game-port stick descriptors (8 bytes: centre x, centre y, x mask, y mask, x|y mask, button shift): 55C4 = port stick B (4/8/C, shift 6), 55CC = stick A (1/2/3, shift 4)
+55d4	g_joy_count	u16	Number of sticks detected
+55d6	g_joy_swap	u16	Logical stick index XOR value (1 = logical 0 is stick A)
+5bde	g_exit_code	u16	Exit code used by fatal_exit
+5be0	g_str_no_memory	char[]	'Not enough memory.'
+5bf4	g_old_int24	void far*	Saved INT 24h vector (segment 5BF4, offset 5BF6)
+5bf8	g_int24_installed	u8	Critical-error handler installed
+5bf9	g_io_error	u16	Critical/IO error code recorded by the INT 24h handler or the LZSS reader (0 = none)
+5c58	g_pxpk_xlat	u8 far*	Translation table used when nibble packing (g_pxpk_pack_4bpp) is on
+5c5c	g_str_pxpk	char[]	'PXPK'
+5c61	g_str_ealib	char[]	'EALIB'
+5c68	g_lzss_out	u8 far*	LZSS output pointer (normalised on offset wrap)
+5c6c	g_lzss_file	u16	DOS handle being decoded
+5c6e	g_lzss_inpos	u16	Read position in the 1K input buffer
+5c70	g_lzss_inlen	u16	Valid bytes in the input buffer
+5c72	g_lzss_remaining	u32	Bytes still to produce
+5c76	g_pxpk_to_screen	u8	Bitmap flag bit0: destination rows come from g_row_offsets
+5c77	g_pxpk_width	u16	Bitmap width
+5c79	g_pxpk_height	u16	Bitmap height
+5c7b	g_pxpk_row	u16	Current destination row
+5c7d	g_pxpk_stride	u16	Bytes per decoded row (file stride)
+5c7f	g_pxpk_row_left	u16	Bytes still missing in the current row
+5c81	g_pxpk_dst_seg	u16	Destination segment (bitmap +8)
+5c83	g_pxpk_dst_off	u16	Destination offset of the current row
+5c85	g_pxpk_row_writer	void near*	Row writer (4edb:0FD2 for 8bpp, 4edb:1046 for 4bpp)
+5c97	g_pxpk_xlat_buf	u16	Stack offset of the (dead) nibble table
+5c99	g_pxpk_rowbuf	u16	Stack offset of the row buffer
+5c9b	g_pxpk_rowpos	u16	Write position inside the row buffer
+5c9e	g_los_from	s32[3]	Copy of the query start position
+5caa	g_los_to	s32[3]	Copy of the query end position
+5cb6	g_los_tree_seg	u16	Quadtree segment used by the current query
+5cb8	g_los_obj_pos8	s32[3]	Current object position >> 8
+5cc4	g_los_p1	s16[3]	Segment start in object-local units (clipped in place; becomes the hit point)
+5cca	g_los_p2	s16[3]	Segment end in object-local units
+5cd0	g_los_box	s16[6]	Model box grown by the radius, >>8: xmin,xmax,ymin,ymax,zmin,zmax
+5cdc	g_los_oc1	u8	Outcode of p1
+5cdd	g_los_oc2	u8	Outcode of p2
+5cde	g_los_clip_left	u8	Clip iteration countdown (starts at 15)
+5cdf	g_los_obj_angle	s16	Heading used for the local transform
+5ce1	g_los_rot_pt	s16[2]	Scratch (x,z) point for 2255:62D0
+5ce5	g_los_free_rot	u8	1 = general rotation applied (object flag 0x2000)
+5ce6	g_los_gnd_base_x	s32	Ground test base x = min(from.x, to.x) >> 8
+5cea	g_los_gnd_base_z	s32	Ground test base z
+5cee	g_los_gnd_pts	s16[4]	Ground test relative x1, z1 (become the crossing), x2, z2
+5cf6	g_los_leaf_off	u16	Leaf cursor offset (written only)
+5cf8	g_los_leaf_seg	u16	Tree segment while walking a leaf
+5cfa	g_los_cur_obj	void far*	Current object (written only)
+5cfe	g_los_cur_model	u16	Near pointer to the current object's model descriptor
+5d00	g_los_bld_bounds	s16[4]	Quadtree builder node xmin, xmax, zmin, zmax
+5d08	g_los_bld_cell	s16[2]	Builder cell column, row
+5d0c	g_los_bld_scan	s16[4]	Builder cell scan range col_lo, col_hi, row_lo, row_hi
+5d14	g_los_bld_span	s16[2]	Builder node x span, z span
+5d18	g_los_bld_node2	u16	Copy of the node start offset (unused)
+5d1a	g_los_bld_node	u16	Current node start offset
+cdbe	g_sfx_table_seg	u16	Segment of the sound-effect table (520d): listener position + descriptors
+cdc0	g_sfx_chan_seg	u16	Segment (53ba) holding the 6 sound channel records at 258C
+cdc4	g_misc_seg_53ba	u16	Segment 53ba; the EMS allocated-bytes counter lives at 53ba:2688
+cdc6	g_seg_ai_525b	u16	Holds far segment 0x525b; ai_init fills 525b:0000 int16[4] (auto-first-aid patient per SEAL slot) with -1
+cdc8	g_seg_ai_53ba_shots	u16	Holds far segment 0x53ba; used to address the 32 shot records at 53ba:28ba
+cdca	g_seg_ai_53ba_scripts	u16	Holds far segment 0x53ba; used to address the 3 AI script sequence heads at 53ba:268c
+cdcc	g_seg_ai_525b_b	u16	Holds far segment 0x525b (same array as 0xcdc6, used by ai_squad_auto_first_aid)
+cdce	g_seg_ai_5149	u16	Holds far segment 0x5149; far ptr at 5149:000e = unit currently designated/targeted by the player (?)
+ceec	g_timbre_size	u16	Size of the timbre being copied by snd_gtl_get_timbre
+ceee	g_mouse_xmax	u16	Mouse x range limit (pixels; driver range is doubled)
+cef0	g_mouse_ymax	u16	Mouse y range limit
+cf60	g_ems_mode	u16	EMS usage mode/memory configuration; values > 3 move effect samples and the GTL into EMS
+cf66	g_fire1_presses	u8	Count of fire-button-1 press edges (joystick polling or mouse events)
+cf67	g_fire2_presses	u8	Count of fire-button-2 press edges
+cf86	g_input_device	u8	Active control device: 1 = joystick (polled in the tick), >= 3 = mouse used as a virtual stick
+cf87	g_fire_prev	u8	Previous button bits for edge detection
+d7ed	g_time_compress_on	u8	Time compression active (set by segments 1000/19ac); snd_play_sfx refuses new effects while it is non-zero
+d836	g_stick_x	s16	Analog x from the mouse virtual stick (mouse x - 105)
+d83a	g_stick_y	s16	Analog y from the mouse virtual stick (mouse y - 105)
+ec8f	g_first_enemy_group	u8	Index in g_groups of the first mission-defined (enemy) group; 0xff while groups are being created
+eca6	g_time	s32	Game time in 256 Hz ticks, sampled once per frame (owned by 1000:301F)
+ecaa	g_frame_dt	s16	Ticks elapsed during the last frame (minimum 1)
+ecac	g_time_prev	s32	g_time of the previous frame
+ecb0	g_ticks	u32	Free-running 256 Hz tick counter incremented by tick_callback
+ecfa	g_ai_alarm_mode	u8	Set at mission start when the object table (0x26f4) holds an object with id 0xc4b2 (?); reserve groups then deploy only on alarm (1000_521c), not by timer
+ecfe	g_los_hit	s32[3]	LOS hit position; callers pass its own address as the output pointer, so word 0 also holds that pointer
+ef00	g_font	deluxe_font far*	Current proportional DeluxeFont header used by font_draw_char
+ef36	g_adi_io	s16	IO override read from the .adi file (-1 = keep)
+ef38	g_adi_irq	s16	IRQ override read from the .adi file (-1 = keep)
+ef3a	g_digi_buf	void far*[2]	Two 3600-byte digital staging buffers (EF3A, EF3E)
+ef42	g_snd_wait_time	u32	Last poll time while waiting for the Roland init sequence
+ef46	g_midi_drv_image	void far*	Loaded XMIDI driver image
+ef4a	g_digi_drv_image	void far*	Loaded digital driver image
+ef4e	g_midi_drv	s16	AIL handle of the XMIDI driver
+ef50	g_digi_drv	s16	AIL handle of the digital driver
+ef52	g_game_timer	s16	AIL timer handle of the 256 Hz game tick
+ef54	g_midi_desc	void far*	Descriptor of the XMIDI driver (AIL_describe_driver)
+ef58	g_digi_desc	void far*	Descriptor of the digital driver
+ef5c	g_sbuf_voc	ail_sound_buffer	Sound buffer filled by AIL_index_VOC_block for the current sample (+4 data far ptr at EF60, +8 remaining length u32 at EF64)
+ef68	g_sbuf_work	ail_sound_buffer	Working sound buffer registered with the driver (+4 data at EF6C, +8 length at EF70)
+ef74	g_timbre_cache	void far*	Driver timbre cache buffer
+ef78	g_music_state	void far*[16]	State tables of the 16 music sequence slots
+efb8	g_music_seq	s16[16]	Sequence handles of the 16 music slots (-1 = none)
+efd8	g_music_current	s16	Index of the current music slot
+efda	g_gtl_entry	u8[6]	Scratch copy of a GTL directory entry: patch, bank, u32 offset
+efe0	g_ems_last_error	u16	Last EMS manager error code (0xD0 bad handle, 0xD1 not enough EMS, 0xD2 table full, 0xD3 zero size, 0xD4 no room in page frame)
+efe2	g_emsm_desc_pages	u16	Number of 16K pages of block descriptors (0x492 descriptors of 14 bytes per page)
+efe4	g_emsm_data_pages	u16	Number of data pages allocated to the data handle
+efe6	g_emsm_phys_count	u16	Number of usable physical pages in the page frame
+efe8	g_emsm_phys_seg	u16[]	Segment of each usable physical page (frame + 0x400*i)
+f068	g_emsm_near_bufs	u16[]	Near buffers released by emsm_shutdown (count in F07C, 0xFFFF = none)
+f07e	g_emsm_partial_map_size	u16	Size returned by EMS 4F02h
+f080	g_emsm_first_free	u16	Hint: lowest descriptor index that may be free
+f082	g_emsm_high_water	u16	One past the highest descriptor index ever used
+f084	g_emsm_frame_pages	u16	Contiguous physical pages at the page frame (normally 4)
+f086	g_emsm_frame	void far*	Page frame address (segment at F088)
+f08a	g_emsm_data_handle	u16	EMS handle owning all data pages
+f08c	g_emsm_desc_handle	u16	EMS handle owning the descriptor-table pages
+f08e	g_emsm_window0	void far*	Frame physical page 0 (descriptor page window)
+f092	g_emsm_window1	void far*	Frame physical page 1 (second descriptor window)
+f096	g_mouse_x	u16	Mouse x in pixels
+f098	g_mouse_y	u16	Mouse y in pixels
+f0aa	g_row_state	u8[200]	Per-row state of the back buffer: a solid row colour or 0xFF = mixed content that must be copied (compared with DS:F172 by 2255:0DA6); text4x6 stores 0xFF, font_draw_char stores the low byte of DS (bug)
+f23a	g_frame_flags	u16	Bit 1 enables the busy-wait in frame_limit_wait
+f23c	g_clip_x0	s16	Clip rectangle left (inclusive); set by 2255:0FD0(x,y,w,h)
+f23e	g_clip_x1	s16	Clip rectangle right (inclusive) = x+w-1
+f240	g_clip_y0	s16	Clip rectangle top (inclusive)
+f242	g_clip_y1	s16	Clip rectangle bottom (inclusive) = y+h-1
+f244	g_clip_w	s16	Clip width
+f246	g_clip_h	s16	Clip height
+f248	g_clip_cx	s16	Clip centre x
+f24a	g_clip_cy	s16	Clip centre y
+f258	g_text_align	u16	Pixel alignment of the fast 4x6 text path (4 in mode 6)
+f25c	g_px_align_mask	u16	Surface width rounding mask (7 in mode 6)
+f25e	g_px_shift	u16	Surface width shift (3 in mode 6): stride = ((w+7)>>3)*2 bytes per plane row
+f262	g_pal_count	u16	Number of palette colours (16 or 256)
+f266	g_row_offsets	u16[200]	Offset of each screen row inside the drawing page segment (80*y in Mode X)
+f3f6	g_draw_seg	u16	Segment of the page currently drawn to
+f424	g_text_opaque	u8	4x6 text clears a background rectangle in g_text_bg first
+f42c	g_vga_flags	u16	0x40 when a VGA was detected (tested with mask 0x50)
+f42e	g_is_vga	u8	VGA detected by vga_detect
+f65e	g_ealib_max_entries	u16	Maximum directory entries + 1 (0xC5)
+f660	g_ealib_iter	u8	Iterator for ealib_find_first/next
+f662	g_lzss_inbuf	u8 far*	1K compressed-input buffer
+f666	g_lzss_ring	u8 far*	LZSS ring buffer (0x1011 bytes)
+f66a	g_ealib_cwd	char[70]	Current directory at ealib_init ('X:\dir\')
+f6b0	g_floppy_count	u8	Number of floppy drives (INT 11h)
+f6b2	g_ealib_dir	ealib_entry far*	Directory of the open archive (18-byte entries)
+f6b6	g_ealib_map	ealib_map far*	Name->library map (14-byte entries: lib index, pattern)
+f6ba	g_ealib_map_count	u16	Entries in the map (1: cursor.pic -> main.lib)
+f6bc	g_ealib_libs	ealib_lib far*	Library table (14-byte entries: name[10], disk id, pad, searched flag, drive letter) at 5124:0000
+f6c0	g_ealib_lib_count	u16	Libraries in the table (41)
+f6c2	g_ealib_open_name	char[14]	Name of the open archive
+f6d0	g_ealib_handle	u16	DOS handle of the open archive (0 = none)
+f6d2	g_ealib_count	u16	Entry count of the open archive
+f6d4	g_pxpk_pack_4bpp	u8	Pack two decoded pixels into one byte before the row writer (set temporarily by 2255:28FA)
+f6d6	g_los_tree_a	u16	Segment of the quadtree of flag-0x1000 objects (sight blockers)
+f6d8	g_los_tree_b	u16	Segment of the quadtree of flag-0x0100 objects (probed features)
+f6da	g_los_bld_seg	u16	Block being built
+f6dc	g_los_bld_pos	u16	Next free byte in the block being built
+f6de	g_los_mask	u16	Build mask / query mask (query mask OR 1)
+f6e0	g_los_radius	s32	Query half-thickness (world units)
+f6e4	g_los_ignore_obj	u16	Object excluded from the query (the caster)
+f6e6	g_los_bounds	s16[12]	hi16 of from.x-r, from.x+r, from.y-r, from.y+r, from.z-r, from.z+r, then the same for to
+f6fe	g_los_from8	s32[3]	from >> 8
+f70a	g_los_to8	s32[3]	to >> 8
+f716	g_los_include_flagged	u8	0 = skip flag-0x800 objects whose linked record has bit 3 set

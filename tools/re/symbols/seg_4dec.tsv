@@ -1,0 +1,2 @@
+4dec:0002	font_draw_char	Draw one glyph of the current DeluxeFont (g_font far ptr) at (x,y) in g_text_fg, transparent background; skipped if width 0 or any part outside the clip rect; marks its rows in g_row_state (stores low byte of DS, bug)
+4dec:00ba	font_draw_char_modex	Mode-6 inner loop of font_draw_char: expands the glyph bit strip 4 pixels at a time into Mode-X plane-masked writes (near, via table DS:5422)

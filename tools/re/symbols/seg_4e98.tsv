@@ -1,0 +1,6 @@
+4e98:0001	joy_detect	Read both game-port sticks, keep each whose X and Y counts are in 16..1000 as its centre; returns the number found and sets the logical index swap
+4e98:0074	joy_read_axes	Read stick n: x,y = (count-centre)*128/centre with a dead zone of 5 (|v|<=5 -> 0, else moved 5 towards 0)
+4e98:00b6	joy_read_raw	Trigger port 0x201 and time both axis one-shots of a stick descriptor (interrupts off); returns DI=x count, BX=y count (near)
+4e98:00eb	joy_wait_axis	Poll port 0x201 until a masked axis bit drops or CX wraps (near)
+4e98:0108	joy_deadzone	Apply the +-5 dead zone to AX (near)
+4e98:011d	joy_read_buttons	Return 2 button bits (bit0 = fire 1, bit1 = fire 2, active-high) of logical stick n

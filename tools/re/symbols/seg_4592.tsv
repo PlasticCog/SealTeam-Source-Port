@@ -1,0 +1,45 @@
+4592:000d	snd_set_listener_pos	Copy the 12-byte listener position (3 x int32) into the start of the sfx table (520d:0000), or zero it when the pointer is NULL
+4592:005b	snd_channel_volume	Volume for a channel: refresh position from its attached object, distance to the listener (1000:321F); 0x7F if unpositioned, 0 beyond the sfx max distance, else max - dist*max/maxdist (max 0x50 digital / 0x7F FM)
+4592:0135	snd_play_sfx	Start sound effect id 1..53 (lifetime ticks, position or NULL, FM param byte, attached object): take a free channel of 6, pick digital (priority rules) or FM playback; returns channel or -1
+4592:0461	snd_stop_channel	Stop channel n (0..5): digital -> stop playback and free the digital voice; FM -> stop/release its sequence; mark channel free
+4592:04ff	snd_stop_all	Stop channels 0..5
+4592:051f	snd_reset_channels	Clear all 6 channel records (flags 0, handles -1, buffers NULL)
+4592:055e	snd_reset_channels_far	Far wrapper for snd_reset_channels
+4592:0563	snd_apply_channel_volume	Apply a volume to a channel: digital voice -> set_digital_playback_volume, FM -> set_relative_volume
+4592:05c1	snd_refresh_channel_volume	snd_channel_volume followed by snd_apply_channel_volume
+4592:05e2	snd_update	Per-frame service: refill digital buffers, then for each active channel stop it if its FM sequence finished or its lifetime expired (FM with flag 2 extends lifetime by 256 while playing), else refresh volume; optional 'SFX:' debug text
+4592:0737	snd_alloc_digital_buffers	If digital sound is active allocate two 3600-byte (0xE10) DMA staging buffers
+4592:0761	snd_free_digital_buffers	Free the two digital staging buffers
+4592:079e	snd_load_sfx_bank	Load the FM/MIDI effects bank (msc01.xmi, or msc02.xmi for Roland-type drivers) and load sound effects 53..1
+4592:07d5	snd_unload_sfx_bank	Stop all channels, unload sound effects 1..53, stop music and release all music sequences
+4592:0813	snd_load_driver	Load '<name>.adv' (type 2 digital / 3 XMIDI), register it, detect with default IO/IRQ/DMA/DRQ, retry with overrides from '<name>.adi' (IO,IRQ words, -1 = keep); returns driver image or NULL
+4592:09af	snd_init	AIL_startup; load/initialise the XMIDI driver (fallback pcspkr, disabling music) and optionally the digital driver (soundrv); load the GTL timbre file; timbre cache; install the 256 Hz timer; Roland init sequence; allocate digital buffers
+4592:0b85	snd_shutdown	Stop music, release sequences, free timbre cache/buffers/GTL, AIL_shutdown and free both driver images
+4592:0bcb	timer_install	Register tick_callback (4a1c:0028) as an AIL timer at 256 Hz and start it; returns 1 on success
+4592:0c05	timer_remove	Stop and release the 256 Hz game timer
+4592:0c1a	snd_fm_start	FM effect: register the effect sequence with a 2-byte controller table (FM param, 0x7F), start it and set its volume
+4592:0c87	snd_fm_stop	Stop and release a channel's FM effect sequence
+4592:0cb4	snd_fm_set_volume	Set an FM effect's relative volume: percent = vol*100/127 capped at 90
+4592:0cec	snd_digi_set_volume	Set the digital voice volume (0..127)
+4592:0d03	snd_digi_service	Refill whichever of the two sound buffers is done with the next 3600-byte chunk of the current sample (mapping it from EMS), format and re-register it
+4592:0e62	snd_digi_start	Index the sample's first VOC block, reset the chunk counter, prime both buffers, start digital playback and set the volume
+4592:0edd	snd_digi_stop	Stop digital playback
+4592:0ee8	snd_load_sfx	Load effect n: digital -> 'sfxNN.voc' through EALIB (moved to EMS when the memory level is > 3); FM -> check the bank has sequence n+10 (Roland mode: only priorities 12/16/28)
+4592:1115	snd_unload_sfx	Free effect n's sample (conventional or EMS) and forget its FM sequence
+4592:11e0	snd_gtl_get_timbre	Find (bank,patch) in the loaded Global Timbre Library (6-byte entries: patch, bank, u32 offset; bank 0xFF ends) and return a far-heap copy of the timbre (size = first word, 0 -> 2)
+4592:1294	snd_load_gtl	Load 'SAMPLE.<driver data suffix>' (e.g. SAMPLE.AD/.MT/.OPL) through EALIB; keep it in EMS when the memory level is > 3
+4592:1353	snd_free_gtl	Free the GTL (conventional block or EMS handle)
+4592:1384	snd_load_music	Load 'mscNN.xmi' (NN = base+id, or base+1 when id is 0) as the current XMI; pre-install timbres of its first 11 (id!=0) or 16 sequences; returns the image
+4592:157f	snd_music_register	Register sequence n of the current XMI in music slot n (allocating its state table); installs timbres only if DS:45FA is set (never set in practice)
+4592:16a0	snd_music_release_current	Release the current music sequence handle and free its state table
+4592:16eb	snd_prepare_sfx_sequence	Register sequence id+offset of the current XMI once to install the timbres it needs, then release it; returns the current XMI pointer (NULL if none loaded)
+4592:1841	snd_fm_register	Register an FM effect sequence for a channel (state table allocated, controller table at channel+0x22) and install its timbres
+4592:196e	snd_fm_release	Release a channel's FM sequence handle and its state table
+4592:19b3	snd_music_release_all	Stop and release all 16 music sequence slots, free their state tables and the current XMI image
+4592:1a44	snd_free_timbre_cache	Free the driver timbre cache
+4592:1a65	snd_init_timbre_cache	Allocate/define the driver's default timbre cache and clear the 16 music slots
+4592:1ad9	snd_music_play	If music is enabled register sequence n, start it, make it current and set its volume to g_music_volume percent
+4592:1b31	snd_music_stop	Stop and release the current music sequence
+4592:1b5f	snd_sequence_done	1 if a sequence handle's status is 2 (done), else 0
+4592:1b86	snd_music_done	snd_sequence_done for the current music sequence
+4592:1b98	snd_music_start_once	Start music sequence n only if no music was started since the last load and the palette is not faded

@@ -1,0 +1,52 @@
+4a37:0000	ai_init	Mission-start AI init: sets the 4-entry auto-first-aid patient array (525b:0000) to -1, builds the script sequences (ai_build_script_sequences), frees all shot slots (ai_reset_shot_slots) and all noise-event slots (FUN_1000_841a)
+4a37:0035	ai_reset_shot_slots	Marks all 32 shot/impact records at 53ba:28ba (stride 0x3c, byte +0 = free flag) as free
+4a37:005c	ai_build_script_sequences	Builds the three built-in member script sequences at 53ba:268c (0 = stand/turn 180/run after 0xff00, 1 = stop/kneel, 2 = stop/prone), far-allocating the 0x1a-byte step nodes; calls exit() if an allocation fails
+4a37:01bc	ai_shutdown	Frees the far-heap script step nodes allocated by ai_build_script_sequences
+4a37:0248	ai_group_start_script	(unreferenced, apparently buggy) Marks the group script active (gai+0x7e) and copies script idx's first step into the node pointed to by gai+0x14, setting its delay
+4a37:02ab	ai_member_start_script	Starts script sequence idx on a member: mind flags |= 0x40, mind+0x70 = &script[idx], mind+0x6e = script[idx].delay
+4a37:02e7	ai_mind_reset	Clears a member's AI mind (command ring, 3 contact slots, group link, flags, script state, suppression timer)
+4a37:0372	ai_group_orders_reset	Clears a group's AI block (destination, timers, waypoint pointers (without freeing), counters, order type/behaviour; direction flag = 1)
+4a37:0425	ai_group_orders_from_mission	Initialises a group's AI block from its 0x66-byte mission record: behaviour, staggered think delay, order type, patrol waypoints (order 1) or random deployment delay (order 3)
+4a37:061c	ai_mind_attach	Resets a new member's mind, links it to its group and sets the active flag 0x80 unless the group is a delayed reinforcement (order 3)
+4a37:066e	ai_list_count	Counts entries of a null-terminated array of far pointers (group member list / group table)
+4a37:06a1	ai_member_current_command	Returns the command the member should execute now: its own newest command if pending, else the group's newest pending command (unless member suppressed), else NULL
+4a37:071d	ai_member_last_command	Returns the member's newest own command slot (even if already consumed), or NULL while suppressed (flag 0x10)
+4a37:0762	ai_group_commands_consumed	Clears the group-level and every member's "command pending" flags after the executor has run them
+4a37:07ad	ai_group_set_destination	Copies a 12-byte position into the group AI destination (gai+0x00)
+4a37:07d6	ai_find_reserve_group	Returns the index of the first enemy group (from g_first_enemy_group) of kind 4/5 whose leader is not yet active (no 0x80), or -1
+4a37:0842	ai_group_at_destination	True if the group leader is within 150 (running) or 30 (otherwise) units of the group destination
+4a37:08a8	ai_group_has_move_orders	True if (leader alerted and behaviour != 0x20 guard) or order type is 1 (patrol) or 3 (pursue/reinforce)
+4a37:0923	ai_group_next_destination	Chooses the group's next destination: midpoint to best contact when alerted, guard/objective patrol square or random offset when contacts are lost, else next ping-pong patrol waypoint
+4a37:0d3b	ai_delay_table_lookup	Reaction-delay table lookup; the search loop has no compare so it always returns the low byte of B[n] (quirk)
+4a37:0d65	ai_mind_push_command	Pushes a 0x14-byte command (passed by value) into a member mind's 5-slot ring and sets the pending flag
+4a37:0dec	ai_group_broadcast_command	Pushes a command into the ring of every group member except the player and members running a script (flag 0x40)
+4a37:0ebd	ai_group_clear_pending	Clears the pending-command flag of non-player, non-scripted members; clears the group pending flag unless a group script is active
+4a37:0f38	ai_group_deploy	Deploys a reserve group: teleports the leader to a given position (or 720..1200 units from the player), re-forms it, gives it a 3-point patrol 120..600 units around the target, alerts it and activates all members (flags 0x81), behaviour 0x10
+4a37:110e	ai_tick_reinforcement_timers	(unreferenced) If not in alarm mode, runs ai_group_reinforcement_tick for every enemy group
+4a37:1156	ai_group_reinforcement_tick	For a not-yet-active group: counts down its deployment timer (gai+0x0c) by dt and deploys it near the player when it expires; returns 1 if the group must be skipped this tick
+4a37:1242	ai_group_turn_aside	(unreferenced) Broadcasts a turn command to heading leader_heading +/-110 degrees (dir 1 = +)
+4a37:12ae	ai_squad_auto_first_aid	SEAL squad: every member carrying first-aid items treats the most seriously wounded teammate (wound level >= 2) not already recorded in the 525b:0000 patient array
+4a37:1435	ai_group_check_blocked	(unreferenced) Sets gai+0x7f if any member has unit flag +0x26 bit0; when it clears again broadcasts a stop command
+4a37:14d8	ai_group_run_scripts	Advances group/member script sequences by dt; issues the next step's command when its delay expires; returns 1 if a script consumed this group's tick
+4a37:175c	ai_update	Main AI tick (called from the game loop with elapsed ticks): for every group runs perception, alert/noise handling, reaction timers, movement orders and combat
+4a37:1e1e	ai_group_clear_alert	Clears the alerted flag (0x01) of every non-player member of a group
+4a37:1e6b	ai_group_alert	Sets the alerted flag (0x01) on every non-player member and zeroes the group think timer (unless gai+0x7f)
+4a37:1ed6	ai_member_deactivate	Clears the active flag 0x80 of a member's mind (called when the member dies); ignores the player
+4a37:1efd	ai_sight_range_leader_mod	Adjusts the group sighting range by the leader's attribute byte (+6 block, +0x06): >=60 adds (v-15)*3, <=45 adds (v-55)*3
+4a37:1f54	ai_sight_range_stub	Empty stub called during sighting-range computation
+4a37:1f55	ai_sight_range_target_mod	Adds 60 to the sighting range if the target's attribute byte (+6 block, +0x08) > 75, and another 300 if > 90
+4a37:1f91	ai_sight_range_prone_mod	Sets the sighting range to 135 if the target is prone (posture 2) and the observer is not already engaging
+4a37:1fd0	ai_watch_sector_angle	Rotates an angle by +90/-90/+180 for member index 1/2/3 when group mode is 0, 2 or 3 (result unused by its only caller)
+4a37:201b	ai_mind_expire_contacts	Drops contacts whose target is dead, surrendered, suppressed (mode-4 groups) or has moved more than 150 units from the last seen position
+4a37:210c	ai_mind_store_contact	Writes a contact slot (position, target member/object, distance, score, obstruction) and sets mind flag 0x08
+4a37:219f	ai_mind_tracks_target	True if any of the mind's 3 contact slots already references the given target member
+4a37:21e6	ai_mind_best_contact_score	Returns the highest score byte among the mind's in-use contacts (0 if none)
+4a37:2237	ai_group_scan	Group perception: expires contacts, then every member looks for hostile units within sighting range, outside the rear blind spot and with low obstruction; records contacts, alerts/engages the group; returns true if the group has contacts
+4a37:289e	ai_mind_has_contacts	True if any of the mind's 3 contact slots is in use
+4a37:28d0	ai_mind_best_contact	Writes the index of the highest-scoring in-use contact whose target is alive (or flagged) to *out, -1 if none
+4a37:2949	ai_mind_borrow_contact	Copies the best contact of the first groupmate that has one into this mind's slot 0 (score 25); returns 0, or -1 if no groupmate has a contact
+4a37:2aa7	ai_member_weapons_in_range	Returns a mask of weapons able to reach a distance: bit0 primary (range >= d), bit1 secondary (range >= 4*d)
+4a37:2b25	ai_nearest_enemy_leader	Returns the 3D object of the enemy group leader (kind != 6) nearest to a position, or NULL
+4a37:2bcd	ai_group_support_fire	Fire control for support groups (kinds 1-3): members near their aim point pick a contact (or 50% chance an area target at the aim point) and issue reload or fire commands
+4a37:3080	ai_group_combat	Combat behaviour per member: surrender/flee/take-cover rolls for enemy soldiers, turn to target, weapon choice, jam clearing, reload, fire; delegates support groups to ai_group_support_fire
+4a37:37a1	ai_group_tick_suppression	Counts down each member's suppression timer (mind+0xce) by dt and clears flag 0x10 when it reaches 0

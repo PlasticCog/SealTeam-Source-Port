@@ -1,0 +1,4 @@
+49f2:0010	mouse_isr_thunk	Far entry installed with INT 33h AX=0Ch: saves registers, reloads DS from CS:000E, calls mouse_event_callback(ax,bx,cx,dx), restores flags via an IRET trick and returns
+49f2:003e	mouse_install_handler	Install mouse_isr_thunk as the INT 33h user event handler for all events (AX=0Ch, CX=FFFFh)
+49f2:0058	mouse_remove_handler	Remove the INT 33h user handler (AX=0Ch, CX=0, ES:DX=0)
+49f2:0064	pal_apply	If palette fading is enabled: wait for the retrace state and upload g_pal_count colours from g_palette scaled by g_pal_level (>0 towards black, <0 towards red); body continues at 49f8:000C

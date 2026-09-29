@@ -1,0 +1,12 @@
+4ec8:0005	dos_file_size	Open file read-only, seek to end, close; returns 32-bit size or -1 (pascal)
+4ec8:0034	dos_open	INT 21h AH=3Dh open (pascal name, mode); returns handle or -1
+4ec8:004a	dos_create	INT 21h AH=3Ch create/truncate (pascal name); returns handle or -1
+4ec8:005f	dos_close	INT 21h AH=3Eh close handle
+4ec8:006d	dos_delete	INT 21h AH=41h delete file
+4ec8:007b	dos_read	INT 21h AH=3Fh read (pascal handle, far buf, count); returns bytes read or -1
+4ec8:0099	dos_write	INT 21h AH=40h write (pascal handle, far buf, count); returns bytes written or -1
+4ec8:00b7	dos_seek	INT 21h AH=42h seek (pascal handle, whence, offset hi, offset lo); returns 0 or -1
+4ec8:00d9	dos_set_dta	INT 21h AH=1Ah set disk transfer area (cdecl far ptr)
+4ec8:00e7	dos_get_dta	INT 21h AH=2Fh get DTA into a near far-pointer variable
+4ec8:00f9	dos_dta_filename	Copy the found file name (DTA+1Eh, max 13 chars) to a near buffer
+4ec8:011f	dos_find	INT 21h find first/next (AH=function, DX=pattern, CX=attributes); returns 0 or the error

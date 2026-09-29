@@ -1,0 +1,2 @@
+4db9:000c	font4x6_load	Load loose file 4x6.fnt ([DeluxeFont] v2), convert glyphs 0x15..0x7F into 6 bytes per glyph (one 4-pixel nibble per row, plane-mask order in mode 6) in a 0x282-byte far block (g_font4x6_seg); returns 1 on success
+4db9:015e	font4x6_free	Free the converted 4x6 font table and clear g_font4x6_seg
