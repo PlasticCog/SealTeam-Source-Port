@@ -20,14 +20,17 @@ public class ApplySymbols extends GhidraScript {
     protected void run() throws Exception {
         String[] args = getScriptArgs();
         File dir = new File(args.length > 0 ? args[0] : "tools/re/symbols");
-        File[] files = dir.listFiles((d, n) -> n.endsWith(".tsv"));
+        // Functions come from seg_*.tsv; globals only from the merged table
+        // (tools/re/merge_symbols.py), not the per-module globals_*.tsv.
+        File[] files = dir.listFiles((d, n) -> n.startsWith("seg_") && n.endsWith(".tsv")
+                || n.equals("merged_globals.tsv"));
         if (files == null) {
             printerr("no symbol files in " + dir);
             return;
         }
         int funcs = 0, globals = 0, bad = 0;
         for (File f : files) {
-            boolean isGlobal = f.getName().startsWith("globals_");
+            boolean isGlobal = f.getName().equals("merged_globals.tsv");
             try (BufferedReader r = new BufferedReader(new FileReader(f))) {
                 String line;
                 while ((line = r.readLine()) != null) {
