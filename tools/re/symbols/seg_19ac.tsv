@@ -1,0 +1,127 @@
+19ac:0008	awd_sum_block_scores	Sum (int32) of the per-mission scores in g_campaign history (+0x2c, 12-byte records) for the point man's current 20-mission block; block start chosen from roster_find(point man)->+1
+19ac:00b6	awd_evaluate_mission	After extraction: tally casualties (365e:1d1f), clear award outputs, then call the award evaluator 365e:deb0 with the last history record, block score sum, year/mission and quotient/remainder of (mission-1)/20; outputs d7e6/d7e8 and eec6..eec8
+19ac:016d	main_game_loop	Top-level state machine on g_game_mode (1 continue, 2 menu/new, 3 practice, 6 demo): title, main menu, roster/intel/briefing/loadout/camp screens, mission, debrief, save; returns when a screen asks to quit
+19ac:04be	main_parse_cmdline	Parse argv from last to first: 't' no title, 'd' digital SFX off, '?'/'h' usage+exit(0), first two digits of an argument form a mission number; sets g_mission_no and g_game_mode (6 demo if 1..80 else 2)
+19ac:05a4	title_show_logo	Show the Electronic Arts logo (palette 4, picture 'ea.pic') for 0x500 ticks (5 s) without key checks
+19ac:0667	title_screen	Logo, then 'title.pic' (palette 3) with music 4 and 10 pages of scrolling 2-line credits from text 'c'; Alt-S/D/M work; Enter/Esc/84 s timeout return 1, Alt-X returns 0
+19ac:0934	item_use_tool	'[' key: use the head of a unit's tool list (+0x1a; tool table 52e3:0000, 6-byte entries): Radio only reports 'Radio damaged.' when broken, Medical Kit -> med_treat on the point man, Prisoner Handling Kit -> 2dbd:4eca; on success show 'Using the <name>.'
+19ac:0a3a	item_cycle_tool	']' key: rotate a unit's tool list (+0x1a) so the second item becomes the head (old head moved to the tail)
+19ac:0ac1	menu_arrow_keys	Menu helper: Up/Left/Right/Down (0x4800/4B00/4D00/5000) move the UI pointer by (0,-5)/(-8,0)/(8,0)/(0,5) via ui_pointer_update; returns 1 if the key was an arrow
+19ac:0b2a	input_toggle_keys	Alt-S toggle sound effects, Alt-D cycle detail level 0..5, Alt-M toggle music (with status messages); returns 1 if the key was handled
+19ac:0c21	wpn_next_rof	Next rate-of-fire bit for a weapon slot: slot.rof<<1 if the weapon type allows it, else the lowest allowed of 1 (single), 2 (semi), 4 (full), 8 (grenade launcher) from weapon table +0x10
+19ac:0ca7	ui_resume_after_overlay	Reset cursor state; when the Map difficulty option is Freeze (5178:0156 == 0) resume the paused clock and reset input repeat timers
+19ac:0cc3	cmd_order_keys	Global mission command keys (all views): Esc/Enter, team formation/fire/movement orders (c d f h i j l p q r s t v w), Alt-T/U/I/P/X, F1..F10 views; returns 1 if the key is consumed
+19ac:1685	tgt_clear	Drop the point man's target: if it was locked (5149:0012 == 0) clear bit 0x04 of the target's world-object byte +3; then state = -1 and target pointer 5149:000e = NULL
+19ac:16b5	wpn_select_next_weapon	'n' key: advance the current weapon (+0x16 -> +4) through the inventory, skipping grenade-class items except the satchel charge
+19ac:16fd	wpn_select_next_grenade	Alt-N: advance the current grenade slot (+0x16 -> +8) to the next grenade-class item (not the satchel), wrapping to the old one
+19ac:17a0	unit_turn	Turn a live unit by d degrees (heading += d*8 in 1/8-degree units, wrapped), mirror heading>>3 into its move record, and rotate the view angle g_view_heading by the same amount
+19ac:1816	field_pointer_motion	Apply pointer deltas in field views: dx turns the point man or swings the grenade box sideways; dy with the right button changes posture, dy while aiming changes the grenade distance; in team view with right button / other views dx pans and dy zooms the view camera; returns key (0 if consumed)
+19ac:1a79	field_view_keys	Key handler for point-man/team/support/target views: fire, grenades, posture, speed/turn, tools, weapon/target cycling, trap exposure, open map, camera pan/zoom
+19ac:2574	input_init	Detect joystick (4e98:0001) and mouse (49d2:000a mode 3), read mouse centre, set input mode 1 (menu)
+19ac:25b3	input_joystick_calibrate	If a joystick is present run the calibration screen (1000:2ed7) and store its 4 results (d83c,d83e,d840,d812); Esc there disables the joystick
+19ac:25f6	input_reset_repeat_timers	Set all seven input auto-repeat timestamps to the current clock
+19ac:262f	input_reset_button2_timers	Zero the button-2 repeat timestamps (joystick and mouse) so a held button 2 repeats every frame
+19ac:263e	input_flush_keyboard	Read BIOS keys until the buffer is empty
+19ac:2647	input_get_key	Unified input: joystick/mouse buttons -> Enter / space, vertical stick/mouse motion in action mode -> Up/Down keys, BIOS keyboard with 0x50-tick repeat throttle; A-Z folded to lower case, space -> 'm' outside menu mode
+19ac:29b9	input_has_pointer	True if a mouse or joystick is present
+19ac:29cd	input_get_motion	Pointer motion (dx in AX, dy in DX): joystick axes (dead zone, clamp +-100, scaled) or mouse offset from (105,105) re-centred each call; scaling depends on input mode
+19ac:2b3b	input_poll_bios_key	INT 16h: 0 if no key, ASCII if non-zero, else scan<<8
+19ac:2b60	map_init_markers	Copy MCI positions into the map marker table: route nodes (insertion, objective 1, objective 2 or extraction, extraction), waypoints and extraction marker
+19ac:2c6d	grp_get_leader_pos	Copy the 12-byte position of a group's first unit (unit+0xa -> +0x28) into a buffer
+19ac:2c97	cursor_load_mask	Load a .msk file (ealib_load_far) and convert it to the current video format: nibble remap through DS:5076 in 16-colour mode 6, else widen by doubling per bit of bytes-per-pixel; returns the mask segment (pascal)
+19ac:2d7f	cursor_load_all	Load cursor/wait/sight .pic bitmaps and their masks, reset the cursor state and the two 0x14x0x18 save-under buffers
+19ac:2e07	cursor_set_wait	Set/clear the 'wait' cursor flag (DS:0F8E)
+19ac:2e12	cursor_set_sight	Set/clear the 'sight' cursor flag (DS:0F8F)
+19ac:2e1d	cursor_show_now	(Unlisted, no direct callers) present frame, set wait cursor, draw cursor, present again
+19ac:2e34	cursor_reset	Forget both saved cursor backgrounds (page 0, x = -1) and clear the wait and sight flags
+19ac:2e54	map_load_screen	Load cursor bitmaps on first use, then load the 'mapscr' picture set (1000:1ccb(0))
+19ac:2e69	map_init	Mission start: load map screen, cursor at (100,100) in button mode, focus button 2, SEAL map height 256000, bind button labels (table 0bf4+0xc <- 1bde), team info in Position mode
+19ac:2ec7	map_screen_to_world	Convert a map-screen point to world x,z (int32 24.8): x = (sx-110)*(h>>s)+cx, z = (((87-sy)*(h>>8))>>s)<<8 + cz with h = map camera height, s = DS:D888
+19ac:2f47	map_world_to_screen	Project a world position through the map camera (2255:4328) and return true if it falls inside the map area (button 0 rectangle)
+19ac:2fe8	map_select_team_height	Load the map camera height from the selected group (+0x2c); if unset (-1) derive it from the point-man distance rounded up to a multiple of 400 and store it
+19ac:30ba	map_draw_routes	Draw the planned route polyline (white) and the split-team paths from team B/A leader to their waypoints (dark/light blue)
+19ac:31e1	map_draw_triangle	Filled triangle marker (2255:10fc) with apex at (x,y) and its base s pixels below it (above when flipped), half-width s; s<=0 means ((16000/(map height>>8))>>3)*4, minimum 2
+19ac:327c	map_draw_cross	3-pixel cross marker at (x,y): diagonal X when flag=0, upright + when flag!=0
+19ac:3300	map_draw_markers	Draw objective triangles, waypoint crosses, support objective triangles and the dots of visible SEALs/targeted enemies (with SEAL labels via 1000:587a)
+19ac:36e0	cursor_draw	Save the 20x19 background at (x-4,y-5) into this page's buffer, flip page index, draw wait/sight/arrow picture with its mask at the cursor
+19ac:37e9	cursor_erase	Restore this page's saved 20x19 background (if any) and mark it empty
+19ac:3839	map_draw_button	Draw control-panel button n from the table at DS:0BF4: face, bevel (flat when pressed), label text and hot-key underline
+19ac:39b7	map_draw_team_list	Draw the 3 team-selection buttons (page 1 = groups 0..2, page 2 = further friendly groups) with number, type name, split suffix and objective marker
+19ac:3e76	map_draw_orders_menu	Draw 'TEAM ORDERS' and the order buttons for the selected group type (fire orders, movement, formation, split-team specials or support orders), highlighting the active ones, plus EXpand/Zoom
+19ac:417f	map_draw_clock	Draw the mission clock 'hh:mm:ss' (zero padded) at (x,y)
+19ac:421e	map_draw_info_panel	Draw the map screen's static panel: title, scale bar, area name, objectives, date, clock and the Team Info table for the selected group
+19ac:4bf0	map_hit_test	Return the index (0..0x28) of the first applicable button rectangle containing the cursor, skipping buttons hidden for the selected group; -1 if none
+19ac:4d0a	map_step_focus	Move the keyboard focus (g_ui_focus) to the next (+1) or previous (-1) applicable button with wrap-around and group-type dependent skips
+19ac:504e	map_focus_button	Focus button n and warp the cursor to its centre (pointer mode off)
+19ac:508c	map_move_pointer	Handle pointer/arrow motion on the map screen according to cursor mode (0 button focus, 1 free map cursor, 2 hover)
+19ac:511e	map_zoom_keys	Map keys '+'/'x' expand, '-'/'z' zoom (height +-256000, range 256000..4096000, stored in the selected group), arrows move the pointer; returns 1 if handled
+19ac:5231	map_press_button	If the SEAL team is selected, focus button n and show it pressed; request a full redraw
+19ac:5251	snd_radio_ack	Play sound effect n (lifetime 0x200) at the point man's position (radio acknowledgements 0x2c..0x32)
+19ac:5280	map_extract_busy	If any craft is already running an insertion/extraction show 'Extract already in progress.' and return 1
+19ac:52a1	map_screen_keys	Map screen handler: pointer, zoom, Enter (press focused button or set a waypoint), team selection 1-6/Tab/Shift-Tab, support orders a/b/e/k/o/u/y, order hot keys, exit
+19ac:5c8e	insert_keys	Insertion zoom (view 7) and re-insertion map (view 0xC): 'r' enters/confirms re-insertion, Enter/space set the insertion point, map zoom/pointer as on the map screen
+19ac:5f6a	str_utoa	Unsigned decimal to string (no padding)
+19ac:5f83	str_itoa_pad	Decimal to string: optional sign, at most 5 digits and w characters, left padded to w with '0' or ' '
+19ac:607a	str_set_ext	Replace the extension of a file name (from the first '.') by the given string; returns the name
+19ac:60cf	str_fstrcat	Append a far string to a far string
+19ac:612a	unit_set_class_word	Set a new unit's first word from its class: 5 -> 0x897E/0x8DB0, 6 -> 0x726A/0xC5B2, 7 -> 0x992C, else 0x862A (variant flag selects)
+19ac:618d	unit_show	Set bits 0x0101 in the unit's world-object flags (+2 -> +2)
+19ac:61a7	unit_hide_chain	Clear bits 0x0101 of a unit's world-object flags and recursively of the unit linked at +0x30 (unlinking it)
+19ac:61e8	grp_seglist_clear	Clear the group segment list used for object-id lookup (count 5149:1e6e and DS:25F0)
+19ac:61fa	grp_seglist_add	Append a new group's segment (called by ent_group_create) to the list at DS:25F0 (max 64 entries, count in 5149:1e6e)
+19ac:622c	grp_from_object_id	Map a world object id to its group: index = (id-2)/24 - (structure count ecb6 + object count ecf8); returns seg:0 from the group segment list DS:25F0, or NULL if out of range
+19ac:6279	unit_index_in_group	Index of a unit in its group's member list (-1 if not found)
+19ac:62d1	grp_index	Index of a group pointer in g_groups (-1 if not found)
+19ac:6317	grp_count_alive	Number of members of a group whose status flag 0x40 (dead) is clear
+19ac:6375	seal_count_alive	Sum of grp_count_alive over all SEAL groups (type 0)
+19ac:63b9	unit_load_level	Load level 0..3 of a personnel record: compare +0x18/10 with (b8/2 + b9) and its halves/quarters
+19ac:640c	unit_add_load	Add n to personnel +0x18 (clamped at 0) and recompute the load level
+19ac:642c	grp_nearest_enemy_dist	Distance from a position to the nearest leader of a group hostile to the given group (cap 3000)
+19ac:64d4	camp_load_scene	Load the SEAL camp scene for an area: world file id g_area_camp_frame[area]+0x1c, then build the camp teams
+19ac:6506	camp_unload_scene	(Unlisted, no direct callers) free groups (365e:18c2), fx pool and world data
+19ac:651b	grp_set_craft_status	(Real entry; Ghidra lists 6544) set a craft group's status (+0x24); status 0 parks it on the nearest pad structure (helo type 0xF, boat 0xE, boat shifted +0x5A00 in x) and aims its mover there; helo with status 4 gets altitude 0x12C00
+19ac:6544	grp_set_craft_status_body	Ghidra split of 19ac:651b (not a separate function)
+19ac:663a	camp_build_teams	Build the camp scene: 4-man SEAL group next to structure 0, insertion craft (MCI+6) near it, extraction craft if MCI+8 differs, fire-support (MCI+0x72) and break-contact (MCI+0x74) craft, emergency helo at the extraction point; every craft gets status 4
+19ac:6690	camp_build_teams_part2	Ghidra split of 19ac:663a (not a separate function)
+19ac:6713	camp_build_teams_part3	Ghidra split of 19ac:663a (not a separate function)
+19ac:6945	camp_place_at_insertion	Camp scene start: park the insertion craft (status 0 then 2), put the point man on it, then on the nearest pad and the nearest type-5 structure, facing the craft and pushed 0x3C00 forward; team movement style 1
+19ac:6b07	camp_place_after_extraction	Camp scene after a mission: park the extraction craft, hide the dead SEAL slots, put the point man on the pad nearest the craft facing the nearest type-5 structure, pushed 0x1E00 forward
+19ac:6cca	wpn_in_range	True if a distance is within the weapon's maximum range (table +0xc)
+19ac:6ce8	wpn_best_range	Larger maximum range of a unit's current weapon and current grenade
+19ac:6d43	wpn_best_range_below	True if wpn_best_range(unit) < n
+19ac:6d44	wpn_best_range_below_body	Ghidra split of 19ac:6d43 (not a separate function)
+19ac:6d61	wpn_has_range	True if any inventory item's maximum range is >= n
+19ac:6dac	wpn_select_for_range	Make current the last non-grenade inventory item with ammo whose range is >= n
+19ac:6e20	wpn_select_longest	Make current the longest-range item with ammo (excluding the current grenade slot); returns 1 if one was found
+19ac:6eea	wpn_next_item	Next inventory item after the current weapon (wrapping to the list head); NULL if none
+19ac:6f51	wpn_reload	Reload a slot: rounds = magazine size (table +0xe), taking a spare magazine when Ammo option is Real (none left -> no reload); clears the M203 counter
+19ac:6fa5	wpn_reload_both	Reload a unit's current weapon and current grenade slots
+19ac:6fd8	wpn_spend_rounds	Subtract n rounds (floor 0); M203 in grenade mode counts shots in slot +6
+19ac:7005	wpn_ai_pick_rof	AI rate of fire from the weapon's allowed modes (1 single, 2 semi, 4 full, 8 launcher), with random(20) choices for mixed modes
+19ac:70ab	wpn_get_mags	Slot +4 (spare magazines) or 0 for NULL
+19ac:70c8	wpn_get_rounds	Slot +2 (rounds loaded) or 0 for NULL
+19ac:70e6	shot_find_free	Index of the first free shot record (state byte != 0) of the 32 records at 53ba:28ba (0x3c bytes each); -1 if all 32 are in flight
+19ac:7124	shot_fire	Fire a weapon: allocate a shot record, jam check (random(100) <= jam/2), rounds per trigger (single 1, semi 3, full 20), statistics, shooter/target data, trajectory (1000:488e), muzzle effect (1000:87bf)
+19ac:744e	shot_fire_tail	Ghidra split: tail of 19ac:7124 (muzzle effect call), not a separate function
+19ac:746d	ai_target_priority	Target priority 0..126 for an AI shooter: range term, craft bonus, group size, random(20), point-man target override, cover-fire exclusion
+19ac:7604	shot_throw_bonus	Range bonuses for thrown grenades from the thrower's skill (+6 -> +9): >=60 -> (21,54), >=30 -> (9,27), else (0,0)
+19ac:7660	shot_range_bands	Short and medium range of the shot's weapon (+8,+0xa) plus bonuses; M203 in rifle mode uses the M16's medium/long values
+19ac:76a8	shot_blast_victims	Collect up to 16 victims of an explosion: members within blast radius (table +0x12, band 1 beyond half radius) of groups within 16x radius, plus structures
+19ac:78b8	shot_line_victims	Untargeted shot: nearest unit (or structure) inside the 8-degree firing cone within weapon range and with clear line of fire; returns true if one was found
+19ac:7ba8	shot_scatter	Random landing point: offsets random(n)*3 in x and z (sign random(100)<50) with n = 19 - skill/5 (+10/+5 when wounded)
+19ac:7c8f	shot_shooter_skill	Shooter skill byte for the weapon category (table +4): personnel bytes 0,1,3,4, constant 5 or 0 via a 20-entry jump table
+19ac:7d31	shot_aimed_hit_roll	Hit roll for an aimed shot: skill with range band, wound, target distance, rate of fire, posture and experience modifiers (clamp 0..90) vs random(100); sets victim and band
+19ac:7f58	combat_random_wound	Apply a random wound from damage table band 1 (525f:0044) to a unit (point man protected when Player Wounds = None)
+19ac:7ffc	shot_apply_damage	Apply damage to the collected victims using the difficulty options and damage tables (bullet bands at 525f:0000, blast bands at 525f:00cc); updates hit statistics
+19ac:84cd	shot_collect_victims	Choose the victim search: bullets with a target -> aimed roll, without -> line of fire; explosives -> blast
+19ac:8524	shot_clear_victims	Initialise the 16-entry victim list (NULL, kind 3)
+19ac:8556	shot_update_all	Every 0x40 ticks: for each in-flight shot that has arrived, collect victims, apply damage, spawn the impact effect and mark the record done
+19ac:85fa	unit_add_experience	Add 2*n to personnel byte +0xc, capped at 90
+19ac:8617	unit_init_body	Initialise a unit's personnel record: default stats for classes <0 or >4 (except 8), clear wounds, store class at +0x1a
+19ac:86b3	med_treat	Medical aid: if a medkit can be used (1000:8b64) reduce the patient's worst wound (critical, serious or light) and consume the kit
+19ac:87b8	med_wound_level	Wound severity 0..2 of a personnel record from its wound bits (dying = 2, dead = 0)
+19ac:888c	med_status	0 healthy/dead, 1 lightly wounded, 2 seriously wounded or dying
+19ac:88c6	med_leg_level	Mobility impairment 0..2 from leg wound bits (0x40/0x80 or 0x10/0x20 with serious>=2 -> 2)
+19ac:893b	med_arm_count	Number of arm wound bits (0x08, 0x10 of +0xf)
+19ac:8971	med_head_count	Count of wound groups (bits 4|1, 8|2 of +0xe)
+19ac:89c3	med_bleed_tick	Every 0x400 ticks: dying units lose the elapsed time from their bleed timer; at 0 they die (2dbd:0a9d, AI cleanup, dead flag)

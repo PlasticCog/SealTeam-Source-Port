@@ -1,0 +1,158 @@
+022c	g_show_title	u8	1 = run the title/credits screen once (initial 1; cleared by command-line option 't' and after the title ran)
+022d	g_campaign_saved	u8	Set to 1 after the end-of-mission campaign screen (step 8), cleared when the campaign load screen returns 'back'
+023a	g_input_locked	u8	Non-zero blocks F1/F2/F9/F10 view keys, firing, grenades and opening the map (cinematic phases)
+02ac	g_grenade_aiming	u8	1 while the grenade target box is shown (throw without a target)
+02ae	g_grenade_aim_side	i16	Lateral offset of the grenade box, clamped to +-g_grenade_aim_dist/2, steps of 6 (initial 0)
+02b0	g_grenade_aim_dist	i16	Distance of the grenade box (initial 300; mouse 75..300, keys 60..300, steps of 6)
+02b2	g_team_fire_time	u32	Last time teammates joined 'Fire at Target' shots (0x200-tick cadence)
+02b6	g_autotarget_time	u32	Last automatic target re-acquisition (0x100-tick cadence)
+02be	g_detail_level	u8	Detail level 0..5 (initial 5 = full); Alt-D cycles modulo 6
+02c1	g_auto_target	u8	Auto-target on/off (initial 1), toggled by Alt-U
+0512	g_key_poll_now	u8	1 when the last keyboard poll found nothing: next poll ignores the 0x50-tick throttle
+051e	g_radio_damaged	u8	Radio out of action: '[' reports 'Radio damaged.', radio orders fail
+053e	g_view_group	i16	Group whose camera is used by the current field view (its +0x30 distance / +0x32 heading are edited)
+0bf4	g_ui_buttons	UIBUTTON[42]	Control-panel button table, 16 bytes each: x, y, w, h, hot key (u16), underline char index (u8), pad, far label pointer (+0xc)
+0e94	g_wp_seal	i32[3]	Primary SEAL team waypoint (white cross, objective locator target)
+0ea0	g_wp_support	i32[3]	Support-team waypoint (red cross); also the ordered extraction/loiter/attack point and the re-insertion point
+0eac	g_extract_marker	i32[3]	Extraction point actually ordered (copied from g_wp_support)
+0eb8	g_wp_split_a	i32[3]	Split team A waypoint (light blue)
+0ec4	g_wp_split_b	i32[3]	Split team B waypoint (dark blue)
+0ed0	g_route_nodes	ROUTENODE[4]	Planned route, 20-byte entries whose first 12 bytes are a position: insertion, objective 1, objective 2 (or extraction), extraction
+0f4c	g_cursor_bm	BITMAP	Arrow cursor picture (cursor.pic, 16x14); +0xa (0f56) holds its mask segment
+0f56	g_cursor_mask	u16	Segment of the converted cursor.msk mask (0 = not loaded)
+0f58	g_wait_bm	BITMAP	Wait cursor picture (wait.pic); +0xa (0f62) mask segment
+0f62	g_wait_mask	u16	Segment of the converted wait.msk mask
+0f64	g_sight_bm	BITMAP	Sight cursor picture (sight.pic); +0xa (0f6e) mask segment
+0f6e	g_sight_mask	u16	Segment of the converted sight.msk mask
+0f70	g_cursor_save	BITMAP[2]	Two 20x24 save-under bitmaps (10 bytes each: 0f70, 0f7a), one per video page
+0f84	g_cursor_save_x	i16[2]	Cursor x saved with each page's background (-1 = nothing saved)
+0f88	g_cursor_save_y	i16[2]	Cursor y saved with each page's background
+0f8c	g_cursor_page	i16	Save-under slot to use next (toggles 0/1 every draw)
+0f8e	g_cursor_wait	u8	Draw the wait cursor instead of the arrow
+0f8f	g_cursor_sight	u8	Draw the sight cursor instead of the arrow
+0f90	g_teaminfo_names	u8	Team Info mode: 0 Position/Speed/Heading/Weapon, 1 Rank/Name/Grenade (Alt-I)
+12e2	g_groups	GROUP far *[]	Null-terminated group table; [0] = SEAL team (also read as its first member through a double dereference)
+1b84	g_title_text	char *	-> 'SEAL Team  V1.0' shown at the top-left of the map screen
+1b90	g_month_names	char *[13]	'' , 'January' .. 'December'
+1bc4	g_rank_abbrev	char *[8]	Rank prefixes '', 'ELM', 'BM', 'TM', 'SG', 'EM', 'MM', 'GM' (Name/Rank team info)
+1bde	g_ui_button_labels	char *[42]	Label strings of the control-panel buttons (index = button number)
+1c38	g_posture_abbrev	char *[4]	'Up', 'Cr', 'Pr', 'Dd' (1c3e = the 'Dd' entry used for dead members)
+1c58	g_craft_abbrev	char *[4]	'SEAL', 'BOAT', 'HELO', 'AIR' (support team info)
+1c64	g_enemy_state_abbrev	char *[5]	'Surr', 'Ptrl', 'Guer', 'Gard', 'Null' (enemy team info)
+1c6e	g_enemy_alert_abbrev	char *[]	Enemy team info short strings indexed by (AI byte +0x83 >> 4)
+1c7c	g_group_type_names	char *[8]	'SEAL Team', 'Boat Support Unit', 'Seawolf Helicopter', 'Bronco Aircraft', 'Viet Cong', ' NV Army', 'Civilian', 'Friendly'
+1c94	g_seal_role_names	char *[8]	'Point', 'OIC', 'Medic', 'Rear', 'Radio', 'Sec', 'Rear', 'Dud' (team info role column)
+1d72	g_mission_type_names	char *[8]	'Null Msn', 'Patrol', 'Ambush', 'Demolition', 'Observe', 'Rescue', 'Snatch', 'Recover'
+1da4	g_posture_names	char *[4]	'Upright', 'Crouch ', ' Prone ', ' Dead  ' (posture change messages)
+251e	g_rank_suffix	char *[]	Rank grade suffixes ('SM', '', '3', '2', '1', ' PO', '2 PO', '1 PO', ...) appended in Name/Rank mode
+25f0	g_group_segs	u16[64]	Segments of created groups (offset 0) for object-id lookup; count in 5149:1e6e
+26f4	g_structures	STRUCT far *[]	World structure table (pads, buildings, objectives); used for camp placement and blast/line-of-fire victims
+2f28	g_grenade_box_obj	void far *	World object of the grenade target box; its position (+6) is the throw target while aiming
+3178	g_area_camp_frame	i16[]	Per-area value; +0x1c gives the world file id loaded for the camp scene
+3c5a	g_campaign_flow	FLOW far *[4]	Per-year mission-flow tables (14-byte entries; +2 = month index used for the map-screen date)
+45c0	g_sfx_on	u8	Sound effects enabled (Alt-S; initial 1)
+45c1	g_music_on	u8	Music enabled (Alt-M; initial 1)
+45cc	g_digital_allowed	u8	Digital sound effects allowed (command-line 'd' clears it)
+467f	g_mouse_buttons	u8	Mouse button state from the INT 33h handler (bit0 left, bit1 right)
+48fe	g_weapon_table	WEAPON[26]	Weapon descriptors, 0x22 bytes: short/long name ptrs, category(+4), ranges (+8 short, +0xa medium, +0xc max), magazine (+0xe), ROF flags (+0x10), blast radius (+0x12), structure damage (+0x14), jam chance*2 (+0x1c)
+4f92	g_video_mode	i16	Video mode index (6 = planar 320x200 used for mask conversion)
+4f94	g_bg_rect	RECT	Rectangle (x,y,w,h) copied from the background buffer on a full redraw
+5074	g_text_colour	u16	4x6 text colour: low byte foreground, high byte background (0xFF = transparent)
+5076	g_nibble_remap	u8[16]	Colour remap applied to both nibbles of mask bytes in video mode 6
+cd62	g_seg_tools	u16	Segment 52e3: tool table (6-byte entries: +2 name) Radio, Medical Kit, Prisoner Handling Kit, Flare, Night Vision Scope
+cd64	g_seg_options	u16	Segment 5178 (difficulty options; +0x156 = Map option)
+cd66	g_seg_target	u16	Segment 5149: point-man aim/target block (+2 aim point, +0xe target, +0x12 target state, +0x18 target distance)
+cd7a	g_seg_target2	u16	Segment 5149 (same target block)
+cd7c	g_seg_options2	u16	Segment 5178 (same option block)
+cd86	g_seg_target3	u16	Segment 5149 (group-list count at +0x1e6e)
+cd92	g_seg_camp_kinds	u16	Segment 5178: 12-byte records whose first byte is the unit kind of the 4 camp SEALs
+cdd6	g_seg_options3	u16	Segment 5178 (Ammo option +0x148)
+cdd8	g_seg_shots	u16	Segment 53ba: 32 shot records of 0x3c bytes at +0x28ba
+cdda	g_seg_stats	u16	Segment 53ba: shot statistics +0x303e, +0x3040
+cddc	g_seg_stats2	u16	Segment 53ba: shot statistics +0x303c
+cdde	g_seg_target4	u16	Segment 5149 (target block)
+cde0	g_seg_damage	u16	Segment 525f: wound tables (4-byte entries lo, hi, wound bits)
+cde2	g_seg_options4	u16	Segment 5178 (Enemy Wounds +0x14a, Player Wounds +0x14e)
+ceac	g_view_heading	i16	View camera heading (1/8 degree) of the current field view; saved into group[g_view_group]+0x32
+ceae	g_view_distance	i32	View camera distance 0x60..900 of the current field view; saved into group[g_view_group]+0x30
+d7e4	g_game_mode	i16	1 continue campaign, 2 main menu / new campaign, 3 practice, 6 demo (mission from command line)
+d7e6	g_award_a	i16	Award evaluator output 1 (cleared before 365e:deb0)
+d7e8	g_award_b	i16	Award evaluator output 2
+d7ea	g_mission_aborted	u8	Set when Esc + 'Y' ends the mission
+d7eb	g_quit_to_dos	u8	Result of the Alt-X 'Exit To DOS?' prompt
+d7ed	g_time_compress	u8	Time compression state (0 off; 3 when switched on, counts down to 1)
+d7f6	g_skip_present	u8	Set after the pause dialog so the next frame is not presented
+d80e	g_dive_ready_time	u32	Earliest clock for the next 'q' (dive) order (last + 0x400)
+d812	g_joy_cal_d	i16	Joystick calibration result 4
+d814	g_joy_move_time	u32	Last joystick-vertical Up/Down key (0x60 cadence)
+d818	g_joy_btn2_time	u32	Last joystick button-2 space event
+d81c	g_mouse_btn2_time	u32	Last right-button space event
+d820	g_input_mode	u8	0 action (field views), 1 menus, 2 map/re-insertion map
+d822	g_mouse_move_time	u32	Last mouse-vertical Up/Down key (0x60 cadence)
+d826	g_key_time	u32	Last keyboard read (0x50 throttle)
+d82a	g_joy_btn1_time	u32	Last joystick button-1 Enter event
+d82e	g_mouse_btn1_time	u32	Last left-button Enter event
+d832	g_joy_present	u8	Joystick detected (and not disabled at calibration)
+d833	g_mouse_present	u8	Mouse detected
+d834	g_mouse_centre_x	i16	Mouse x at input_init (virtual stick centre)
+d836	g_joy_x	i16	Joystick x deflection read by input_get_key
+d838	g_mouse_centre_y	i16	Mouse y at input_init
+d83a	g_joy_y	i16	Joystick y deflection read by input_get_key
+d83c	g_joy_cal_a	i16	Joystick calibration result 1
+d83e	g_joy_cal_b	i16	Joystick calibration result 2
+d840	g_joy_cal_c	i16	Joystick calibration result 3
+d844	g_view_mode	u8	0 point man, 1 map, 2 team, 3/4 support 1/2, 7 insertion zoom, 8 extraction, 0xC re-insertion map, 0xD target, 0xE debug view, 0xF/0x10 support 3/4, 0x11/0x12 split A/B
+d84a	g_weapon_info_time	u32	Weapon info line shown until this clock
+d84e	g_cam_pointman	VIEWPORT	Point-man view camera/viewport
+d86a	g_grenade_info_time	u32	Grenade info line shown until this clock
+d86e	g_cam_map	VIEWPORT	Map camera: +0 centre x (i32), +4 height (i32, d872), +8 centre z (i32), +0x12.. viewport 8,10,204,155, +0x1a projection shift (d888 = 8)
+d872	g_map_height	i32	Map camera height = zoom (multiples of 256000, range 256000..4096000); d873 word >> 2 is the scale shown as '1:n'
+d888	g_map_shift	i16	Map camera projection shift (8)
+d88a	g_cam_team	VIEWPORT	Team/support/target view camera/viewport
+d8a6	g_weapon_ready_time	u32	Point man may fire again at this clock
+d8aa	g_grenade_ready_time	u32	Point man may throw again at this clock
+d8ae	g_viewport_cur	VIEWPORT *	Active camera/viewport (d84e, d86e or d88a)
+d8b8	g_insert_view_heading	i16	Insertion zoom camera heading (rotated by right button + mouse)
+d8ba	g_detail_msg_time	u32	Detail-level message shown until this clock
+ec46	g_tool_info_time	u32	Tool info line shown until this clock
+ec52	g_view_before_map	u8	Field view (0 or 2) to return to when the map closes
+ec56	g_redraw_frames	u8	Frames that still need a full background redraw
+ec57	g_clock_min	u8	Mission clock minutes
+ec58	g_clock_hour	u8	Mission clock hours
+ec59	g_clock_sec	u8	Mission clock seconds
+ec6c	g_cursor_y	i16	UI cursor y
+ec6e	g_cursor_mode	u8	Map cursor mode: 0 keyboard focus on buttons, 1 free cursor on the map, 2 pointer hovering buttons
+ec70	g_cursor_x	i16	UI cursor x
+ec86	g_selected_group	u8	Group selected on the map (orders target)
+ec87	g_group_count	u8	Entries in g_groups
+ec88	g_seal_group	u8	Index of the SEAL team group (0)
+ec8c	g_insertion_group	u8	Insertion craft group
+ec8d	g_extraction_group	u8	Craft group used for the camp scene / extraction
+ec8e	g_emergency_group	u8	Group used for emergency extraction
+ec8f	g_first_mtm_group	u8	First enemy/other group; indices below are friendly
+ec90	g_fire_support_group	u8	Fire-support craft group
+ec91	g_break_contact_group	u8	Break-contact craft group
+ec92	g_extracting_group	u8	Craft ordered to extract (0xFF none)
+ec96	g_seal_kia	i16	Dead SEALs (hidden in the camp scene)
+ec9c	g_split_groups	u8	Number of split SEAL sub-groups (0..2)
+eca6	g_timer	u32	Frame-latched game clock, 256 ticks per second
+ecb6	g_structure_objects	i16	Number of structure world objects (object-id base for groups)
+ecb9	g_area_name	char[]	Mission area name (map screen bottom-left)
+ecf8	g_misc_objects	i16	Number of further world objects before the group ids
+ed18	g_detail_anchor	i32[2]	Position where ambient detail objects were spawned; zeroed by Alt-D so they respawn
+ed26	g_mission_text	char far *	Loaded text file; the title screen loads 'c' (10 pages x 2 lines x 80 chars)
+eeb8	g_mci_ptr	MCI far *	Current mission header (+6 insertion method, +8 extraction method, +0xa insertion pos, +0x16 extraction pos, +0x76/+0xd8/+0x13a objective types, +0x78/+0xda/+0x13c objective positions, +0x72/+0x74 support types)
+eebc	g_mission_no	i16	Mission number 0..79 (from the command line in demo mode)
+eebe	g_ui_focus	i8	Focused control-panel button
+eebf	g_ui_pressed	u8	Focused button is shown pressed
+eec0	g_extra_redraws	u8	Additional full redraws requested by UI helpers (decremented by the map handler)
+eec2	g_campaign	CAMPAIGN far *	Campaign state (+1 year 0..3, +2 mission in year, +4 point-man roster id, +0x2a history of 12-byte records)
+eec6	g_mission_success	u8	Award evaluator output (mission success)
+eec7	g_award_c	u8	Award evaluator output
+eec8	g_award_d	u8	Award evaluator output
+eef8	g_font	FONT far *	Proportional font used for the title credits
+f096	g_mouse_x	i16	Mouse x (virtual 0..211 in stick mode)
+f098	g_mouse_y	i16	Mouse y
+f25a	g_pixel_scale	i16	Mask widening factor for cursor masks (power of two)
+f400	g_screen	BITMAP	Current drawing surface (back page)
+f424	g_text_opaque	u8	Draw 4x6 text with a background box
