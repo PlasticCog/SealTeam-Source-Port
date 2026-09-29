@@ -46,6 +46,9 @@ public:
 
     const MouseState& mouse() const { return mouse_; }
     void setMousePos(int x, int y);
+    // Mouse movement since the last call, in 320x200 screen pixels (the
+    // fractional remainder is kept for the next call).
+    void takeMotion(int& dx, int& dy);
 
     // Last raw scancode seen (make or break with bit 7), like port 0x60.
     u8 lastScancode() const { return lastScancode_; }
@@ -54,6 +57,7 @@ private:
     std::array<bool, 128> keys_{};
     std::deque<u16> queue_;
     MouseState mouse_;
+    float relX_ = 0.0f, relY_ = 0.0f;
     u8 lastScancode_ = 0;
 };
 

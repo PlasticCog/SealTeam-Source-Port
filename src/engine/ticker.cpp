@@ -30,6 +30,20 @@ void Ticker::updateGameTime() {
     if (frameDt_ < 1) frameDt_ = 1;
 }
 
+void Ticker::resetClock() {
+    ticks_ = 0;
+    time_ = timePrev_ = 0;
+    frameDt_ = 1;
+}
+
+void Ticker::wait(int n) {
+    const s32 start = time_;
+    do {
+        sys().idle();
+        updateGameTime();
+    } while (time_ - start < n);
+}
+
 void Ticker::frameLimitWait() {
     while (frameLimitOn_ && frameTicks_ < 5) sys().idle();
 }

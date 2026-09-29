@@ -20,8 +20,12 @@ public:
     u32 ticks() const { return ticks_; }            // g_ticks (DS:ECB0)
     int frameTicks() const { return frameTicks_; }  // ticks since frame_limit_reset
 
-    // Once per frame (segment 1000): snapshot time and compute the delta (>= 1).
+    // Once per frame (clk_update, segment 1000): snapshot time and compute the delta (>= 1).
     void updateGameTime();
+    // clk_reset: game time and raw ticks back to 0, frame delta 1.
+    void resetClock();
+    // clk_wait(n): keep updating the clock until n ticks have passed.
+    void wait(int n);
     s32 time() const { return time_; }
     int frameDt() const { return frameDt_; }
 

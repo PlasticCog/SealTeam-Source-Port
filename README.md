@@ -20,8 +20,9 @@ Early work in progress.
 - [x] Mode X VGA emulation (planar memory as linear pixels, page flipping), SDL3 window, 4:3 aspect
 - [x] Keyboard (PC scancodes + BIOS key queue), mouse, PIT/retrace timing
 - [x] Title screen through the full data pipeline
-- [ ] Symbol map of the whole executable (in progress, `docs/re/`)
-- [ ] Graphics library primitives, fonts, sprites (RLE/RLX)
+- [x] Symbol map of the whole executable: 1354 functions and 1008 globals named, notes per module in `docs/re/`
+- [x] Graphics library: Mode X pages, clipping, dithered primitives, polygons, lines, scaled RLE sprites, fonts, masks
+- [x] 256 Hz game timer, frame pacing, palette fades, screen shake
 - [ ] Front end: main menu, campaign, recruits, briefing, debriefing
 - [ ] Mission engine: world, units, AI, combat
 - [ ] Sound: XMIDI music and VOC effects

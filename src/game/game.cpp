@@ -2,14 +2,21 @@
 
 #include "data/ealib.h"
 #include "data/exeimage.h"
+#include "engine/input_layer.h"
 #include "engine/palette_fade.h"
+#include "engine/sound.h"
 #include "engine/ticker.h"
+#include "game/globals.h"
+#include "game/screens.h"
+#include "game/title.h"
 #include "gfx/font.h"
 #include "gfx/gfx.h"
 #include "gfx/image.h"
 #include "platform/system.h"
 
 #include <algorithm>
+#include <cctype>
+#include <cstdio>
 #include <cstring>
 
 namespace st::game {
@@ -33,6 +40,64 @@ void openLibraries() {
     }
 }
 
+// Usage text of the original (1959:04AA), printed from st.exe's strings.
+void printUsage() {
+    const u16 lines[] = {0x1360, 0x0172, 0x13a8, 0x13d7, 0x13fc, 0x01b2, 0x01c8, 0x01dc, 0x01e7, 0x01f2, 0x0213};
+    std::printf("\n");
+    for (u16 off : lines) {
+        std::string s = exe().dgString(off);
+        if (off >= 0x1360) s += "\n";  // version and requirement lines are printed with a newline
+        std::fputs(s.c_str(), stdout);
+    }
+}
+
+// main_parse_cmdline (19ac:04BE). Arguments are scanned from last to first.
+void parseCommandLine(const std::vector<std::string>& args) {
+    Globals& gs = g();
+    int mission = -1;
+    int lastLen = 0;
+    for (size_t a = args.size(); a-- > 1;) {
+        const std::string& arg = args[a];
+        lastLen = int(arg.size());
+        for (size_t i = 0; i < arg.size(); ++i) {
+            const int c = std::tolower(u8(arg[i]));
+            if (c == 't') gs.showTitle = false;
+            else if (c == 'd') gs.digitalAllowed = false;
+            else if (c == '?' || c == 'h') {
+                printUsage();
+                throw QuitRequested{};
+            } else if (c >= '0' && c <= '9') {
+                if (i == 0) mission = (c - '0') * 10;
+                else if (i == 1) mission += c - '0';
+            }
+        }
+    }
+    if (args.size() > 1 && lastLen == 1) mission /= 10;
+    mission -= 1;
+    if (mission < 0 || mission >= 80) {
+        gs.missionNo = 0;
+        gs.gameMode = GameMode::Menu;
+    } else {
+        gs.missionNo = mission;
+        gs.gameMode = GameMode::Demo;
+    }
+}
+
+// sys_load_resources (1959:0265), the parts ported so far.
+void initSystems() {
+    openLibraries();
+    engine::ticker().install();
+    gfx().init();
+    gfx().clear(0);
+    gfx().initPages();
+    palLoad(PalMission);
+    palApply();
+    loadFonts();
+    engine::paletteFade().setLevel(0);
+    engine::input().init();
+    engine::sound().init();
+}
+
 void waitForInput() {
     sys().input().flushKeys();
     for (;;) {
@@ -41,89 +106,85 @@ void waitForInput() {
     }
 }
 
-// Temporary front end until the original flow (docs/re/seg_19ac.md,
-// main_game_loop) is ported: show the title picture and wait for a key.
-void showTitle() {
-    Image title;
-    Palette pal;
-    if (!loadPicture("title.pic", title) || !loadPalette("ST.PAL", pal)) fatal("Couldn't load title screen");
-    Gfx& g = gfx();
-    g.setDrawPage(0);
-    g.clipFull();
-    g.drawImage(title, 0, 0);
-    g.setDisplayPage(0);
-    engine::paletteFade().setPalette(pal);
-    engine::paletteFade().setLevel(0);
-    waitForInput();
-}
-
 // Developer check of the engine layer: fonts, masked cursor, primitives,
 // scaled RLE sprites.
 void selfTestGfx() {
-    Image title, cursor;
+    Image cursor;
     Mask cursorMask;
-    Palette pal, missionPal;
-    if (!loadPicture("title.pic", title) || !loadPalette("ST.PAL", pal) || !loadPalette("PAL2.PAL", missionPal) ||
-        !loadPicture("cursor.pic", cursor) || !loadMask("cursor.msk", cursor.w, cursor.h, cursorMask))
+    Palette pal;
+    if (!loadPalette("ST.PAL", pal) || !loadPicture("cursor.pic", cursor) ||
+        !loadMask("cursor.msk", cursor.w, cursor.h, cursorMask))
         fatal("selftest: missing data");
     Font fonts[4];
     const char* names[4] = {"4x6.fnt", "memo.fnt", "prop.fnt", "propbold.fnt"};
     for (int i = 0; i < 4; ++i)
         if (!fonts[i].load(names[i])) fatal("selftest: cannot load %s", names[i]);
 
-    Gfx& g = gfx();
-    g.setDrawPage(0);
-    g.clipFull();
-    g.clear(0);
-    g.setTextColors(15, 0);
-    g.draw4x6String(fonts[0], "4X6 FONT 0123456789", 4, 4);
+    Gfx& gx = gfx();
+    gx.setDrawPage(0);
+    gx.clipFull();
+    gx.clear(0);
+    gx.setTextColors(15, 0);
+    gx.draw4x6String(fonts[0], "4X6 FONT 0123456789", 4, 4);
     int y = 12;
     for (int i = 1; i < 4; ++i) {
-        g.setFont(&fonts[i]);
-        g.drawString("The quick brown fox 1993", 4, y);
+        gx.setFont(&fonts[i]);
+        gx.drawString("The quick brown fox 1993", 4, y);
         y += fonts[i].height() + 2;
     }
-    // Primitives: lines fan, circles, polygon, dithered rectangle.
-    for (int a = 0; a < 16; ++a) g.line(80, 120, 80 + (a - 8) * 9, 60 + (a & 1) * 110, u16(Gfx::kSolid | (32 + a)));
-    g.fillCircle(170, 90, 25, u16(Gfx::kSolid | 40));
-    g.fillCircle(170, 90, 12, u16(0x5a00 | 15));  // dithered
+    for (int a = 0; a < 16; ++a) gx.line(80, 120, 80 + (a - 8) * 9, 60 + (a & 1) * 110, u16(Gfx::kSolid | (32 + a)));
+    gx.fillCircle(170, 90, 25, u16(Gfx::kSolid | 40));
+    gx.fillCircle(170, 90, 12, u16(0x5a00 | 15));
     const s16 tri[] = {230, 60, 300, 110, 210, 150};
-    g.fillPolygon(tri, 3, u16(Gfx::kSolid | 12));
+    gx.fillPolygon(tri, 3, u16(Gfx::kSolid | 12));
     const s16 quad[] = {200, 160, 250, 160, 260, 190, 190, 190};
-    g.fillPolygon(quad, 4, u16(Gfx::kSolid | 9));
-    g.fillRect(4, 150, 60, 40, u16(0xa500 | 14));
-    g.rect(2, 148, 64, 44, u16(Gfx::kSolid | 15));
-    g.setClip(100, 140, 80, 50);
-    g.line(90, 130, 200, 200, u16(Gfx::kSolid | 10));  // clipped line
-    g.clipFull();
-    for (int i = 0; i < 6; ++i) g.drawImageMasked(cursor, cursorMask, 200 + i * 18, 4);
-
-    // Soldier sprite scaled at several sizes (mission palette on page 1 check).
+    gx.fillPolygon(quad, 4, u16(Gfx::kSolid | 9));
+    gx.fillRect(4, 150, 60, 40, u16(0xa500 | 14));
+    gx.rect(2, 148, 64, 44, u16(Gfx::kSolid | 15));
+    gx.setClip(100, 140, 80, 50);
+    gx.line(90, 130, 200, 200, u16(Gfx::kSolid | 10));
+    gx.clipFull();
+    for (int i = 0; i < 6; ++i) gx.drawImageMasked(cursor, cursorMask, 200 + i * 18, 4);
     std::vector<u8> spr;
     if (resources().read("USF1R1.RLE", spr)) {
         const int sw = rd16(&spr[0]), sh = rd16(&spr[2]);
-        g.spriteScaled(270, 120, sw, sh, spr.data());
-        g.spriteScaled(290, 120, sw / 2, sh / 2, spr.data());
-        g.spriteScaled(300, 150, sw * 2, sh * 2, spr.data());  // clipped at the right edge
+        gx.spriteScaled(270, 120, sw, sh, spr.data());
+        gx.spriteScaled(290, 120, sw / 2, sh / 2, spr.data());
+        gx.spriteScaled(300, 150, sw * 2, sh * 2, spr.data());
     }
-    g.setDisplayPage(0);
+    gx.setDisplayPage(0);
     engine::paletteFade().setPalette(pal);
     engine::paletteFade().setLevel(0);
     waitForInput();
 }
 
+// main_game_loop (19ac:016D), the parts ported so far: the title sequence.
+int mainGameLoop() {
+    Globals& gs = g();
+    if (gs.showTitle) {
+        if (gs.gameMode != GameMode::Demo && titleScreen() == 0) return 0;
+        gs.showTitle = false;
+    }
+    // Main menu, campaign screens and missions are not ported yet.
+    logInfo("front end beyond the title screen is not ported yet");
+    return 0;
+}
+
 } // namespace
 
 int run(const std::vector<std::string>& args) {
-    openLibraries();
-    engine::ticker().install();
-    gfx().init();
+    parseCommandLine(args);
     if (std::find(args.begin(), args.end(), "--selftest-gfx") != args.end()) {
+        openLibraries();
+        engine::ticker().install();
+        gfx().init();
         selfTestGfx();
         return 0;
     }
-    showTitle();
-    return 0;
+    initSystems();
+    const int rc = mainGameLoop();
+    engine::sound().shutdown();
+    return rc;
 }
 
 } // namespace st::game

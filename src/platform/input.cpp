@@ -146,6 +146,8 @@ void Input::handleEvent(const SDL_Event& ev, int logicalW, int logicalH) {
     case SDL_EVENT_MOUSE_MOTION:
         // The caller converts events to render coordinates (320 x logicalH).
         setMousePos(int(ev.motion.x * 320.0f / float(logicalW)), int(ev.motion.y * 200.0f / float(logicalH)));
+        relX_ += ev.motion.xrel * 320.0f / float(logicalW);
+        relY_ += ev.motion.yrel * 200.0f / float(logicalH);
         break;
     case SDL_EVENT_MOUSE_BUTTON_DOWN:
     case SDL_EVENT_MOUSE_BUTTON_UP: {
@@ -172,6 +174,13 @@ u16 Input::readKey() {
     const u16 k = queue_.front();
     queue_.pop_front();
     return k;
+}
+
+void Input::takeMotion(int& dx, int& dy) {
+    dx = int(relX_);
+    dy = int(relY_);
+    relX_ -= float(dx);
+    relY_ -= float(dy);
 }
 
 void Input::setMousePos(int x, int y) {
