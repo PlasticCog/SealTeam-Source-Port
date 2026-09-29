@@ -6,9 +6,12 @@
 #include "engine/palette_fade.h"
 #include "engine/sound.h"
 #include "engine/ticker.h"
+#include "game/config.h"
 #include "game/globals.h"
+#include "game/menu.h"
 #include "game/screens.h"
 #include "game/title.h"
+#include "game/ui.h"
 #include "gfx/font.h"
 #include "gfx/gfx.h"
 #include "gfx/image.h"
@@ -93,9 +96,11 @@ void initSystems() {
     palLoad(PalMission);
     palApply();
     loadFonts();
+    cursorLoadAll();
     engine::paletteFade().setLevel(0);
     engine::input().init();
     engine::sound().init();
+    cfgLoadSCnf(slotConfig());
 }
 
 void waitForInput() {
@@ -158,15 +163,18 @@ void selfTestGfx() {
     waitForInput();
 }
 
-// main_game_loop (19ac:016D), the parts ported so far: the title sequence.
+// main_game_loop (19ac:016D), the parts ported so far: title and main menu.
 int mainGameLoop() {
     Globals& gs = g();
     if (gs.showTitle) {
         if (gs.gameMode != GameMode::Demo && titleScreen() == 0) return 0;
         gs.showTitle = false;
     }
-    // Main menu, campaign screens and missions are not ported yet.
-    logInfo("front end beyond the title screen is not ported yet");
+    if (gs.gameMode == GameMode::Menu) {
+        if (menuRun() == 0) return 0;
+    }
+    // Campaign screens and missions are not ported yet.
+    logInfo("chosen game mode %d; the screens after the main menu are not ported yet", int(gs.gameMode));
     return 0;
 }
 
