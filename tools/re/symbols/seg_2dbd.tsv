@@ -1,0 +1,54 @@
+2dbd:0006	evt_heading_diff	Absolute difference in whole degrees (0..180) between two headings given in 1/8-degree units
+2dbd:004e	evt_assign_helper	Pick a teammate (slot order 2,1,3,0: alive, not heavily wounded, not already paired, not self) to help a casualty; re-pairs if the casualty was itself a helper
+2dbd:01a7	evt_calc_move_speed	Effective speed = base + max(0,(stat8+stat9-80)/10) minus penalties (terrain flags, load, fatigue, carried casualty, fire/posture timers, posture); floored at 0
+2dbd:0307	evt_set_posture	Set mover posture (0 upright,1 crouch,2 prone); a change starts the 0x200-tick posture timer and recomputes speed; non-upright cancels running; sets Point Man eye height
+2dbd:03c5	evt_set_move_mode	Set mover move mode (0 stop,1 slow,2 fast,3 backwards) and target speed (0, v/4, v, -v/4); running forces people upright
+2dbd:04a7	evt_set_desired_heading	Store a new desired heading in mover+0x0e (no callers found)
+2dbd:04d8	evt_stop_unit	Stop a unit at once: mode 0, current speed = target speed, anim+0x0a = 0 (no callers found)
+2dbd:0520	evt_check_prisoner_escape	If a SEAL escorting a captured prisoner is hit: prisoner escapes when the escort is dead, or has no PHK and random(100)<50; message, prisoner count--
+2dbd:0632	evt_check_emergency_extraction	After a SEAL death: if no extraction is running and at most 2 SEALs remain alive, order extraction at the Point Man and show "Extracting!"
+2dbd:0684	evt_unit_killed	Unit killed by a hit: death animation, 1-in-6 scream, death messages; Point Man death ends the campaign; teammates get a helper; leader/music handling for other groups
+2dbd:0a9d	evt_unit_bled_to_death	Unit died from bleeding (from the bleed tick 19ac:89c3): as evt_unit_killed without scream/music; vertical shake on Point Man death
+2dbd:0d6f	evt_unit_wounded	Unit wounded by a hit: forced prone, random pain cry, "Wham!"/"has been hit!"/"bleeding heavily" messages, helper for heavy wounds, shake + red flash on Point Man
+2dbd:12e7	evt_unit_suppressed	Near miss: unit stops and goes prone; Point Man gets "Suppressed!" and a vertical screen shake; teammates trigger the Under Fire hand signal
+2dbd:13c1	evt_start_reload	Start a magazine reload for firearms: crouch + crouch-reload animation, reload sound, "One reload remaining."/"Out of reloads!" callouts from teammates
+2dbd:161e	evt_crouch_to_fire_launcher	Stop, crouch and play the crouch shoulder-fire animation (state 17 "cw") before firing weapon classes 0x0f/0x10
+2dbd:168b	evt_crouch_to_place_charge	Stop and crouch (used before using weapon/item type 0x0c)
+2dbd:16e6	evt_unit_dive	Dive: run, prone, double speed, jump 0x2d00 along the given heading
+2dbd:17c8	evt_team_dive_quickly	"Dive Quickly!": leader dives ahead, members dive outward from the leader
+2dbd:18b2	evt_update_unit_fatigue	Every 0x500 ticks: fatigue/winded update by move mode and wounds; player breath sounds
+2dbd:1b05	evt_unit_bounce_off_obstacle	Restore contact position, push back 0x400 from obstacle, turn 100 deg aside
+2dbd:1c04	evt_update_unit_movement	Per-frame movement for all units: speed/height/turn/advance, terrain (water, pits, trip-wires, brush, collisions)
+2dbd:2503	evt_approach_value	Move pair[0] toward pair[1] by max(1, rate*dt>>8), snapping at the target
+2dbd:2580	evt_approach_angle	Like evt_approach_value for degrees 0..359 along the shorter arc
+2dbd:2603	evt_approach_zero	Set pair[1]=0 and approach at the rate stored in pair[5] (speed/height decay)
+2dbd:261e	evt_init_mover	Initialise mover fields for soldiers (kind<=4/>=8) or vehicles (5 boat, 6, 7); zero fatigue fields
+2dbd:2841	evt_set_altitude_level	Store altitude level in mover+0x25 and set target height from high/low heights
+2dbd:287f	evt_set_dest_to_terrain_obj	Destination = target (or nearest water object within 24000) position; returns target
+2dbd:2933	evt_is_positive_turn	1 if the shorter turn from b to a (1/8 deg inputs) is non-negative; craft banking
+2dbd:297d	evt_update_support_fire	Support-team (craft) fire and ordnance handling ("Dud.", "Support Team Out of Ammo."), contains a 7-way jump table; PROVISIONAL
+2dbd:31ec	evt_team_set_mover_flags	OR a flag mask into mover+0x26 of every member of a team
+2dbd:3232	evt_update_selected_team	Per-frame update of the currently selected team (g_ec92); PROVISIONAL
+2dbd:3517	evt_trigger_minute_job	Set the 60-second job timer g_0a6e to now-0x3c00 so the job runs on the next tick
+2dbd:352c	evt_minute_job	Job run every 0x3c00 ticks (60 s) from evt_mission_tick; PROVISIONAL
+2dbd:3628	evt_unit_find_weapon	First item of a given type in the unit weapon list (unit+0x16, next at item+0x0e), or NULL
+2dbd:3684	evt_split_teams_update	Every 0x400 ticks: drive split SEAL team leaders to their waypoint; Demolish (satchel) and Snipe (silenced pistol) special orders
+2dbd:3d52	evt_announce_medic_assignments	Per frame: "<role> <name>: Medical aid to <name>." for pending medic assignments (525b:0000[4]), then clear them
+2dbd:3f4c	evt_mission_tick	Per-frame mission event dispatcher: support fire, 60 s and 4 s jobs, unit checks, per-team updates, ordnance (DS:2670) and DS:3100-list updates
+2dbd:4088	evt_calc_launch_velocity	Projectile flight: shorten range, flight time t=(range<<8)/speed, fuse time 2t/4t, return initial vertical velocity
+2dbd:41a4	evt_projectile_init_motion	Initialise projectile motion record by weapon class (speed, bounce, gravity, launch height); calls 4088 for launch velocity
+2dbd:4429	evt_update_ordnance	Per-frame update of a live ordnance object from the DS:2670 pool (flag +0x29 bit 7): flight, fuse, explosion, "Dud."; PROVISIONAL
+2dbd:4c74	evt_update_area_effect	Per-frame update of an object of the DS:3100 list (flag +2 bit 0); PROVISIONAL
+2dbd:4e56	evt_search_begin	Start a team Search order (fails if a search is active); clears search counters, primes search record 0
+2dbd:4eca	evt_take_prisoner_phk	Prisoner Handling Kit on reticle target: VC/NVA unit in range 0x78 becomes the player's prisoner
+2dbd:4fcc	evt_search_body	Search the body in search record 0: mark searched, capture/rescue live units with an escort, medical aid, count weapons/documents
+2dbd:516b	evt_search_end_report	End search: add totals to mission counters, report prisoners/weapons/documents for the player team, clear search team
+2dbd:5327	evt_find_nearest_searchable	Nearest unsearched hostile/friendly unit within 300 of U (civilians excluded); optionally fills search record 0; returns distance
+2dbd:54f8	evt_follow_buddy	Keep a linked prisoner/friendly/wounded/dead buddy at its slot beside the escort or carrier; returns 1 if handled
+2dbd:58c1	evt_search_member_step	Per member of a searching team: retarget, "Search complete." when nothing left, move to/search bodies
+2dbd:5a25	evt_member_watch_heading	Outward watch heading for formation slot 1-3 (fire orders 0,2,3 only)
+2dbd:5a91	evt_team_formation_update	Per-frame team movement: formation slots, move mode, posture and outward facing for each member
+2dbd:6371	evt_team_snap_formation	Place team members instantly at their formation slots around the leader
+2dbd:6487	evt_team_is_engaged	Team has contact with the enemy (not ceasing attack / loitering)
+2dbd:651d	evt_player_speed_step	Player speed step Back/Stop/Slow/Run; shows mode name; moving cancels orders ("Search aborted.")
+2dbd:6653	evt_execute_ai_commands	Per frame: every AI unit executes its newest team/own command (heading, move mode, fire, posture, reload, surrender)

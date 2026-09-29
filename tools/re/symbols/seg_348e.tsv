@@ -1,0 +1,23 @@
+348e:000e	spr_advance_anim_clocks	Add the frame delta g_ecaa to anim->clock (+0x22, int32) of every unit of every team whose type is 0 or >=4
+348e:0085	spr_start_throw_anim	Start the throw (arm) animation matching anim->posture: 0 -> state 12 (ua), 1 -> 15 (ca), 2 -> 19 (pa); needs unit->anim
+348e:00c5	spr_frame_check_stub	Two-instruction stub (returns 0) called by the draw routine with (frame, frame count); no effect, probably a compiled-out debug check
+348e:00c8	spr_set_anim	Set a unit's animation state 0..19: picks posture-transition animations (uc/up/cp/uf/cf...), duration, return state, start time; states <=3 also set anim->posture
+348e:0302	spr_update_anim	Finish timed animations: when clock-start >= duration switch to the return state (prone->upright chains prone->crouch->upright); returns 1 while a timed animation is playing
+348e:03bc	spr_sprite_topleft	Screen top-left of a w x h sprite whose bottom centre stands at (x, y + 5*scale/256); returns x in AX, y in DX
+348e:03ed	spr_draw_scaled	Draw an RLE sprite scaled by an 8.8 factor with its bottom centre at (x, y + 5*scale/256) via the scaling blitter 2255:b0d6
+348e:0443	spr_draw_grass_tuft	While a unit runs (move mode 2) through grass (mover flag 0x04) or is sunk, draw the Grass.RLE sprite at its feet, jittered with random(2)/random(4), remapped with remap4
+348e:0572	spr_get_frame_image	Return far pointer to the RLE image of frame f / rotation r of a sprite set (maps the EMS block if the image lives in EMS)
+348e:05b9	spr_calc_rotation	Rotation index 0..7 of a sprite facing heading h (1/8 deg) at position p as seen from the viewer position DS:[d8ae]
+348e:0607	spr_get_layer_byte	Return RLX byte +7 of frame f / rotation r (values >0x80 mean the helmet is drawn before the body)
+348e:062c	spr_get_sink_depth	Sink depth in eighths of sprite height for a unit: mover+0x18 / -3 when mover+0x18 < 0, else 0
+348e:065c	spr_draw_helmet	Draw the headgear sprite (helmet type 1..7, rotation) at the RLX head point of the current body frame, with ground clipping and sinking
+348e:07cc	spr_draw_body	Draw a soldier body frame anchored at its RLX ground point, clipped at the ground line and sunk by depth/8 of its height
+348e:089f	spr_draw_soldier_frame	Draw one soldier frame: choose helmet type and head rotation, order helmet/body by the RLX layer byte, then the grass tuft
+348e:0a90	spr_draw_scenery_billboard	Draw billboard objects that are not units: jungle/bush sprites, muzzle flashes, explosion/impact/smoke of ordnance objects
+348e:0c52	spr_draw_billboard_cb	Render callback of the billboard 3D models (human, bush, jungle, exgr, muzzle): computes scale and rotation, selects the soldier animation frame set and frame, draws
+348e:158c	spr_init_unit_anim	Initialise a unit's anim component: soldier sprite table 53ba:015e, kind byte (colour scheme), state 0, random start phase random(256)
+348e:15f0	spr_load_set	Load an RLE-only sprite set <name>f<F>r<R>.rle for nframes x 8 rotations, optionally moving each image to EMS; RLX pointers cleared
+348e:1754	spr_load_set_rlx	Load a soldier sprite set: <name>f<F>r<R>.rle (moved to EMS when possible) plus the 12-byte .rlx attachment record per image
+348e:190a	spr_free_set	Free all images of a sprite set (conventional block, or EMS block when the flag is set) and the RLX records
+348e:19b0	spr_load_soldier_sprites	Init EMS accounting, point g_ec82 at 53ba:015e and load the 22 soldier animation sets and the 7 headgear sets
+348e:1cd2	spr_free_headgear_sprites	Free the 7 headgear sprite sets (5 frames each, conventional memory)

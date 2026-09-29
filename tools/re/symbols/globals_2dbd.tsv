@@ -1,0 +1,29 @@
+00e6	g_remap_cur	uint8 far *	Current 256-byte colour remap table used by the sprite blitter when g_blit_remap_on (default remap2)
+00f2	g_remap4	uint8 far *	remap4.bin table; used for grass tufts and the muzzle model flash
+00f6	g_remap5	uint8 far *	remap5.bin table; used for muzzle flashes of weapon kinds 0x0f/0x10/0x14
+0880	g_eye_height_by_posture	int16[3]	Point Man eye-height offset written to mover+0x1a on posture change: 15 upright, 9 crouch, 3 prone
+0898	g_under_fire_signal_time	int32	Earliest time the Point Man may again give the "Under Fire" hand signal; set to now+0xf00 after team-0 casualties
+089c	g_helper_slot_order	int16[4]	Member slots tried when assigning a helper to a casualty: 2 (Corpsman), 1 (OIC), 3 (Rear Security), 0 (Point Man)
+0a6e	g_minute_job_time	int32	Time of the last 60 s (0x3c00 ticks) job run by evt_mission_tick
+0a72	g_4s_job_time	int32	Time of the last 4 s (0x400 ticks) special-action job run by evt_mission_tick
+0ae6	g_search_team	void far *	Team currently performing a search order (NULL = none)
+1284	g_spr_rotation	int16	Rotation index 0..7 computed for the billboard being drawn (also reused for the muzzle-flash frame)
+12e2	g_teams	void far *[]	NULL-terminated array of team pointers; team 0 = player SEAL squad, its member 0 = Point Man
+1c8c	g_role_names	char near *[18]	Role names by team slot (Point Man, Officer-in-Charge, Corpsman, Rear Security), short forms and fire-mode words
+4902	g_weapon_table	struct[0x22 bytes]	Weapon definition table indexed by weapon kind; word +0 = weapon class (0x0f/0x10 launchers)
+cd7e	g_spr_table_seg	uint16	Segment of the far data block 53ba holding the sprite-set tables
+d79a	g_blit_remap_on	int16	Non-zero: sprite blitter translates colours through g_remap_cur
+d844	g_view_mode	uint8	Current view mode; billboards are not drawn in modes 1 and 0x0c; 0 = Point Man view
+d8ae	g_viewer_pos	int32 near *	Pointer to the camera/viewer position (3 x int32) used for sprite rotation
+ec64	g_prisoners_held	int16	Number of prisoners currently held (decremented when one escapes)
+ec72	g_spr_jungle	void far *	Jungle.RLE image
+ec76	g_spr_bush	void far *	Bush.RLE image
+ec7a	g_spr_impact	void far *	impcf1r1.RLE image (bullet impact)
+ec7e	g_spr_grass	void far *	Grass.RLE image (tuft drawn at a running soldier's feet)
+ec82	g_spr_soldier_sets	void far *	Base of the soldier sprite sets (53ba:015e)
+eca6	g_time	int32	Mission time in 256 Hz ticks
+ecaa	g_frame_ticks	int16	Ticks elapsed since the previous frame (>= 1)
+f242	g_view_bottom	int16	Bottom clip line of the viewport (temporarily lowered to the ground line when drawing soldiers)
+f248	g_view_center_x	int16	Viewport centre x; subtracted from a projected reference point to get the billboard scale
+f450	g_render_obj_seg	uint16	Segment of the 3-D object instances
+f620	g_render_cur_obj	near *	3-D object instance currently being rendered (+0x05 shift, +0x0a depth, +0x14 model/world record)
