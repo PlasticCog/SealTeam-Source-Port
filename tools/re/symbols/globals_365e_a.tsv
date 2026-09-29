@@ -1,0 +1,139 @@
+0530	g_sky_phase	i16	Sky/lighting phase counter of the renderer (1000:1a88/1afc, 0..0xff, time-of-day based); zeroed by brf_init_scene
+0532	g_sky_phase2	i16	Second sky/lighting phase counter (1000:1a88/1afc); zeroed by brf_init_scene
+0ae6	g_mission_misc_ptr	void far *	Cleared at the end of msn_build_world (365e:129a)
+0ea0	g_extraction_point	i32[3]	World position (x,y,z 24.8 fixed) of the ordered extraction point (365e:1800)
+12e2	g_groups	GROUP far *[?]	Null-terminated table of group pointers; [0] is the SEAL team, then craft groups, then MTM teams from g_first_mtm_group
+134a	g_proxy_grenadier	UNIT far *	Hidden VC unit used by 1000:5114 to create scripted grenade explosions (365e:11a8)
+134e	g_enemy_reloads_by_year	i16[4]	Primary-weapon reloads for MTM units per campaign year {5,6,7,8}; later weapons get half
+1356	g_craft_reloads_by_year	i16[4]	Reloads for support-craft weapons per year {7,6,5,4}
+135e	g_mission_minutes	i16	Elapsed mission minutes (1000:66bb) captured by msn_tally_casualties
+1b90	g_month_names	char *[13]	Month name table, index 1..12 (index 0 empty)
+1baa	g_rating_names	char *[13]	Navy rating long names by SE+0x5e ('', Electrician's Mate .. Radioman, Second-in-Command)
+1bc4	g_rating_abbrev	char *[13]	Navy rating abbreviations indexed by SE+0x5e ("" ELM BM TM SG EM MM GM AO DV HC RM 2IC)
+1c7c	g_group_type_names	char *[8]	'SEAL Team','Boat Support Unit','Seawolf Helicopter','Bronco Aircraft','Viet Cong',' NV Army','Civilian','Friendly'
+1c8c	g_team_role_names	char *[4]	'Point Man','Officer-in-Charge','Corpsman','Rear Security'
+1d14	g_mission_name_tmpl	char *	-> "cNmNN" template for mission file base names
+1d18	g_campaign_file_tmpl	char *	-> "cN.cmp" campaign save file name template
+1d1c	g_cfg_file_name	char *	-> "s.cnf"
+1d20	g_rst_file_name	char *	-> "s.rst"
+1d24	g_seal_se_tmpl	char *	-> "sealNN" personnel file template
+1d26	g_vc_se_tmpl	char *	-> "vcNN"
+1d28	g_civ_se_tmpl	char *	-> "civNN"
+1d2a	g_frnd_se_tmpl	char *	-> "frndNN"
+1d5e	g_objective_verbs	char *[9]	Briefing verb phrases by objective type ('patrol the','ambush the','demolish the','forward observe a','rescue a','snatch a','recover a')
+1d72	g_objective_type_names	char *[9]	Objective type names by type ('Null Msn','Patrol','Ambush','Demolition','Observe','Rescue','Snatch','Recover')
+2464	g_menu_button_labels	char *[3]	Main-menu labels: Continue Campaign, Start Campaign, Practice Mission
+249e	g_intel_button_labels	char *[4]	Intel screen labels: year string (overwritten with current year), 'Date:', '', 'Next'
+24b0	g_brf_button_labels	char *[6]	Briefing-screen labels ('','','','','', 'Next'/'Exit' in [5])
+24ba	g_brf_next_label	char *	Label buffer of the briefing Next/Exit button (rewritten by brf_enter_main / brf_enter_clipboard)
+2506	g_rank_names	char *[12]	Rank names by rank index 0..11 (Seaman, '', 3rd/2nd/1st Class, Petty Officer.., Ensign, Lieutenant (j.g), Lieutenant)
+251e	g_rank_abbrev	char *[12]	Rank abbreviations by rank index ('SM','','3','2','1',' PO','2 PO','1 PO','CPO','EN','LTJG','LT')
+256a	g_load_class_names	char *[4]	'(Light)','(Normal)','(Heavy)','(Extreme)'
+2572	g_enemy_strength_words	char *[9]	'nonexistent.','very light.','light.','light.','medium.','heavy.','heavy.','very heavy.','extremely heavy.' by MTM team count (max 8)
+2586	g_brf_sentences	char *[11]	Mission-briefing sentence prefixes used by brf_step ('Welcome to the mission briefing.' ... 'Enemy patrol activity is ')
+25ac	g_region_terrain	char *[4]	Terrain words by region ('Swamp Jungle','Coastal Delta','Delta Swamp','Farmland')
+25b6	g_region_weather	char *[4]	Weather words by region ('Hot','Warm, Humid','Hot, Humid','Clear')
+25e4	g_str_rating_names	char *[4]	'Green','Novice','Veteran','Elite' by (average weapon skill - 50) / 10
+26f4	g_structures	STRUCT far *[?]	World structure/object table; objectives reference entries by index (+8 bit0 = objective done, +0x0a hit points)
+3140	g_area_region	i16[]	Region 0..3 of each area (MCI+4): 'map' frame, weather DS:25b6 and terrain DS:25ac index (0 Rung Sat, 1 My Tho, 2 Vinh Long, 3 Bassac)
+3178	g_area_camp_frame	i16[]	Frame index of the 'camp' RLE set for each area (MCI+4)
+39ce	g_mtm	MTM_TEAM far *	Loaded cYmNN.mtm team table (0x66-byte records)
+3a66	g_dialog_cursor_char	char[2]	Cursor glyph '_' drawn by ui_dialog_prompt
+3a6a	g_roster	ROSTER far *[40]	Null-terminated roster table of 0x18-byte personnel entries (0x3a6a..0x3b09)
+3b0e	g_campaign_state	CAMPAIGN (0x14c bytes)	Campaign/save header: slot, year, mission, won flag, point man, scores, nickname, point-man history, weapon picks
+3c5a	g_campaign_flow	FLOW far *[4]	Per-year pointers into far seg 5275 (20 x 14-byte mission-flow entries per year)
+3c6a	g_npc_se_cache	SE far *[31]	Cached NPC personnel records (vc01..21, civ01, frnd01..09)
+3f14	g_intel_zoom	i16	Intel-screen map zoom-in progress 0..0x100 (+2*frame ticks per frame)
+3f16	g_intel_zoom_hold	i16	Intel map zoom state: -1 zooming, 2..0 frames to hold before markers are drawn
+3f18	g_practice_mission	i8	Practice-mode selected mission index in year (-1 = unset)
+3f19	g_practice_year	i8	Practice-mode selected year index
+3f80	g_voice_a	void far *	Loaded newNa.voc sample
+3f84	g_voice_b	void far *	Loaded newNb.voc sample
+3f88	g_voice_a_playing	u8	Voice sample A playing
+3f89	g_voice_b_started	u8	Voice sample B started after A finished
+3f8a	g_voice_timer	i32	Accumulated voice playback time
+3f8e	g_voice_name_tmpl	char[6]	"new1a" voice file base name template
+45c0	g_digital_sound_on	u8	Digital sound effects enabled (voice playback allowed)
+45c3	g_digital_sound_present	u8	Digital sound driver present (voice loading allowed)
+48fe	g_weapon_table	WEAPON[34]	Weapon table, 0x22 bytes/entry: +0 short name, +2 long name, +6 year/side mask, +0e magazine, +10 fire modes, +18/+1a weights, +20 reloads
+5074	g_text_color	u16	Current text colour word (0xff00 | colour) for 4dcf:000e text output
+cd80	g_seg_loadout	u16 (segment)	Segment of far data 5178 (team loadout table at 5178:0000)
+cd82	g_seg_difficulty	u16 (segment)	Segment 5178 (difficulty words at 5178:0148)
+cd84	g_seg_contact	u16 (segment)	Segment 5149 (current contact record; +0e unit ptr, +12 flag) used by ent_team_enemy_sighted
+cd90	g_seg_brfcam_queue	u16 (segment)	Segment 5170 (8 x 16-byte briefing camera waypoint ring)
+cd94	g_seg_s_cnf	u16 (segment)	Segment 5178 (s.cnf image at 5178:0060 and team loadout)
+cd98	g_seg_brf_buttons	u16 (segment)	Segment 518e (briefing and marching-order button lists)
+cd9c	g_seg_loadout2	u16 (segment)	Segment 5178 (loadout table, used by marching-order code)
+cd9e	g_seg_brfcam_target	u16 (segment)	Segment of the briefing camera target positions (MCI copy area)
+cda0	g_seg_tool_table	u16 (segment)	Segment 52e3 (tool table: 6 x {name, long name, weight})
+cda2	g_seg_menu_buttons	u16 (segment)	Segment 51b3 (main-menu button list)
+cda4	g_seg_intel_buttons	u16 (segment)	Segment 51b7 (intel buttons at +0, 80 mission map positions at +0x50)
+cebc	g_campaign_file_name	char[8]	Scratch buffer for "cN.cmp"
+cecc	g_brf_step_time	i32	Timer value of the last automatic briefing step
+ced0	g_intel_campaign	CAMPAIGN far *	Campaign state being shown on the intel/practice screen
+d7e4	g_game_mode	i16	1 continue campaign, 2 main menu / new campaign, 3 practice, 6 demo/replay
+d844	g_view_mode	u8	3D view/overlay mode (0 normal, 1 map/briefing overlay, ...)
+d84e	g_viewport_full	VIEWPORT	Full-screen 3D viewport descriptor
+d86e	g_brfcam_x	i32	Briefing camera X (24.8); start of the briefing viewport/camera descriptor (+0 x, +4 y height, +8 z, +0e pitch, +12..18 screen rect)
+d872	g_brfcam_height	i32	Briefing camera height (24.8, looking straight down); shown as height/3 'Meters'
+d876	g_brfcam_z	i32	Briefing camera Z
+d88a	g_viewport_small	VIEWPORT	Third viewport descriptor initialised by brf_init_viewports
+d8ae	g_viewport_cur	VIEWPORT *	Active viewport descriptor
+ec4a	g_scene_start_time	i32	Timer snapshot taken when the briefing scene starts
+ec56	g_redraw_frames	u8	Number of frames that still need a full background redraw
+ec57	g_clock_min	u8	Mission clock minutes
+ec58	g_clock_hour	u8	Mission clock hours
+ec6c	g_cursor_y	i16	UI cursor Y (5..186)
+ec70	g_cursor_x	i16	UI cursor X (4..308)
+ec86	g_selected_group	u8	Currently selected group index (reset to 0 if not a SEAL group)
+ec87	g_group_count	u8	Number of entries in g_groups
+ec88	g_seal_group	u8	Index of the SEAL team group (0)
+ec89	g_boat_group	u8	Boat support group index (0xff none)
+ec8a	g_helo_group	u8	Helicopter group index (0xff none)
+ec8b	g_air_group	u8	Aircraft (OV-10) group index (0xff none)
+ec8c	g_insertion_group	u8	Insertion craft group index
+ec8d	g_extraction_group	u8	Extraction craft group index (same as insertion when methods match)
+ec8e	g_emergency_group	u8	Helicopter group usable for (emergency) extraction
+ec8f	g_first_mtm_group	u8	Index of the first MTM team group (0xff while spawning non-MTM groups)
+ec90	g_fire_support_group	u8	Fire-support unit group (MCI+0x72; defaults to g_emergency_group)
+ec91	g_break_contact_group	u8	Break-contact unit group (MCI+0x74)
+ec92	g_active_extraction_group	u8	Group sent by ent_order_extraction
+ec93	g_extraction_type	u8	Group type of the extraction group (4 when none) for the debriefing
+ec94	g_enemy_kia	i16	Dead VC + NVA at mission end
+ec96	g_seal_kia	i16	Dead SEALs at mission end
+ec98	g_seal_wia	i16	Wounded SEALs at mission end
+ec9c	g_split_groups	u8	Number of extra SEAL sub-groups created by ent_group_split
+eca6	g_timer	u32	Free-running timer ticks
+ecaa	g_frame_ticks	i16	Timer ticks elapsed in the last frame
+ecb9	g_area_name	char[]	Name of the mission area used in briefing sentences and Patrol Order
+ed26	g_mission_text	char far *	Loaded cYmNN.s text (24 lines x 80 bytes)
+ed2a	g_brfcam_head	i16	Head index of the briefing camera ring
+ed2c	g_brfcam_count	i16	Number of queued briefing camera waypoints
+ed32	g_mci	MCI (0x176 bytes)	Loaded cYmNN.mci mission header
+eea6	g_mtm_count	u8	Number of MTM records loaded (file size / 0x66, max 15)
+eea8	g_mission_basename	char[8]	Current mission base name "cYmNN"
+eeb8	g_mci_ptr	MCI far *	Far pointer to g_mci
+eebc	g_mission_no	i16	Current mission number 0..79 (year*20 + index)
+eebe	g_ui_focus	i8	Focused button index in the active list (-1 none)
+eebf	g_ui_pressed	u8	Focused button is pressed
+eec0	g_ui_release_count	u8	Frames left before a released button fires its key
+eec1	g_marching_key	u8	Key applied to the selected Marching Order field (Enter, Space, '+', '-')
+eec2	g_campaign	CAMPAIGN far *	Pointer to the active campaign state (0x3b0e)
+eec6	g_mission_success	u8	Set by 19ac:00b6 when the mission ended successfully
+eec9	g_brf_mode	u8	Briefing sub-mode: 0 view, 1 briefing running, 2 Patrol Order, 3 Marching Order
+eeca	g_brf_step	u8	Next briefing sentence step 0..10 (11 = finished)
+eecc	g_edit_field	u8 far *	Marching Order field currently being edited (in seg 5178)
+eed0	g_brf_done	i16	Leave the briefing screen loop
+eed2	g_menu_done	i16	Leave the main-menu loop
+eed4	g_intel_done	i16	Leave the intel screen loop
+eed6	g_intel_map_frame	void far *	Current area-map RLE frame
+eeea	g_intel_text_time	i32	Timer value of the last intel text line
+eeee	g_intel_text_line	u8	Intel text sequencer state (0-1 result comment, 2-6 lines 0-4, 7-8 done)
+eeef	g_intel_text_on	u8	Intel text auto-advance running
+eef0	g_intel_map_index	i16	Map frame index for the mission's area
+eef4	g_font_dialog	FONT far *	Font used by dialogs and text panels
+eef8	g_font_title	FONT far *	Font used by title tabs and buttons
+eefc	g_font_clipboard	FONT far *	Font used on the Patrol/Marching Order clipboards
+ef00	g_font_cur	FONT far *	Current font (set by 365e:925d)
+ef50	g_voice_channel	i16	Digital sound handle used for voice samples
+f424	g_text_flags	u8	Text output flag reset before clipboard text output

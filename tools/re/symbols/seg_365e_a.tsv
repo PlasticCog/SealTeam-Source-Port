@@ -1,0 +1,157 @@
+365e:000c	ent_weapon_init	Fill an 18-byte weapon-instance node from the weapon table: id, magazine rounds (tbl+0x0e), reloads (default 8), fire mode (prefer Semi>Single>Full>Grenade bits of tbl+0x10)
+365e:00cc	ent_unit_add_weapon	Allocate an 18-byte weapon node (and the 12-byte list header on first use) and append it to unit+0x16 weapon list; 2nd weapon also stored in header+8
+365e:01e5	ent_item_init	Fill an item/tool node (8 bytes): item id and quantity (default 8 when -1)
+365e:0217	ent_unit_add_item	Allocate an 8-byte item node and append it to the unit+0x1a item (tool) list
+365e:02e0	ent_unit_init_personnel	Personnel component setup: class<3 links roster entry+SE record and copies SE skills (roster skills override 8 weapon skills); NPC classes load vc/civ/frnd SE via cache
+365e:0459	ent_group_add_unit	Allocate a unit (4511:019e), append it to a group's member list, create its world object at (x,z) and attach components per flag bits (2 move,4 anim,1 personnel,8 AI)
+365e:05a3	ent_group_create	Allocate a group, append it to g_groups[], set type/formation/speed/orders and default ranges, attach AI (MTM record for enemy teams)
+365e:0693	ent_unit_push_back_from_objective	Move a support craft 'dist' units further away from the primary objective (bearing+180 deg) and make that its hold position
+365e:071c	ent_spawn_support_craft	Spawn a two-craft support group: 1=OV-10 pair (rockets), 0/2/4=boat pair (minigun/M60/Mk18), 8=UH-1 pair (M60/rockets); records the group index in the craft-role globals
+365e:0aa5	ent_spawn_insertion_craft	Spawn the insertion/extraction craft for method 1/2/4 (boat) or 8 (helo) at a position; sets role globals ec89/ec8a/ec8d/ec8e
+365e:0d8b	ent_spawn_seal_team	Create group 0 (SEAL team) from the 4 marching-order loadout records (5178:0000): units, 4 weapons with reloads, 2 tools each
+365e:0ea6	ent_spawn_mtm_team	Create one enemy/civilian/friendly team from a 0x66-byte MTM record (type, position, member SE ids, difficulty team-size reduction, weapons per year)
+365e:11a8	ent_spawn_hidden_grenadier	Create a hidden single-VC group at (35,35) carrying AK47+M26, stored in g_proxy_grenadier; used by 1000:5114 for scripted grenade blasts
+365e:129a	msn_build_world	Build the complete mission world from the loaded MCI/MTM: SEAL team, insertion/extraction craft, fire-support/break-contact units, MTM teams, proxy grenadier
+365e:1544	ent_group_is_passive_npc	True if group type > 4 (NVA/civilian/friendly) and group+0x22 == 0
+365e:1568	ent_group_split	Split a SEAL group: move the back half of its members into a new group (same params); returns new group index or -1
+365e:1691	ent_group_merge	Merge SEAL group b into group a (append members, fix back-pointers), free b and shrink the group table
+365e:17b1	ent_team_rejoin	Reset selected group if not SEAL and merge split SEAL sub-groups back into the team (up to two merges)
+365e:1800	ent_order_extraction	Send the extraction craft (helo group if any, else extraction group) to a position: status=3, store point at 0x0ea0, rejoin team
+365e:1875	ent_any_craft_moving	True if any boat/helo group has status (+0x24) 2 or 3 (insertion/extraction run in progress)
+365e:18c2	ent_free_world	Tear down all groups and units (weapon lists, item lists, components) in reverse order and free the NPC SE cache
+365e:1a2f	ent_group_replace_leader	If the given unit leads the group, swap in the first member that is neither dead nor flagged 0x20
+365e:1acc	stat_count_captured_enemies	Count VC/NVA units whose movement flags +0x26 have bit 0x10 (searched/captured)
+365e:1b3f	stat_count_wounded	Count units of a group type whose casualty word gives a non-zero wound score (19ac:87b8)
+365e:1bb7	stat_count_dead	Count units of a group type whose casualty flags have KIA (stats+0x0f bit 0x40)
+365e:1c2f	stat_count_dead_vc	Dead Viet Cong units (group type 4)
+365e:1c39	stat_count_dead_nva	Dead NVA units (group type 5)
+365e:1c43	stat_count_dead_civilians	Dead civilians (group type 6)
+365e:1c4d	stat_no_craft_lost	True if no boat, helo or aircraft unit was destroyed
+365e:1c83	ent_group_has_secured_member	True if any member of group index has movement flag 0x20 (secured: rescued/snatched)
+365e:1cda	ent_team_all_extracted	True if every unit of group 0 has movement flag 0x40 (aboard the extraction craft)
+365e:1d1f	msn_tally_casualties	End-of-mission tally: rejoin team, record SEAL casualty flags into roster, count enemy/SEAL dead and wounded, extraction group type
+365e:1dfb	ent_team_enemy_sighted	True if the current contact is VC/NVA or any non-leader SEAL's AI reports an enemy (4a37:289e)
+365e:1e8d	ent_mark_enemies_on_structures	Set movement flag 0x02 on every VC/NVA unit whose world tile object is of type 7, 8 or 9
+365e:1f28	brfcam_queue_push	Queue a briefing-camera waypoint (target position ptr, camera height, duration) in the 8-slot ring at 5170:0000
+365e:1fb3	brfcam_queue_remove	Remove camera waypoint slot n from the ring (keeps the last active one), advancing the head index
+365e:2023	brfcam_queue_clear	Remove all queued camera waypoints
+365e:2038	brfcam_queue_count	Return the number of queued camera waypoints
+365e:203c	brfcam_queue_skip	Drop the head waypoint if more than one is queued and it has started
+365e:2069	brfcam_queue_tick	Start the head waypoint's timer or remove it once its duration has elapsed
+365e:20d2	brfcam_update	Move the top-down briefing camera x/z halfway-per-tick toward the head waypoint and its height by +-600 per tick (snap within 0x3c00)
+365e:225b	brfcam_reset	Empty the camera queue and set the camera height
+365e:227c	msn_load_text	Load a mission text file (<name>.s or cYmNN.s built from a mission number) from str.lib; returns far pointer
+365e:2319	msn_load_seal_bio_text	Load sealNN.s (SEAL bull-session lines) for an SE index (no caller found)
+365e:237e	msn_load	Build cYmNN from g_mission_no, load cYmNN.mci (374 bytes) into 0xed32 and cYmNN.mtm (n*0x66) into g_mtm; fatal error on bad size
+365e:24bc	msn_free_mtm	Free the loaded MTM team table
+365e:24dd	ent_unit_face_objective	Turn a unit's world object to face the primary objective position (MCI+0x78)
+365e:251d	msn_check_objective	Evaluate one objective record (Patrol/Ambush/Demolition/Observe/Rescue/Snatch/Recover), mark it complete, post message and play sound
+365e:2853	msn_check_objectives	Evaluate all three MCI objective records
+365e:288a	msn_is_objective_structure	True if a world structure is the target of an objective of type >= 3 (Demolition/Observe/...)
+365e:290b	msn_is_objective_team	True if a group is the target team of any objective
+365e:2998	msn_objective_demo_weapon	Return weapon 12 (DEMO) if the objective is a Demolition, else -1
+365e:29c5	msn_find_objective_target	For objectives of a type (2/6 team, 3 structure) return the target index (with a position: the last one closer than 24000), -1 if none
+365e:2af6	ui_button_release	Mouse/keyboard helper: clear pressed state, arm 3-frame release countdown when a pressed button is released
+365e:2b25	ui_dialog_prompt	Modal dialog box: shows a prompt; Y/N mode returns 'y'/'n', text mode edits a string (max len*6 px) with blinking cursor
+365e:2eba	ui_draw_text_panel	Draw a bevelled panel (outer/inner frame, fill) optionally containing a text string
+365e:2fb7	ui_draw_title_tab	Draw a screen title tab: centered caption box with double side rules
+365e:30ed	ui_cursor_move	Move the UI cursor by dx,dy clamped to x 4..308, y 5..186
+365e:3180	ui_screen_transition	Optional 0x180-tick wait with music fade, clear screen 1-2 times, load and apply palette n (1959 palette table)
+365e:324a	ui_button_press	Mark the focused button pressed (returns true on the first press)
+365e:327a	ui_cursor_to_button	Warp the cursor to a button (x+w/2, y+h-4) and reset press state
+365e:32ba	ui_draw_buttons	Draw a 16-byte button list with labels (normal, focused/pressed, framed, disabled hatching, hot-key underline)
+365e:3637	ui_button_hit_test	Return index of the enabled clickable button under the cursor (or current focus while releasing), -1 if none
+365e:36c3	ui_draw_button_labels	Draw only the labels of a button list (no caller found)
+365e:3712	ui_pointer_update	Move cursor by (dx,dy), hit-test a button list, update focus; returns true when a pressed button was left
+365e:3760	cmp_slot_used	Return used flag of campaign save slot 0..7 (s.cnf)
+365e:3781	cmp_last_slot	Return last used campaign slot index (s.cnf +3, -1 none)
+365e:378b	cmp_state_init	Initialise the campaign state header (slot, year=0, mission=0, won=1, point man, score=0, nickname empty)
+365e:37be	cmp_state_reset_for_mode	Point g_campaign at 0x3b0e and initialise it for the current game mode (continue/new/practice/demo)
+365e:384f	roster_load_seal_se	Load sealNN.se for SE index 0..47 (allocating) and return far pointer
+365e:38b5	npc_se_cache_clear	Forget the 31-entry NPC SE cache (no free)
+365e:38db	npc_se_cache_free	Free all 31 cached NPC SE records
+365e:391e	npc_se_load	Return cached SE for NPC index: 0-20 vcNN, 21 civ01, 22-30 frndNN (others vc01); loads on first use
+365e:3a55	cmp_load	Load cN.cmp: campaign header (0x14c) into 0x3b0e and rebuild the roster (0x18-byte records + SE files)
+365e:3b9b	cmp_load_autosave	Load c8.cmp keeping the current slot number
+365e:3bc4	cmp_save	Write cN.cmp (header + roster records) and mark slot used
+365e:3cf0	cmp_save_autosave	Write c8.cmp keeping the current slot number
+365e:3d19	cmp_set_last_slot	Set s.cnf last-slot and write s.cnf
+365e:3d2f	cmp_delete_slot	Clear a slot's used flag, pick another last-slot, write s.cnf
+365e:3d99	roster_new	Clear roster and create 24 entries from SE base 0 or 24; entries 18-23 flagged as reserve recruits
+365e:3e14	roster_free	Free all roster entries and their SE records
+365e:3e9c	roster_entry_init	Initialise a 0x18-byte roster entry from sealNN.se (id, rank, 8 weapon skills)
+365e:3efc	roster_add	Allocate and append a roster entry for an SE index (max 40)
+365e:3f71	roster_find	Find the roster entry with a given SE id
+365e:3fae	cmp_mission_won	Mission counts as won when g_mission_success and score > 0
+365e:3fd0	cmp_record_mission	Add score, write point-man history entry, update best score, advance to next mission via flow table, end campaign on death/11 KIA/end of 1969
+365e:4124	roster_pick_default_member	Pick a default team member: OIC from base+9 (rank>7 required), Corpsman from base+7, Rear random base+0..2; skips busy entries
+365e:41e0	loadout_fix_weapon_for_year	Make a weapon legal for the campaign year: -1 stays -1, else the smallest available id >= w, else the largest available id < w
+365e:422f	loadout_build_member	Build loadout record for team slot from a roster SE (weapons, reloads, tools) with objective-driven defaults (DEMO, PHK, M18, M39)
+365e:45a8	loadout_build_team	Build the 4 default loadout records (point man + 3 picks) and terminate the list
+365e:45f4	loadout_release_team	Clear in-team flag of all 4 team members and blank the loadout slots
+365e:4643	ui_confirm_load_campaign	'Load Campaign "<name>" ?  (Y/N)' dialog
+365e:4702	ui_confirm_replace_campaign	'Replace Campaign "<name>" ?  (Y/N)' dialog
+365e:47c2	ui_confirm_end_mission	'End Your Mission?  (Y/N)' dialog
+365e:481f	ui_confirm_exit_dos	'Exit To DOS?  (Y/N)' dialog
+365e:487b	cfg_save_s_cnf	Write s.cnf (0xe8 bytes from 5178:0060)
+365e:4897	cfg_load_s_cnf	Read s.cnf into 5178:0060 (last slot -1 when missing)
+365e:48f1	cfg_load_difficulty	Read st1.dfr (8 difficulty words) into 5178:0148
+365e:4918	cfg_save_s_rst	Write s.rst (0x55 bytes of 5178:0000 team loadout area) (not referenced)
+365e:4984	roster_add_awards	OR award bits into roster+4 and, for the point man, into the current history entry +0x30
+365e:49c9	roster_set_rank	Set rank (1 promoted to 2) in SE+0x61, roster+3 and point-man history +0x34
+365e:4a32	roster_clear_wounded	Clear roster wounded-this-mission bit (0x02) of every entry
+365e:4a61	roster_record_casualty	OR casualty flags into roster+8; KIA sets dead bit 0x08, other wounds set 0x02; point man history +0x32
+365e:4ada	roster_count_kia	Count roster entries with KIA flag (roster+8 bit 0x4000)
+365e:4b16	roster_skill_rating	Average of the 8 weapon skills (roster+0x0a..0x11) >> 3
+365e:4b57	loadout_next_weapon	Cycle weapon id up/down to the next one allowed in the year mask for a slot class (1 guns/demo, 2 throwables, 3+ any)
+365e:4c1d	roster_activate_recruit	Clear flags of the first reserve recruit (flag 0x04) in the current pool and return its index (no caller found)
+365e:4c7a	brf_enter_main	Switch briefing screen to the 3D briefing view: palette pal2, brf.pic, focus Next button, label Next
+365e:4cca	brf_load_camp_sprites	Load the 'camp' RLE sprite set (348e:15f0) used as briefing-screen backdrop
+365e:4cea	brf_enter_clipboard	Switch briefing screen to a clipboard (palette so, pwo.pic), label 'Exit' with hot key e
+365e:4d4b	brf_reset_view	Return to briefing view, stop auto briefing, reset leader range and focus
+365e:4d82	brf_leave	Remember point-man weapon choice (loadout slots A/B) in campaign +0x14a and unload the 'camp' sprite set
+365e:4dbc	str_concat2	dst = a + b (strcpy then strcat, far pointers)
+365e:4e11	brf_step	Show the next mission-briefing sentence(s) in the text bar (11 steps: welcome, area, objectives, insertion, route, extraction, support, enemy) and queue a camera move
+365e:5437	brf_auto_step	Advance the auto briefing every 0x600 timer ticks
+365e:5485	brf_start	Start the mission-briefing sequence from step 0 (sound, clear message and camera queues)
+365e:54bd	brf_screen	Mission Briefing screen: load mission, build world, run briefing/Patrol Order/Marching Order loop; returns 0 quit, 1 back, 2 next
+365e:57bd	brf_draw_overlay	Draw the camera altitude read-out (height/3 'Meters') while briefing, the title tab, and update the briefing camera
+365e:583c	brf_draw_patrol_order	Draw the Patrol Order clipboard (date/time, objectives, craft, weather, tide, terrain, enemy strength)
+365e:5cee	loadout_compute_weight	Add weapon, magazine and tool weights of a loadout record into a SEAL's load total
+365e:5dde	brf_draw_weapon_slot	Draw one weapon slot: name, magazine x reloads or 'Empty Weapon Slot', highlighted when being edited
+365e:5fc1	brf_draw_tool_slot	Draw one tool slot: short/long tool name or 'Empty Tool Slot'
+365e:60d2	brf_draw_marching_order	Draw the Marching Order clipboard: 4 members with rank/name, STR rating, load, weapon and tool slots
+365e:6674	brf_draw_buttons	Draw the briefing-screen button list (518e:0000)
+365e:6689	brf_handle_input	Briefing view input: b start briefing, p Patrol Order, m Marching Order, n/Enter Next, Esc back, F10 options, Alt-X quit
+365e:68d7	roster_cycle_member	Cycle to the next/previous free roster entry in the current pool for a team slot
+365e:6979	loadout_edit_field	Apply Enter/Space/+/- to a Marching Order field (member, weapon, reloads, tool)
+365e:6bd3	brf_marching_input	Marching Order input: cursor/arrows, Enter/Space/+/- edit, Exit/Esc back
+365e:6d4e	brf_init_viewports	Initialise the three 3D viewport/camera descriptors (0xd84e, 0xd86e top-down briefing window, 0xd88a) and make 0xd84e active
+365e:6dc4	brf_init_scene	Prepare the briefing 3D scene: timer snapshot, attach view to the SEAL leader, reset view, load 'camp' sprites, view parameters
+365e:6e0c	brf_render	Render the briefing screen for the current sub-mode (3D view, clipboard, buttons)
+365e:6fe6	menu_load_background	Load mainm.pic
+365e:6ff1	menu_enter	Main menu setup: background, disable Continue when no campaign slot, focus Practice Mission
+365e:7032	menu_draw_title	Draw ' Main Menu  ' title tab
+365e:7048	menu_draw_buttons	Draw the 3 main-menu buttons (51b3:0000)
+365e:705d	menu_render	Render one main-menu frame
+365e:70a3	menu_handle_input	Main-menu keys: c Continue (mode 1), s Start (mode 2), p Practice (mode 3), F10 options, Alt-X quit
+365e:71d3	menu_run	Main menu loop (palette sm); returns 0 to quit
+365e:7290	intel_load_background	Load intel.pic and the 'map' RLE sprite set; select the map frame of the mission's region
+365e:72cb	intel_enter	Intel screen setup: background, focus Next, enable year/date buttons in practice, load cYmNN.s text
+365e:7331	intel_leave	Free the mission text and the 'map' sprite set
+365e:7375	intel_next_text_line	Show the next non-empty intel text line (previous-result comment lines 5-8, then lines 0-4)
+365e:7467	intel_text_tick	Advance intel text every 0x800 timer ticks
+365e:74b5	intel_text_restart	Restart the intel text sequence
+365e:74e8	intel_screen	Intel Briefing / Practice Mission screen loop; returns 0 quit, 1 back, 2 next
+365e:76c8	intel_draw_calendar	Draw title, date (month day, year) calendar box and 'Mission:' type
+365e:785e	intel_draw_buttons	Draw intel-screen buttons (51b7:0000)
+365e:7873	intel_draw_mission_markers	Draw mission location markers on the area map (all missions of the year in practice, blinking current)
+365e:78f7	intel_draw_mission_markers_part	Mid-function fragment of intel_draw_mission_markers (not a real entry point)
+365e:791f	intel_draw_current_marker_part	Tail fragment of intel_draw_mission_markers drawing the current marker (not a real entry point)
+365e:798a	intel_render	Render the intel screen: area map zoom-in, mission markers, calendar, buttons
+365e:7b3e	intel_handle_input	Intel/practice input: 1/2 change year, d/f change date (practice), Space next text, n Next, Esc back
+365e:7e14	voice_free	Free the two loaded recruit-screen voice samples
+365e:7e5a	voice_load	Load newNa.voc and newNb.voc (N = year+1) when a digital sound driver is present
+365e:7efe	voice_play	Start playing voice sample A
+365e:7f54	voice_stop	Stop voice playback
+365e:7f74	voice_tick	Advance voice timer; when sample A finishes start sample B
