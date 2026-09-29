@@ -1,0 +1,11 @@
+1959:0002	sys_fatal_msg	Print '\n' + message + '\n' through DOS (2255:10DE) and exit(0); used for the startup requirement failures
+1959:007b	sys_check_hardware	Startup checks and low-level init: free EMS >= 944000 bytes, VGA present, INT 24h hook, save video mode, enter mode 6 (VGA 320x200x256 planar), init heaps and EMS, far heap >= 243000 bytes, detect joystick/mouse
+1959:0136	pal_apply	If palette slot n (far ptr at DS:D79C+n*4) is loaded, upload its 256 RGB triplets to the DAC (after vertical retrace) and make it the current palette (DS:0130)
+1959:0177	pal_free	n == -1: free the current palette (DS:0130) and clear it; else free palette slot n and clear the slot
+1959:01d5	pal_load	Free the current palette, then load '<name>.pal' (name = table DS:0102[n]) from the libraries into slot n and make it current
+1959:0265	sys_load_resources	Open the 41 EALIB libraries, clear the screen, load/apply pal2.pal, load remap2-5.bin and the sky/ground gradients (256-colour only), then initialise fonts, cursors, 3D engine, sound/music, difficulty file, joystick calibration and sprite banks
+1959:041d	sys_nop_pascal	Empty far procedure that pops 4 bytes of arguments (unused stub)
+1959:0420	sys_shutdown_subsystems	Shut down front-end, sprites, palette fade, 3D engine, game timer, sound, mouse, fonts, video pages and EMS
+1959:0453	sys_shutdown_and_exit	sys_shutdown_subsystems then fatal_exit (restore text video mode, free DOS memory, exit with g_exit_code)
+1959:045f	sys_fatal_error	Emergency exit: release EMS, unhook INT 24h, stop shake/timer/sound/mouse, restore video, free memory, print the message in BX (if any) and exit(1)
+1959:04aa	sys_print_usage	Print the version/copyright banner, the three hardware requirement lines and the command line help ('st [?] [h] [d] [t]')

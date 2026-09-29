@@ -1,0 +1,41 @@
+18c0:0010	crt_chkstk	MSC __chkstk: reserve AX bytes of stack; on overflow (below STKHQQ DS:0046) jump to the DS:0042 hook or _amsg_exit(0) 'stack overflow'
+18c0:0034	crt_astart	Program entry (_astart): require DOS>=2, set SS=DS=DGROUP (0x56bf), shrink the PSP block (INT 21h 4Ah), zero _BSS 0xCEAC-0xF720, run init hook, _setargv, install INT 0 handler, call main(argc,argv,envp), exit(result)
+18c0:00d2	crt_int0_handler	(not in Ghidra function list) INT 0 divide-error handler: reload DS, AX=3 (R6003 'integer divide by 0'), set exit hook and fall into _amsg_exit
+18c0:00e2	crt_amsg_exit	_amsg_exit(AX=msg no.): print run-time error banner + message to stderr, call optional hook, terminate with code 255
+18c0:0106	crt_cinit_int0	Save the INT 0 vector (DS:004E/0050) and install the divide-error handler at 18c0:00D2
+18c0:0120	crt_exit	exit(status): run terminator tables (empty here), null-pointer-assignment check (sets status 255 on failure), restore INT 0, INT 21h 4Ch
+18c0:0191	crt_ctermsub	Restore the saved INT 0 vector (near)
+18c0:019d	crt_initterm	Call every non-NULL far function pointer in [SI,DI) walking backwards (near)
+18c0:01b0	crt_ff_msgbanner	_FF_MSGBANNER: write run-time messages 0xFC (CR/LF) and 0xFF ('run-time error ') to stderr
+18c0:01d0	crt_aFlshr	__aFlshr: signed 32-bit shift right DX:AX by CL (register convention)
+18c0:020a	crt_aFlshl	__aFlshl: 32-bit shift left DX:AX by CL (register convention)
+18c0:0242	crt_setargv	_setargv: split the PSP command tail (PSP:0081) on blanks/tabs into argv[] on the stack; argc->DS:0075, argv->DS:0077 (argv[0] from DS:007B)
+18c0:02f6	crt_nullcheck	_nullcheck: XOR of DGROUP bytes 0..0x41 must equal 0x55, else print R6001 'null pointer assignment' and return 1
+18c0:031a	crt_nmsg_text	__NMSG_TEXT(n): look up run-time message n in the table at DS:CE02 (pascal)
+18c0:0345	crt_nmsg_write	__NMSG_WRITE(n): write run-time message n to stderr with INT 21h 40h (pascal)
+18c0:037c	crt_int86	int86(intno, inregs*, outregs*): build an INT n / RETF stub on the stack (INT 25h/26h pop flags), load AX..DI, call it, store registers and cflag
+18c0:0404	crt_dosret0	__dosret0 tail: return 0 on success (CF clear) else map the DOS error and return it
+18c0:0411	crt_dosretax_long	__dosret tail for long results: on CF set errno and return -1L, else return DX:AX
+18c0:041e	crt_dosmaperr_al	Map DOS error AL (AH=0) via crt_dosmaperr
+18c0:0424	crt_dosmaperr	__dosmaperr: store _doserrno (DS:005D) and translate to errno (DS:0052) via the table at DS:CC36 (near)
+18c0:0452	crt_tolower_macro	(not in Ghidra function list) _tolower-style helper: return c + 0x20 unconditionally
+18c0:045e	crt_tolower	tolower(c): add 0x20 if _ctype[c] (DS:CC4B) has the upper-case bit
+18c0:0474	crt_free_thunk	Far jump thunk to crt_nfree
+18c0:047a	crt_nfree	_nfree: mark near-heap block free (set bit0 of its header) and move the rover back if needed
+18c0:049b	crt_nmalloc	_nmalloc(size<=0xFFE8): search the near heap, grow it once and retry; returns NULL (DX:AX=0) on failure
+18c0:04c4	crt_heap_search	Near-heap first-fit search with free-block coalescing; CF=1 if no block (near)
+18c0:0540	crt_heap_grow	Grow the near heap by extending DGROUP (_amblksiz granularity) (near)
+18c0:05cc	crt_heap_growseg	Resize the DOS memory block (INT 21h 4Ah) to extend a heap segment (near)
+18c0:061d	crt_heap_findlast	Find the last block of the near heap (near)
+18c0:063e	crt_filelength	filelength(fd): lseek to end and back; returns long length or -1
+18c0:06c4	crt_lseek	lseek(fd, long off, whence) via INT 21h 42h (checks handle < _nfile)
+18c0:073e	crt_memmove	memmove(dst, src, n) for DS-relative pointers (handles overlap by copying backwards)
+18c0:0786	crt_isalpha	(not in Ghidra function list) isalpha: _ctype mask 3; entry points 078B isupper(1), 0790 islower(2), 0795 isdigit(4), 079A isxdigit(0x80), 079F isspace(8), 07A4 ispunct(0x10)
+18c0:07a9	crt_isalnum	isalnum(c): _ctype mask 7; shared tail with 07AE isprint(0x57), 07B3 isgraph(0x17), 07B8 iscntrl(0x20)
+18c0:07c8	crt_dos_allocmem	_dos_allocmem(paras, seg*): INT 21h 48h
+18c0:07e0	crt_aFlshl_assign	(not in Ghidra function list) Shift the long at *p left by n (pascal: p, n)
+18c0:07fe	crt_aFlrem	__aFlrem: signed 32-bit remainder (pascal, pops 8 bytes)
+18c0:089e	crt_dos_freemem	_dos_freemem(seg): INT 21h 49h
+18c0:08ac	crt_aFlmul	__aFlmul: 32-bit multiply (pascal, pops 8 bytes)
+18c0:08de	crt_aFulshr	__aFulshr: unsigned 32-bit shift right DX:AX by CL
+18c0:08ea	crt_aFldiv	__aFldiv: signed 32-bit divide (pascal, pops 8 bytes)

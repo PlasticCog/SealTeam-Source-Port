@@ -1,0 +1,202 @@
+00e1	g_str_newline_a	char[2]	"\n" used as the start of sys_fatal_msg's buffer (word copy)
+00e3	g_str_newline_b	char[2]	"\n" appended after the fatal message
+00e6	g_remap_current	uint8_t far *	Current colour remap table (initially = remap2; switched to DS:00F2/00F6 while drawing burning flares)
+00ea	g_remap_tables	uint8_t far *[4]	remap2..remap5.bin (256-colour mode only)
+00fa	g_grad_sky	uint8_t far *	gradsky1.bin: sky colour gradient indexed by row offset (values clamped to 0x80..0x9F)
+00fe	g_grad_ground	uint8_t far *	gradgrn1.bin: ground colour gradient (values clamped to 0x20..0x5F); [0xB6] = map background colour
+0102	g_palette_names	char *[17]	Palette base names: pal2, paln, pals, st, se, sm, sn, sl, si, sb, so, c0..c5 (index = palette number)
+0126	g_remap_names	char *[5]	remap2, remap3, remap4, remap5, "" (loaded as '<name>.bin')
+0130	g_cur_palette	uint8_t far *	Currently loaded palette (768 bytes RGB 0..63)
+0134	g_str_pal_ext	char[]	".pal"
+0139	g_str_no_libs	char[]	"Couldn't init libraries" (passed to fatal_exit, never printed)
+0151	g_str_bin_ext	char[]	".bin"
+0156	g_str_gradsky	char[]	"gradsky1.bin"
+0163	g_str_gradgrn	char[]	"gradgrn1.bin"
+022c	g_title_enabled	uint8_t	1 = run the EA logo/title sequence once at startup (cleared by the 't' option and after it ran); initial 1
+022d	g_campaign_flag_22d	uint8_t	Set to 1 after a campaign debriefing, 0 when the campaign step-1 screen (365E:9AA6) returns "back"; read by 365E:9AA6
+022e	g_str_credits	char[]	"c" = credits text resource shown on the title screen (10 pages of 2 x 80 chars)
+023a	g_extracting	uint8_t	1 once extraction has started (disables F1/F2/F9/F10 view changes); reset at mission start
+02ac	g_tool_line_forced	uint8_t	Keep the tool/grenade HUD line visible (set/cleared by the input code)
+02b2	g_mis_timer_2b2	int32_t	Mission timer initialised to g_time at mission start (used by other modules)
+02b6	g_mis_timer_2b6	int32_t	Mission timer initialised to g_time at mission start (used by other modules)
+02ba	g_enemy_ai_enabled	uint8_t	1 = run the 1.25 s enemy AI update (4A37:175C); set to 1 at mission start
+02bb	g_target_structures	uint8_t	1 = auto-target also considers targetable structures (cover byte 100); initial 1
+02bc	g_compass_enabled	uint8_t	1 = draw the compass tape; initial 1
+02be	g_detail_level	uint8_t	Detail level 0..5 (displayed +1, Alt-D); gates sky gradient rows, scenery and sprites; initial 5
+02c1	g_auto_target	uint8_t	Auto-target on/off (Alt-U toggles, messages 'Auto-Target On/Off'); initial 1
+0514	g_team_msg_ptr	void far *	Non-NULL while the 'Team x: order' HUD line is shown
+051a	g_team_msg_team	int16_t	Fire team number shown as 'a'+n in the team order line
+051c	g_team_msg_order	int16_t	Order shown in the team order line (-1 none; <4 -> fire order string 11+n, else 27+n of DS:1BDE)
+051e	g_radio_damaged	uint8_t	1 while the point man's radio is damaged
+0520	g_radio_repair_time	int32_t	g_time when the radio is repaired (damage time + 0x1E00)
+0530	g_sky_grad_ofs	int16_t	Sky gradient base index (0 night, 0x80 day/dusk, dawn: (hour-4)*32+min/2, +1 per 0xF00 ticks)
+0532	g_ground_grad_ofs	int16_t	Ground gradient base index (same rules as g_sky_grad_ofs)
+0534	g_reticle_x	int16_t	Screen x of the current target (projected each frame)
+0536	g_reticle_y	int16_t	Screen y of the current target
+0538	g_target_cam_team	void far *	Team followed by the target camera (view mode 0xD): team of the last targeted unit
+053c	g_enemy_view_idx	int16_t	Enemy team offset for the F10 view (team DS:EC8F+n); -1 at mission start
+053e	g_view_team	uint16_t	Index (in g_teams) of the team whose leader the camera/3D listener follows
+0540	g_range_colors	uint8_t[4]	Target diamond colours by range band: E0, 0E, 0F, 14
+0544	g_str_meters	char[]	" m" appended to the target range
+0547	g_str_objective	char[]	" Objective" target tag (also at 0558)
+0552	g_str_team_b	char[]	" b" fire-team suffix (0555 = " a")
+0563	g_str_demo	char[]	"DEMO: " demolition countdown prefix
+0586	g_str_reloading	char[]	"Reloading "
+0596	g_str_detail	char[]	"Detail Level: "
+05a5	g_pic_names	char[]	Picture base names used by pic_load: mapscr, title, brf, pwo, mainm, intel, load, new, new2, new3, new4, debrf, cm0..cm5, ea (05A5..05FB)
+05ff	g_str_pic_ext	char[]	".pic"
+0604	g_str_insertion_banner	char[]	" Insertion  " (0611: "Esc to skip  -  R to Reinsert")
+062f	g_str_extraction_banner	char[]	" Extraction  "
+063d	g_str_view_buf_small	char[]	"View Buffer Too Small" (3D render result 1 -> fatal)
+0653	g_str_obj_list_small	char[]	"Object List Too Small" (3D render result 2 -> fatal)
+0669	g_str_please_wait	char[]	"One Moment Please ..."
+069a	g_str_joy_prompts	char[]	Joystick calibration prompts (067F, 069A, 06BA, 06DD, 06EF, 0716 'JOYSTICK CALIBRATION', 072C 'Esc to Turn Off the Joystick.')
+07a4	g_flat_ground_color	uint8_t	Flat ground colour recorded at detail < 2 (0xFF = none)
+07a5	g_flat_sky_color	uint8_t	Flat sky colour recorded at detail < 2 (0xFF = none); tracked by the palette fader
+088c	g_mis_timer_88c	int32_t	Mission timer initialised to g_time at mission start (used by other modules)
+0890	g_mis_timer_890	int32_t	Mission timer initialised to g_time at mission start
+0894	g_mis_timer_894	int32_t	Mission timer initialised to g_time at mission start
+0898	g_contact_until	int32_t	Combat music/alert: g_time until which the team counts as in contact (music mood 2)
+0a6e	g_mis_timer_a6e	int32_t	Mission timer initialised to g_time at mission start
+0a72	g_mis_timer_a72	int32_t	Mission timer initialised to g_time at mission start
+0aea	g_mis_timer_aea	int32_t	Mission timer initialised to g_time at mission start
+0e94	g_objective_pos	int32_t[3]	Mission objective position (x, y, z; 24.8 fixed) used for the compass marker and initial bearing
+0ea0	g_reinsert_pos_x	int32_t	x of the insertion/reinsertion point (camera for view mode 0xC and extraction orbit)
+0ea8	g_reinsert_pos_z	int32_t	z of the insertion/reinsertion point
+0f90	g_toggle_alt_i	uint8_t	Flag toggled by Alt-I (used by the input/map code)
+12e2	g_teams	void far *[]	NULL-terminated table of team records; [0] = SEAL team (member list starts with the point man)
+134a	g_phantom_unit	void far *	Invisible unit used to fire explosion/flare weapons at arbitrary positions
+1b84	g_str_version	char *	-> "SEAL Team  V1.0" (1B86/1B88 editor version strings unused here)
+1b8a	g_str_req_conv	char *	-> "Requires 600000 bytes of conventional memory.\n"
+1b8c	g_str_req_ems	char *	-> "Requires 976000 bytes of EMS memory."
+1b8e	g_str_req_vga	char *	-> "Requires VGA graphics."
+1bde	g_order_names	char *[]	Order/command names (" In Field of Fire", " Fire at Target", ... " Halt", " Search", ...) indexed by order id
+1c7c	g_team_type_names	char *[19]	SEAL Team, Boat Support Unit, Seawolf Helicopter, Bronco Aircraft, Viet Cong, NV Army, Civilian, Friendly, then role names
+1ca2	g_fire_mode_names	char *[8]	Dud, Single, Semi, Full, Grenade, Throw, Buckshot, Halt (index = bit position+1 of the fire mode)
+1cb0	g_hand_signal_names	char *[16]	Halt, Danger, Enemy, Trap, Under Fire, Objective, Search, Secure, Column, In-Line, VeeWedge, Diamond, Cease, At Will, Field, Target
+1cd0	g_world_names	char *[33]	World file base names mekong1..camp5 (index = mission world number; >27 = camp worlds)
+1d84	g_compass_labels	char *[12]	" N ", " 30", " 60", " E ", "120", "150", " S ", "210", "240", " W ", "300", "330"
+25ee	g_timer_installed	uint8_t	1 while the 256 Hz game timer callback is registered
+2670	g_projectiles	void far *[32]	Projectile records (entity blocks from 4511:0763(2)); a NULL is written at 26F0 after the last slot
+26f4	g_world_objects	void far *[524]	World object records (14 bytes each), NULL terminated; count in g_world_object_count
+2f28	g_aim_marker	void far *	3D instance of the single aim marker
+2f2c	g_pool_ground_fx	void far *[16]	Unit ground-effect instances used by fx_unit_ground_fx (NULL at 2F6C)
+2f70	g_pool_flash	void far *[8]	Muzzle flash instances (NULL at 2F90)
+2f94	g_pool_team_marker	void far *[4]	Team marker instances (NULL at 2FA4)
+2fa8	g_probe_object	void far *	Invisible 3D instance used for collision/ground probes
+2fac	g_unit_markers	void far *[4]	Unit marker instances
+2fbc	g_pool_vegetation	void far *[80]	Camera-scatter vegetation instances (NULL at 30FC)
+3100	g_pool_trees	void far *[8]	Distant tree wrappers (NULL at 3120)
+3124	g_muzzle_height	int32_t[4]	Muzzle height by soldier posture (12, 7, 0, 0)
+3134	g_posture_pitch	int16_t[4]	Initial projectile pitch by posture (stride 4 bytes: 8, 8, 16, 1)
+31ba	g_spare_objects	void far *[126]	Extra world-object wrappers used for ground cover (NULL at 33B2)
+33b6	g_demo_explode_time	int32_t	g_time when the planted demolition charge explodes (HUD 'DEMO: ss')
+348b	g_hand_signal_gfx	uint8_t	1 = hand signals shown as animated icons/pictures (loads 'hnds'); initial 1
+348c	g_veg_scatter_pattern	int16_t[49][2]	Camera-relative (x,z) offsets for vegetation sprites
+3550	g_tree_pattern	int16_t[4][2]	Camera-relative offsets for distant trees
+3560	g_ground_cover_pattern	int16_t[98][2]	Offsets around the point man for ground cover (first 49 used below detail 5)
+36e8	g_signal_icon_frames	int16_t[]	First animation frame per hand-signal icon (frame count = next - this)
+3716	g_msg_queue	struct msg[8]	Message ring buffer, 0x52 bytes per entry (see docs/re/seg_1000.md)
+39a6	g_msg_enabled	uint8_t	Messages accepted by msg_queue_add (set by msg_queue_reset)
+45cc	g_digital_sfx	uint8_t	Digital sound effects on (cleared by the 'd' option); initial 1
+45ce	g_music_state	uint8_t	Music driver state; 2 = no music (mood changes and end music disabled)
+4687	g_pal_fade_level	int16_t	Palette fade level (music mood is not changed while non-zero)
+48fe	g_weapon_table	struct weapon[34]	Weapon definitions, 0x22 bytes each (short name, long name, class, ..., ranges +8/+A/+C, fire modes +0x10, noise +0x16, reload +0x1E)
+4f94	g_screen_rect	int16_t[4]	Full screen rectangle {0,0,320,200}
+5074	g_text_color	uint16_t	Text colour word for 4DCF:000E (0xFF0F = colour 15, transparent background)
+cf60	g_ems_mode	uint8_t	Set to 4 when more than 16 KB of EMS is free after initialisation
+d79a	g_flare_remap	uint8_t	1 while drawing a burning flare/illumination sprite (selects remap table)
+d79c	g_palette_slots	uint8_t far *[17]	Per-number loaded palette pointers (only the current one stays valid)
+d7e4	g_game_mode	int16_t	Top-level mode: 1 campaign in progress, 2 main menu / new campaign, 3 practice mission, 6 single mission from the command line
+d7ea	g_mis_done	uint8_t	Mission loop exit request (extraction finished or mission aborted)
+d7eb	g_quit_game	uint8_t	Set when Alt-X quit was confirmed during a mission; returned by mis_run
+d7ec	g_mis_freeze	uint8_t	When set the mission loop skips input and world updates (never set here)
+d7ed	g_tc_state	uint8_t	Time compression: 0 off, 3 = render last frame, 2 = copy, 1 = compressed (g_time += 0x80 per frame)
+d7ee	g_extraction_end	int32_t	g_time at which the extraction ends the mission (0 = not started)
+d7f2	g_insertion_clear_time	int32_t	g_time at which the insertion craft leaves (start + 0xA00)
+d7f6	g_skip_present	uint8_t	Set after the pause dialog: skip one present in the mission loop
+d7f8	g_t_ai_125	int32_t	Last run of the 1.25 s update (enemy AI, music, alerts)
+d7fc	g_t_ai_025	int32_t	Last run of the 0.25 s unit update (19AC:8556)
+d800	g_t_4s	int32_t	Last run of the 4 s update (noise, 19AC:89C3, 365E:2853)
+d804	g_t_9s	int32_t	Last run of the 9 s scenery refresh
+d808	g_alert_until	int32_t	g_time until which the team is alerted (enemy sighted + 0x1400; music mood 1)
+d80c	g_los_calls	int16_t	Number of wld_los_cover calls this frame (reset every frame)
+d80e	g_mis_timer_d80e	int32_t	Mission timer initialised to g_time at mission start (used by the hotkey code)
+d820	g_cursor_mode	uint8_t	Pointer/input mode: 0 in-mission 3D views, 2 map views (1 and 0xC), 1 front-end screens
+d832	g_joystick_present	uint8_t	Joystick detected (cleared if calibration is aborted)
+d833	g_mouse_present	uint8_t	Mouse detected
+d83c	g_joy_min_x	int16_t	Calibrated joystick x at the upper-left corner (D83E max x, D840 min y, D812 max y)
+d842	g_orbit_angle	int16_t	Camera angle for view modes 5/6 (chosen via 2255:6205 when the view is entered)
+d844	g_view_mode	uint8_t	In-mission view mode (0 eyes, 1 map, 2 chase, 3/4/0xF/0x10 support craft, 5/6 craft, 7 insertion, 8 extraction, 0xC reinsert map, 0xD target, 0xE enemy, 0x11/0x12 other team)
+d846	g_orbit_dist_craft	int32_t	Camera distance for view modes 5/6 (0xC0)
+d84a	g_hud_weapon_until	int32_t	Show the primary weapon line until this time
+d84e	g_cam_main	struct camera	Main 3D camera, 0x1C bytes: rect (0,8,320,171)
+d852	g_cam_main_height	int32_t	Eye height of the main camera (field +4)
+d86a	g_hud_tool_until	int32_t	Show the tool/grenade line until this time
+d86e	g_cam_map	struct camera	Map camera: rect (8,10,204,155), height 1000<<8, pitch -90*8
+d880	g_map_clip	int16_t[4]	Clip rectangle used while drawing the map overlays (set by the map code)
+d88a	g_cam_small	struct camera	Small 3D camera: rect (0,24,320,139) for chase and remote views
+d8a6	g_reload_until	int32_t	Primary weapon reload end time ('Reloading' line; ammo shows 0)
+d8aa	g_hud_timer_d8aa	int32_t	HUD timer cleared at mission start
+d8ae	g_cur_camera	struct camera *	Current camera (DS offset of D84E, D86E or D88A)
+d8b0	g_hud_timer_d8b0	int32_t	HUD timer cleared at mission start
+d8b4	g_orbit_dist	int32_t	Orbit distance for insertion/extraction cameras (0x264 insertion, 0x120 extraction, 0xC0 normal)
+d8b8	g_orbit_heading	int16_t	Orbit bearing for insertion/extraction cameras
+d8ba	g_hud_detail_until	int32_t	Show 'Detail Level: n' until this time
+d8be	g_render_list	struct	Object/view buffer passed to the 3D renderer (2255:3090)
+ec46	g_hud_item_until	int32_t	Show the current item line until this time
+ec4a	g_t_dawn	int32_t	Last dawn gradient brightening step (every 0xF00 ticks)
+ec4e	g_t_minute	int32_t	g_time of the last time-of-day minute step
+ec52	g_prev_view_mode	uint8_t	3D view mode (0 or 2) to return to after the map
+ec54	g_render_result	uint16_t	Last 3D render status (1/2 = buffer overflow -> fatal)
+ec56	g_full_redraw	uint8_t	Number of frames that still need a full-screen redraw (set to 2 on view changes)
+ec57	g_tod_minute	int8_t	Time of day: minute
+ec58	g_tod_hour	int8_t	Time of day: hour
+ec59	g_tod_second	int8_t	Time of day: second = (g_time>>8) mod 60
+ec60	g_mis_counters	int16_t[3]	Cleared at mission start (EC60, EC62, EC64)
+ec72	g_tex_jungle	void far *	Jungle.RLE texture
+ec76	g_tex_bush	void far *	Bush.RLE texture
+ec7a	g_tex_impact	void far *	impcf1r1.RLE impact sprite
+ec7e	g_tex_grass	void far *	Grass.RLE texture
+ec86	g_map_sel_team	uint8_t	Team selected on the map screen
+ec87	g_team_count	uint8_t	Number of teams in g_teams
+ec88	g_seal_team	uint8_t	Index of the SEAL team (0)
+ec8c	g_support_team	uint8_t	Index of the first support craft team (views F3-F6 use ec8c+0..3)
+ec8d	g_craft_team	uint8_t	Index of the insertion craft team
+ec8f	g_first_enemy_team	uint8_t	Index of the first non-friendly team (teams below it are SEALs/support)
+ec92	g_extract_craft_team	uint8_t	Team followed by the insertion/extraction camera (mode 8)
+ec94	g_mis_counter_ec94	int16_t	Mission counter written by 365E:1DB4; wld_objective_done treats flagged objects as done when it is > 4
+ec9c	g_extra_teams	uint8_t	Number of additional SEAL fire teams (F7/F8 views, team letters)
+ec9e	g_saved_time	int32_t	Saved g_time while paused (-1 = none)
+eca2	g_wait_start	int32_t	Start time of clk_wait
+eca6	g_time	int32_t	Game time in 1/256 s ticks (copied from g_ticks, or +0x80 per frame in time compression)
+ecaa	g_frame_ticks	int16_t	Ticks since the previous clk_update (>= 1)
+ecac	g_prev_time	int32_t	g_time of the previous clk_update
+ecb0	g_ticks	int32_t	Raw 256 Hz counter incremented by the timer callback
+ecb4	g_elapsed	int16_t	Ticks since the previous run of a periodic update (argument to the update)
+ecb6	g_world_object_count	int16_t	Number of entries in g_world_objects
+ecb8	g_world_data	struct	Buffer receiving '<world>.wd'
+ecf8	g_fx_object_count	int16_t	Number of effect/projectile 3D instances created by fx_create_pools
+ecfa	g_has_special_object	uint8_t	World contains an object with shape 0xC4B2 (prisoner release on destruction)
+ecfb	g_has_support3	uint8_t	Mission support entry of type 3 exists
+ecfc	g_has_support2	uint8_t	Mission support entry of type 2 exists
+ed16	g_world_index	int16_t	Current world number (index into g_world_names)
+ed18	g_veg_leader_pos	int32_t[2]	Point man x/z at the last ground-cover regeneration (ED18 x, ED1C z)
+ed20	g_veg_force	uint8_t	Force a full ground-cover regeneration
+ed22	g_msg_head	int16_t	Message queue head index (0..7)
+ed24	g_msg_count	int16_t	Number of queued messages (max 8)
+ed26	g_credits_text	char far *	Credits text shown on the title screen
+eeb8	g_mission	struct mission far *	Current mission data (+0 start hour, +2 start minute, +4 world, ...)
+eebc	g_mission_number	int16_t	Mission index 0..79 (command line number - 1; year*20+mission)
+eec2	g_campaign	struct far *	Campaign/team record passed to the front-end screens
+eef4	g_fonts	void far *[3]	Font pointers (EEF4 message font, EEF8 dialog title font, ...)
+efb8	g_music_tracks	int16_t[]	Music track handles (indexed by current track)
+efd8	g_music_track	int16_t	Current background music track
+f260	g_draw_page	int16_t	Current draw page (0/1)
+f262	g_num_colors	int16_t	Number of colours of the video mode (0x100 in mode 6)
+f400	g_draw_surface	struct surface	Current drawing surface descriptor (F40A page 0, F414 page 1)
+f424	g_text_opaque	uint8_t	Text background mode for 4DCF:000E (0 = transparent)
+f42c	g_vga_flags	uint16_t	0x40 if a VGA was detected
+f450	g_render_obj_seg	uint16_t	Segment of the renderer's object record buffer; ray hits are far pointers f450:(2+0x18*index) converted by wld_object_from_hit
+f482	g_render_ctx	int16_t	Value returned by 2255:6699 during initialisation
+f612	g_project_flag	uint8_t	Cleared before projecting the target reticle

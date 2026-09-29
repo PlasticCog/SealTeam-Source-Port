@@ -1,0 +1,172 @@
+1000:0000	main	main(argc,argv): parse command line, hardware checks, load resources, run the game-mode state machine, shut down and exit
+1000:0028	mis_start_insertion	Start of mission: view mode 7 (insertion camera), orbit distance 0x264, show 'Insertion' for 0x800 ticks, insertion craft leaves at g_time+0xA00, Point Man MOVER+0x3A (exhaustion) = 4
+1000:007a	mis_insertion_clear	End of insertion: normal first-person then chase view (mode 2), refresh scenery, orbit distance 0xC0, show 'Insertion craft clear.' for 0x200 ticks
+1000:00b0	mis_start_extraction	Begin extraction (once, not in camp worlds): view mode 8, orbit distance 0x120, show 'Extraction' 0x1D00 ticks, mission end at g_time+0x1D00, pick and start the end music (6..10), set g_extracting
+1000:0194	tc_off	Time compression off (if on): clear message queue, resync raw ticks to g_time, force full redraw
+1000:01b0	tc_on	Time compression on (if off): g_tc_state=3, clear message queue, queue 'Time Compression On' (0x7800 ticks)
+1000:01de	mis_run	Load and play one mission: world/team setup, per-frame render + input + timed AI/sound/scenery updates until extraction completes or quit; returns 1 if the player quit the game (Alt-X)
+1000:0790	mis_cleanup	After a mission: free world objects, effect pools, projectiles, 3D data (45A6), stop mission sounds (4592:07D5) and free the mission data (365E:24BC)
+1000:07a0	mis_stub_end	Empty function called when the mission loop ends
+1000:07a1	mus_get_mood	Music mood for the current moment: 2 = combat (g_time < contact timer DS:0898), 1 = alert (g_time < DS:D808), else 0 (always 0 when music mode DS:45CE == 2)
+1000:07dd	mus_update_mood	Every 1.25 s: switch the background music track to the current mood (tracks 0..2), or wait for sting tracks 3/4 to finish first
+1000:0842	mis_check_alerts	Every 1.25 s: when not already alerted and an enemy is detected show 'Enemy sighted.' (+ leader 'Enemy' hand signal after 40 s of quiet) and stay alerted 0x1400 ticks; announce 'Radio repaired.' when the repair time passes
+1000:0900	hud_draw_compass	Draw the 90-degree heading tape (x 0x45..0xF9, 2 px per degree) under the top of the 3D view: ticks every 5/15 degrees, labels every 30 (N, 30, 60, E ...), centre marker
+1000:0a2c	hud_draw_objective_marker	Draw the objective bearing marker on the compass tape (caret under its degree column, or '<'/'>' at the tape edge when outside the 90-degree window); hidden within 15 units of the objective
+1000:0bdb	hud_draw_target_diamond	Draw the 16x16 target diamond at (x,y) in the range-band colour and the range text '((range/3)>>2) m' under it, clipped to the 3D view
+1000:0d0b	wpn_range_band	Number (0..3) of the weapon's three range thresholds (weapon table +8/+0xA/+0xC) that are <= the given range
+1000:0d44	hud_draw_target_info	First-person HUD: diamond, name (object type name, or team type name + fire-team letter) and ' Objective' tag for the current target at the reticle position (DS:0534/0536)
+1000:109f	hud_show_weapon_lines	Keep the weapon/tool HUD lines visible for 0x200 ticks (sets their three end times)
+1000:10c2	hud_draw_text_lines	Bottom-of-view HUD text: demolition countdown, tool and ammo, primary weapon rounds/fire mode, current item, team order, 'Reloading ...' and 'Detail Level: n'
+1000:18a1	wpn_set_reload_timer	If the weapon has reloads left, set *end = g_time + (difficulty 'reload timed' ? weapon reload ticks (table +0x1E) : 0x40)
+1000:18ea	hud_stub	Empty function called after the first-person HUD
+1000:18eb	hud_draw_clock_box	Time-compression display: clear a small box and draw the 'hh:mm:ss' clock (map screen at (0xE0,3), else under the 3D view)
+1000:1964	tod_set	Set the time of day (hour, minute); seconds = (g_time>>8) mod 60; restart the minute timer
+1000:19a3	tod_add	Add (hours, minutes) to the time of day with one wrap correction each (60 min, 24 h)
+1000:19ee	tod_update	Advance the time of day by one minute each time 0x3C00 ticks (60 s) have passed; recompute seconds
+1000:1a88	tod_palette_index	Palette/sky selection for the current hour: 0 pal2 (day 09-17), 1 paln (night 21-04), 2 pals (dawn 05-08 / dusk 18-20); also sets the sky/ground gradient offsets DS:0530/0532
+1000:1afc	tod_draw_sky_ground	Fill the 3D view with the sky and ground gradients (gradsky1/gradgrn1 lookup, per-row at detail>=2 else record flat colours) and brighten the dawn gradient every 0xF00 ticks
+1000:1c8a	view_clear_map_ground	Fill the current view rectangle with ground colour gradgrn1[0xB6] (map screen background)
+1000:1cb1	view_clear_color12	Fill the current view rectangle with colour 0x12 (used by front-end screens 365E)
+1000:1ccb	pic_load	Load full-screen picture n (0 mapscr,1 title,2 brf,3 pwo,4 mainm,5 intel,7 debrf,9 load,10-13 new..new4,14-19 cm0..cm5,20 ea) + '.pic' into the picture buffer DS:0526
+1000:1df4	pic_free	(not in Ghidra function list) Free the picture buffer DS:0526 (2255:28CA) and set DS:0524 = 0xFF; no callers found
+1000:1e03	pic_blit_to_screen	Copy a rectangle {x,y,w,h} from the picture buffer DS:0526 to the draw page (pascal)
+1000:1e2c	pic_grab_screen	Copy the whole screen (rect DS:4F94) from the draw page into the picture buffer DS:0526 (used by 365E:A940)
+1000:1e52	page_copy_rect	Copy a rectangle from the displayed page to the current draw page (pascal)
+1000:1e87	gfx_present	Set the clip rect to 320x200, flip the video pages and restart the frame limiter
+1000:1ea7	page_copy_full	page_copy_rect for the whole screen (DS:4F94)
+1000:1eb0	hud_reset_mission	Mission start: eye height, normal view, map setup (19AC:2E69), clear all HUD/demo/radio timers, objective bearing, camera distances 0xC0, sky offsets 0, enemy-view index -1
+1000:1f92	view_render_frame	Draw one frame for the current view mode: banners/map background on full redraws, sky/ground or map fill, 3D world, HUD text, message box, compass/target overlays, 3D sound listener update
+1000:21f0	view_init_camera	Initialise a camera struct: x,z,y = args<<8, pitch = arg<<3, yaw/roll 0, screen rect, field +0x1A = 8
+1000:2261	view_init_cameras	Create the three cameras: main 3D (0,8,320x171), map (8,10,204x155, pitch -90, height 1000) and small 3D (0,24,320x139); current = main
+1000:22d4	view_enter_map	Switch to the map camera (remember the previous 3D mode in DS:EC52 if 0 or 2), copy the main camera x/z, map setup (19AC:2FE8), mode 1, full redraw, flat colours unset
+1000:2321	view_set_first_person	View mode 0 (point man's eyes, main camera), full redraw, refresh scenery, hide markers, show weapon lines
+1000:2349	view_set_chase	View mode 2 (chase camera behind the point man, small camera), refresh scenery, hide markers, show weapon lines
+1000:2371	view_set_team_camera	F3-F8: view from support team ec8c+n (modes 3,4,0xF,0x10; team kind must be 1..3) or, for n=4/5, the last teams (modes 0x11,0x12, needs DS:EC9C); returns 0 if not available
+1000:23fb	view_set_mode	Set view mode n (0xC = map-style reinsertion view via view_enter_map, others use the small camera), full redraw, hide markers
+1000:2432	view_set_target_camera	F9: view mode 0xD (camera on the current target) when the target is a unit
+1000:2462	view_set_eye_height	Set the main camera height from the point man's posture/stance fields (soldier +0x18, +0x26 bit 0x40)
+1000:24f0	view_init_orbit_angle	If a team's camera angle (+0x32) is -1 set it to the raw bearing from the Point Man to the team leader
+1000:2544	view_update_camera	Position the current camera for view mode n (first person, map, chase/orbit around a unit or craft, insertion/extraction orbit); updates 3D sound listener position
+1000:2d01	view_next_enemy	F10 enemy view: advance DS:053C to the next VC/NVA team (index DS:EC8F+n, wraps at team count DS:EC87) whose leader is dead or whose AI flag +0x6C bit7 is set
+1000:2d83	ui_show_please_wait	Wait 0x180 ticks, draw the 'One Moment Please ...' box and present it
+1000:2db6	joy_draw_prompt	Joystick calibration: fill the prompt area (0x20,0x51,256x33, colour 0x14) and draw two centred text lines at y 0x58 and 0x62
+1000:2e27	joy_calibrate_corner	Show a corner prompt, wait for fire button (Esc aborts), average 16 stick readings 8 ticks apart, wait for release, pause 0x80 ticks; returns 1 on success
+1000:2ed7	joy_calibrate	Joystick calibration dialog ('JOYSTICK CALIBRATION', upper-left, lower-right, centre) on a single video page; returns 0 if Esc turned the joystick off
+1000:2fea	clk_reset_start_timer	g_time = 0 and, once, install the 256 Hz timer callback (4A1C) via the sound driver (4592:0BCB)
+1000:300d	clk_stop_timer	Remove the 256 Hz timer callback if it was installed
+1000:301f	clk_update	g_time = raw 256 Hz tick count; g_frame_ticks = ticks since last update (min 1)
+1000:304d	clk_update_compressed	Time compression step: g_time += 0x80 (0.5 s) per call; g_frame_ticks accordingly
+1000:307b	clk_resync_raw	Set the raw tick counter to g_time (after time compression)
+1000:308a	clk_save	Save g_time (pause)
+1000:3099	clk_restore	If a saved time exists, restore g_time and the raw ticks from it and clear the saved value
+1000:30c9	clk_reset	g_time = raw ticks = 0, g_frame_ticks = 1, no saved time
+1000:30ea	clk_wait	Busy-wait n ticks (updating g_time)
+1000:314c	geo_ray_to_object	Ray query (4FF8:0148, step 0x1000) from a position to a world object; returns hit id or 0 (pascal)
+1000:318e	geo_probe_at	Short ray query from an object's position to +0x600 in x and z; returns hit id or 0 (pascal)
+1000:31fd	geo_copy_pos	Copy the 12-byte position (x,y,z longs at +6) of a 3D object to a buffer
+1000:321f	geo_distance	Approximate ground distance between two positions: (max + 3*min/8) >> 8 of |dx|,|dz| (clamped to 0x7FFF)
+1000:32d2	geo_unit_height	(unit object y - reference height +0x2C of the unit's near record) >> 8 (no callers found)
+1000:3300	geo_bearing	Bearing in degrees (0..359) from position A to B (atan2 >> 3); 0 if same pointer
+1000:334b	geo_pitch	Elevation angle in degrees from position A to B (2255:64FD >> 3)
+1000:3392	geo_relative_bearing	Combine two 1/8-degree headings into a 0..359 relative bearing ((180 - a/8) + b/8 mod 360)
+1000:33cd	wld_find_mission_point	Among the three mission point slots (mission +0x76/+0xD8/+0x13A == 3, object index at slot +0x10) pick one within 3000 units of a unit (last match wins), else world object 0; returns 1 if a slot matched
+1000:3503	wld_find_live_mission_point	Like wld_find_mission_point but the object must have hit points > 0; fallback = the world object nearest to the Point Man
+1000:3677	wld_nearest_object	Index of the nearest world object of a kind (-1 any; kind 7 also matches 9) within 24000 units, or -1
+1000:370c	wld_set_kind5_visible	Set/clear the visible bit of all kind-5 world objects (used around collision probes)
+1000:3757	wld_probe_kind	Place the probe object at a position and ray-probe it; returns 1 if it hits a world object of the given kind (-1 any, 5 = include hidden kind-5 objects)
+1000:37ff	geo_midpoint	Write the midpoint of two positions (x, y, z)
+1000:389c	geo_offset_xz	Add the same offset (<<8) to x and z of a position into an output position
+1000:38e2	geo_random_offset_dry	Move a position by a random x/z offset (bounded by two limits) and pull it back if it lands in water (kinds 7/9)
+1000:3a4c	wld_ground_type	Return 2 if a position is on water (kinds 7, 8 or 9), else 1 (1 also for a NULL position)
+1000:3a9d	veg_random_tree_shape	Random tree/bush shape id from the object type table (entries 7 or 0x54)
+1000:3ac1	veg_random_cover_type	Random ground-cover object type 0x27..0x2F by a cascade of random tests
+1000:3b57	veg_setup_distant_tree	Configure a distant scenery object (random heading, type 0x51/0x52/0x53 or large tree 0x37/0x38 with smoke) based on distance and chance
+1000:3c84	geo_in_fov	True if the bearing from A to B lies within +-halfangle (max 180) of heading h (degrees)
+1000:3d05	wld_object_from_hit	Convert a ray hit id ((id-2)/0x18 record index) to the world object far pointer, or 0
+1000:3d40	wld_los_cover	Line-of-sight obstruction from a unit to a position: sum of the cover bytes of the world objects crossed (stops at a total >= 100, when nothing new is hit or the target is reached)
+1000:3e4c	wld_probe_index	Probe at a unit's position and convert the hit to an object index (19AC:622C)
+1000:3e85	wld_probe_solid	World object at a unit's position if it is solid (height byte >= 0x7F) or water/hut kind (7,8,9,0xA,0xB,0x11), else 0
+1000:3efd	wld_load	Load '<world>.w' (18-byte records) into the world object table DS:26F4 (max 524), load '<world>.wd' into DS:ECB8, then append 126 spare objects (DS:31BA)
+1000:4291	fx_create_pools	Allocate the 32 projectile objects (DS:2670) and the effect object pools (markers, flashes, smoke, trees, ground cover)
+1000:44fb	wld_free	Free all world objects and clear the count
+1000:4544	prj_free_all	Free the 32 projectile objects
+1000:4580	mis_load_world	Per-mission 3D init, load world n, create pools, create units (365E:129A), finish 3D init, scan special objects
+1000:45a6	mis_free_world	Free units, projectiles, world objects and the per-mission 3D data
+1000:45b9	prj_reset_all	Clear the state of all projectiles (flags, owner, weapon) and re-init moving ones
+1000:461a	prj_find_by_effect	Find the active projectile that owns a given effect object (fields +0x40..+0x4E)
+1000:4692	fx_pool_alloc	First object of a NULL-terminated pool whose 3D instance is not visible (free), or 0
+1000:46d2	fx_release	Hide an effect object (clear visible bit of +2)
+1000:46e7	fx_pool_alloc_wrapped	First wrapper in a pool whose 3D instance exists and is not visible
+1000:473c	prj_alloc	Take a free projectile slot (0..31) and set its shape from the weapon class and fire mode; returns slot index (32 = none)
+1000:488e	prj_fire	Fire a weapon: jam check, projectile setup (owner, weapon, target, times, lifetime/speed, demolition 60 s fuse), firing sound burst, muzzle height and aim angles
+1000:5068	prj_deactivate	Release a projectile's effect objects, mark it inactive and hide it
+1000:50b7	wld_destroyed_shape	Shape id for a destroyed world object by kind (0x791A special, 0x8800 kind 6, 0x786A kind 0, 0x79B0 kind 3, else 0x7A40)
+1000:5114	fx_phantom_explosion	Fire the phantom unit's weapon (DS:134A) at a target or at its own position to create an explosion
+1000:51f3	wld_hide_highlight	Clear bit0 of a world object's instance byte +3; kind 0xB also sets instance +0x14 = 1
+1000:521c	dmg_apply	Apply a hit: to a world object (hit points, destruction shape, prisoner release) or to a unit (wound bits, wound/serious-hit counters, radio damage chance, suppressed/wounded/killed handling)
+1000:575a	unit_projectile_idle	Return 0 if the unit has a projectile (+0x38) whose flags +0x28 have bits 0-2 and 9 clear, else 1
+1000:5790	unit_projectile_stop	Set flag 0x100 in the unit's active projectile (+0x28) so it stops
+1000:57be	fx_place_aim_marker	Show/hide the single aim marker at an x/z offset rotated by the point man's heading
+1000:587a	fx_place_unit_marker	Show marker n (0..3) 12 units in front of a unit
+1000:592d	fx_markers_hide	Show or hide the 4 unit markers and park them at (0x5DC000, 0x5DC000)
+1000:5985	fx_team_marker	Attach/detach a marker object (pool DS:2F94, shape by team size) to all members of a unit's team and place it relative to the unit
+1000:5b2f	fx_muzzle_flash	Place/remove a projectile's muzzle flash object (pool DS:2F70) at the shooter with posture-dependent height
+1000:5d1d	fx_unit_ground_fx	Place/remove a unit's ground effect object (pool DS:2F2C; shape by move state/terrain flags, ripple via 4E87:0006) while the unit is within 0x4B0 of the camera
+1000:5f4e	prj_start_burst	Switch a projectile to the 0x7C02 burst shape and play sound 0xF (0x10 for classes 0xF/0x14); grenade-like classes copy +0x1C into the expiry +0x24; n < 0 restores the normal shape
+1000:604f	prj_start_impact	Once: switch a projectile to the 0x7C02 burst shape, expiry = +0x1C, OR impact flags into +0x28, lifetime 0x100 from now, sound 10; n < 0 restores the normal shape
+1000:60fa	prj_show_burst	Show the 0x7C02 burst shape on a projectile without sound (n < 0 restores the normal shape)
+1000:6163	wld_open_hut_ahead	If a hut/bunker (kind 0xA/0xB) lies within 10 degrees ahead and 0x79 units, set its cover byte to 100 and return 1
+1000:6225	tgt_acquire	Auto-target: first targetable structure (cover byte 100, within 10 deg of the heading and 0x4B0 units, line-of-sight cover < 100, huts only within 0x79), then the first active foot-team unit within 16 deg, closer than 0x475 and than that structure; fills the target record (5149:000E..); returns 0 unit, 1 structure, -1 none
+1000:6596	gfx_project_point	Project a 3D point (object +6,+8,+0xA words) to screen coordinates via 2255:4328
+1000:65d3	tgt_update_reticle	Render callback: find the target's 3D node and project it to the reticle position DS:0534/0536
+1000:662b	wld_object_flag0_alt	(not in Ghidra function list) True if bit0 of world object n field +8 is set (called from 365E)
+1000:6648	wld_object_destroyed	True if world object n has hit points < 1
+1000:6665	wld_objective_done	True if world object n is flagged (+8 bit0) and destroyed or DS:EC94 > 4
+1000:669b	wld_object_flag0	True if bit0 of world object n field +8 is set
+1000:66bb	tod_mission_minutes	Minutes since the mission start time (+1)
+1000:66d9	wld_count_destroyed	Number of destroyed kind-0 world objects
+1000:671c	wld_is_camp	True if the current world index is > 27 (camp1..camp5)
+1000:672a	radio_call	Send a radio order to team n: needed for friendly teams or beyond 600 units; fails with 'Radio damaged.'; support teams 1/2 may be busy (retry timer +0x44, 0x1E00); plays radio sounds and shows 'Radio: <text>'; returns 1 if sent
+1000:68e2	mis_scan_specials	Set flags: world contains object shape 0xC4B2, mission has support type 3 and 2 entries (365E:29C5); then 365E:1E8D
+1000:695a	obj_height_or_default	Height (long +8 >> 8) of the DS record referenced by a far pointer's first word, or 150 if none
+1000:6990	unit1_use_tool	The second member of the SEAL team fires its current tool (flare/marker) at its own position
+1000:69e7	fx_destroy_structure	Secondary effects when a structure is destroyed: phantom fires weapon 0x21 then 0x1A at it
+1000:6a9c	mis_load_sprites	Load mission sprite banks (fxmu, fxsm, hnds if hand signals on, exsm, exlg, impc) and the Jungle/Bush/impcf1r1/Grass RLE textures
+1000:6bb2	mis_free_sprites	Free the sprite banks and textures loaded by mis_load_sprites
+1000:6c80	spr_draw_centered	Draw a sprite centred on (x,y)
+1000:6cfd	spr_draw_bottom_centered	Draw a sprite with its bottom centre at (x,y) if detail level > 0
+1000:6d56	spr_draw_clipped_bottom	Draw a sprite bottom-centred at (x&~7,y), clipped to a size, if detail level >= 4
+1000:6dd5	spr_draw_explosion	Draw an explosion/impact sprite frame chosen from the elapsed time of a projectile
+1000:6f4d	spr_draw_projectile	Draw a projectile/flare sprite frame (burning flares use the remap table for lighting)
+1000:70b3	veg_reset	Park and hide all ground-cover, tree and spare objects, reset scenery tracking positions and force regeneration
+1000:7181	veg_place_ground_cover	Place ground-cover objects on a grid pattern (0x31 or 0x62 cells) around the point man, avoiding kind-5 blockers
+1000:74bf	veg_place_camera_scatter	Place vegetation sprites on a camera-relative pattern (DS:348C..354F, rotated in 90-degree steps) on a 64-unit grid
+1000:770b	veg_place_distant_trees	Place 4 distant tree objects around the camera (pattern DS:3550)
+1000:784d	veg_update	Regenerate scenery when the point man/camera moved far enough (0x8000 / 0x2001 units or 16 degrees), depending on detail level
+1000:79f7	msg_draw_signal_icon	Draw the animated hand-signal icon (hnds bank) for a style-3 message
+1000:7b06	msg_say	Queue a speech line 'name: "text"' (split over two lines if longer than 55 chars); returns text length
+1000:7d4b	msg_show	Turn time compression off and queue an on-screen HUD message (kind 3, style 2) for n ticks
+1000:7d6f	msg_hand_signal	Turn time compression off and show hand signal n from a unit (icon + text, or text only when hand-signal graphics are off)
+1000:7df2	msg_queue_add	Append a message (text, kind, duration, style, sticky) to the 8-entry ring queue DS:3716; returns 0 if full/disabled
+1000:7ee4	msg_queue_remove	Remove message entry n (refused for the last sticky one) and advance the queue head
+1000:7f58	msg_queue_clear	Remove all removable messages
+1000:7f6d	msg_queue_count	Return the number of queued messages
+1000:7f71	msg_queue_skip	Skip the current message (and a following zero-duration one) if more are queued
+1000:7fd1	msg_queue_tick	Start the head message's timer, or expire it (and a following zero-duration one) when its time is up
+1000:805e	msg_draw_signal_picture	Draw a full hand-signal picture (kind 4) centred in a box and force a full redraw
+1000:80f1	msg_draw	Draw the head message (and the next one) according to its kind: HUD line/icon, dialog text or signal picture
+1000:8339	msg_draw_queue	Draw the head message while it is on screen and also start/draw the next icon-style message
+1000:840b	msg_queue_reset	Empty the message queue and enable messages
+1000:841a	noise_reset	Mark all 20 noise events (far 53BA:26DA) free
+1000:8441	noise_alloc	Index of a free noise event or -1
+1000:847a	noise_from_team	Create a noise event for a team leader (footsteps/running, wading, vehicle engine, enemy radio chatter) with rand(100)<=level, level reduced by leader stats; 5% chance of a cough/sneeze
+1000:875e	noise_update	Every 4 s: noise_from_team for every team, then age events (first mark heard, next time free them)
+1000:87bf	noise_from_weapon	Create a weapon noise event (type 0x13, level = weapon table +0x16 * 4, or 6)
+1000:888a	noise_from_explosion	Create an explosion noise event (type 0x11, level from far table 525C:0022); no callers found
+1000:892e	noise_hear	For a listener unit find the loudest audible noise from the other side (difficulty 'Intelligence' lowers enemy hearing); copy its position; returns 1 if heard
+1000:8b64	inv_count_items	Sum the counts of inventory entries of a type in a unit's item list (+0x1A)
+1000:8baa	inv_use_items	Subtract n from the first inventory entry of a type that has a positive count
+1000:6203	stub_return_false	(not in Ghidra function list) Returns AL=0; no callers found
+1000:6206	misc_reset_ed0a	(not in Ghidra function list) Clear DS:ED0A/ED12 longs and set DS:ED0E = -0x1000; no callers found
+1000:6221	stub_return_16	(not in Ghidra function list) Returns 0x10; no callers found
+1000:66b8	stub_return_zero	(not in Ghidra function list) Returns 0; no callers found
