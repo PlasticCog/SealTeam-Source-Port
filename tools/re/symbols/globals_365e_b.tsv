@@ -1,0 +1,133 @@
+022d	g_from_mission	u8	Set when the campaign screen is entered after a mission: load the autosave (c8.cmp) and welcome replacement SEALs; cleared by 19ac after the campaign screen
+0530	g_view_scroll_x	i16	Zeroed by cut_init_camera (365e:d576)
+0532	g_view_scroll_y	i16	Zeroed by cut_init_camera together with 0x0530
+12e2	g_groups	GROUP far *[?]	Group table; [0] = SEAL team (null-terminated list of soldier far ptrs); used by debriefing init and mission scoring
+135e	g_mission_minutes	i16	Mission length in minutes, shown on the Post-Mission Report and used to set the debrief clock
+1b90	g_month_names	char *[13]	Month names, index 1..12
+1baa	g_rating_names	char *[8]	Navy rating (specialty) full names by SE+0x5e ('', Electrician's Mate, Boatswain's Mate, Torpedoman, Signalman, Engineman, Machinist's Mate, Gunner's Mate)
+1d14	g_mission_name_tmpl	char *	-> "cNmNN" (debriefing builds hNmNN.s from it)
+1d24	g_seal_se_tmpl	char *	-> "sealNN"
+1d72	g_objective_type_names	char *[8]	Objective type names used in the Post-Mission Report ('Null Msn','Patrol',...,'Recover')
+246e	g_recruit_button_labels	char *[6]	Recruit screen labels: 'Previous Recruit','Next Recruit', year buffer ('1966'), 'Start Campaign', page buffer ('Biography'/'Rating'), 'Start'
+2478	g_cmpscr_button_labels	char *[19]	Campaign screen labels (only 'More' and 'Next' visible)
+24aa	g_bull_button_labels	char *[3]	Bull Session labels ('','','Next')
+24bc	g_dbrf_button_labels	char *[6]	Debriefing labels; [5] (DS:24C6) points to the Next/Exit label buffer rewritten by dbrf_enter_main/dbrf_enter_report
+24c8	g_speech_button_labels	char *[2]	Speech screen labels ('', 'Next')
+24cc	g_buds_class_names	char *[16]	BUD/S class numbers by SE+0x5d ('54','57',...,'99')
+24ec	g_skill_names	char *[12]	Skill names for SE+0x74..0x7f: Rifle, Pistol, Mortar, Shoulder, Automatic, Throw, Observe, Radio, Size, Strength, Agility, Intelligence
+2506	g_rank_names	char *[12]	Rank names by rank index (Seaman, '', 3rd Class ... Lieutenant)
+2536	g_camo_names	char *[6]	Camouflage names by SE+0x62 (Tiger Stripe, Leopard Spot, Jungle Leaf, Blue Jeans, Black Pajamas, Tiger Stripe 2)
+2542	g_medal_names	char *[16]	Award names by bit: Purple Heart, '', Navy Achievement, Navy Commendation, Bronze Star, Silver Star, Navy Cross, Medal of Honor, 4x Naval Unit Citation, 4x Presidential Unit Citation
+2562	g_status_names	char *[3]	Campaign status: 'Active','Retired','KIA'
+2566	g_location_names	char *[]	String table indexed by world number; entries 28..31 (camp worlds) = Nha Be, My Tho, Vinh Long, Bin Thuy locations
+25a8	g_bull_wrapup_line	char *	-> "Okay men, let's head out." (Bull Session line 5, spoken by 'OIC')
+25ac	g_terrain_names	char *[4]	Terrain names by terrain class ('Swamp Jungle','Coastal Delta','Delta Swamp','Farmland')
+25b6	g_weather_names	char *[4]	Weather names by terrain class ('Hot','Warm, Humid','Hot, Humid','Clear')
+25c0	g_insertion_craft_names	char *[5]	Insertion method names indexed by (MCI word 3 & ~1) as byte offset ('LSSC','LSSC','PBR','UH-1','UH-1')
+25cc	g_other_unit_names	char *[5]	Support unit names indexed by (MCI word 0x39/0x3a & ~1) as byte offset ('OV-10a','LSSC','PBR','UH-1','UH-1')
+25d8	g_extraction_names	char *[5]	Extraction method by g_extraction_type ('LSSC','LSSC','UH-1','OV-10a','n/a')
+25e4	g_str_rating_names	char *[4]	'Green','Novice','Veteran','Elite'
+3140	g_area_map_frame	i16[]	Per-area value; the Post-Mission Report uses it as terrain/weather class
+3178	g_area_camp_frame	i16[]	Per-area camp backdrop frame; debriefing draws camp frame (value+4)
+3c5a	g_campaign_flow	FLOW far *[4]	Per-year pointers to 20 x 14-byte mission entries (far seg 5275); +2 month, +0xc historic report flag
+3f7c	g_recruit_slot	i16	Recruit screen: year*4 + recruit (0..15); campaign screen: portrait slot = SE id - 51d9:0140[id]
+3f7e	g_recruit_show_rating	i16	0 = Biography page, 1 = Rating page (recruit screen)
+406a	s_memo_fnt	char[]	"memo.fnt"
+4073	s_propbold_fnt	char[]	"propbold.fnt"
+4080	s_prop_fnt	char[]	"prop.fnt"
+40a4	g_cmpscr_info_page	i16	Campaign screen info window page: 0 campaign, 1 biography, 2 rating
+40a6	g_cmpscr_redraw_hold	i16	Extra full-redraw counter of the campaign screen (never set non-zero in the program)
+41e2	g_bull_chatter_line	i16	Incremented after every Bull Session; SEAL chatter line = value mod 6
+41e4	g_bull_scroll_y	i16	Bull background/figure y offset: variant * -60
+41e6	g_bull_variant	i16	Bull seating variant = point man missions mod 3
+41e8	g_bull_anim_step	i16	Bull figure animation step, +1 every 0x80 timer ticks (mod 12 when used)
+420d	g_dbrf_report_closed	u8	Set to 1 whenever a report clipboard is closed (not read in this module)
+420e	g_dbrf_has_historic	u8	Mission has a historic report (flow entry +0xc); enables the Historic Report clipboard
+45a4	g_speech_line	u8	Speech sequencer line 0..12
+45a5	g_speech_kind	u8	Speech kind 0..5 (0 funeral/Chaplain, 1-3 year end, 4 campaign over, 5 relieved); selects cK.s, cmK.pic, palette 11+K
+45a6	g_speech_music	u8[6]	Music sequence per speech kind {1,0,0,0,0,2}
+48fe	g_weapon_table	WEAPON[34]	0x22-byte weapon entries; +0 short name, +2 long name (Best Weapon line of the biography)
+4e6a	g_diff_button_labels	char *[30]	Difficulty screen labels (8 settings, Save, Quit, 20 option values)
+4f94	g_screen_rect	RECT	Full-screen rectangle passed to pic_blit_to_screen for background restores
+5074	g_text_color	u16	Current text colour word 0xFF00|colour (set per pass by font_draw_text_shadow)
+cda6	g_seg_recruit	u16 (segment)	Far segment 51d0 (recruit slot record, button list, year->SE offset table)
+cda8	g_seg_cmpscr	u16 (segment)	Far segment 51d9 (campaign buttons, SE id -> portrait slot offset table at +0x140)
+cdaa	g_seg_team	u16 (segment)	Far segment 5178 (team slots 0x0c..0x2f, 12 bytes each, SE id at +0)
+cdac	g_seg_bull	u16 (segment)	Far segment 51f1 (bull buttons, figure positions +0x40, animation table +0x58)
+cdae	g_seg_dbrf	u16 (segment)	Far segment 5200 (debriefing buttons; +0x3b = Historic clipboard button flags)
+cdb8	g_seg_cut_buttons	u16 (segment)	Far segment 5207 (insertion/extraction button list)
+cdbc	g_seg_speech	u16 (segment)	Far segment 520a (speech button list)
+cdee	g_seg_awards	u16 (segment)	Far segment 52bb (promotion score table +2, Medal of Honor table +0x1a)
+cdf2	g_seg_diff	u16 (segment)	Far segment 52c0 (option button index lists +0, difficulty buttons +0x40)
+ced4	g_recruit_se	SE far *	SE record of the recruit shown on the recruit screen
+ced8	g_recruit_campaign	CAMPAIGN far *	Campaign state edited by the recruit screen (== g_campaign)
+cedc	g_pm_se	SE far *	Point man SE record shown on the campaign screen
+cee0	g_cmpscr_campaign	CAMPAIGN far *	Campaign state passed to the campaign screen
+cee4	g_historic_text	char far *	Loaded hNmNN.s historic report (28 x 80 bytes)
+cee8	g_historic_clip_img	RLE far *	Loaded cliph.RLE (Historic Report clipboard picture)
+d7e4	g_game_mode	i16	1 continue campaign, 2 new campaign/main menu, 3 practice, 6 demo
+d842	g_cut_cam_dist	i16	Camera distance set to 0x690 by cut_init_camera
+d844	g_view_mode	u8	3D view mode; 1 = map/overlay style (debrief/cut-scene draw paths depend on it)
+d846	g_cut_orbit_zoom	i32	Cut-scene zoom, 0x180 at start, mouse y changes it by 6, clamped 0x60..900
+d872	g_brfcam_heading	i32	Debriefing camera value; (word at 0xd873)/3 is printed as '<n> Meters'
+d880	g_msgbar_clip	i16[4]	Clip rectangle used for the message area when g_view_mode == 1
+d8ae	g_viewport_cur	VIEWPORT *	Active viewport (0xd84e full screen or 0xd88a 320x139 at y 24)
+d8b4	g_view_cam_pitch	i16	Set to 0xc0 by dbrf_init_scene
+d8b6	g_view_cam_param	i16	Set to 0 by dbrf_init_scene
+d8b8	g_view_cam_dist	i16	Set to 0x690 by dbrf_init_scene
+ec4a	g_scene_start_time	i32	Timer snapshot at cut-scene start
+ec56	g_redraw_frames	u8	Frames that still need a full redraw (2 or 4 = both video pages)
+ec57	g_clock_min	u8	Clock minutes (report 'Time', camp caption)
+ec58	g_clock_hour	u8	Clock hours
+ec60	g_weapons_captured	i16	Enemy weapons captured (Post-Mission Report)
+ec62	g_documents_captured	i16	Documents captured (Post-Mission Report)
+ec64	g_enemy_captured	i16	Enemy captured (Post-Mission Report)
+ec8f	g_first_mtm_group	u8	First MTM group index; objective group indices are relative to it
+ec93	g_extraction_type	i8	Extraction group type for the report (clamped >= 0)
+ec94	g_enemy_kia	i16	Enemy KIA
+ec96	g_seal_kia	i16	SEALs KIA (also number of replacement recruits welcomed)
+ec98	g_seal_wia	i16	SEALs WIA
+eca6	g_timer	u32	256 Hz free-running timer used for all auto-advance delays
+ecaa	g_frame_ticks	i16	Ticks of the last frame (voice_tick argument)
+ed16	g_world_index	i16	Current world number; the camp caption prints g_location_names[g_world_index] (camp worlds 28..31)
+ed26	g_mission_text	char far *	Loaded cYmNN.s (or cK.s for speeches)
+ed2e	g_seal_chatter	char far *	Loaded sealNN.s chatter of the Bull Session OIC slot (6 x 84 bytes)
+eda8	g_objective1	OBJECTIVE	Primary objective record (inside g_mci at +0x76): +0 type, +0xe group index, +0x10 target
+ee0a	g_objective2	OBJECTIVE	Secondary objective record (g_mci+0xd8)
+ee6c	g_objective3	OBJECTIVE	Tertiary objective record (g_mci+0x13a)
+eeb8	g_mci_ptr	MCI far *	Mission header: +0 start hour, +2 start minute, +4 area, +6 insertion method, +0x72/+0x74 support units, +0x76 objective type
+eebc	g_mission_no	i16	Set to year*20 when the recruit screen changes the starting year
+eebe	g_ui_focus	i8	Focused button index (-1 none)
+eebf	g_ui_pressed	u8	Focused button pressed
+eec0	g_ui_release_count	u8	Frames until a released button re-enters the handler with its key
+eec2	g_campaign	CAMPAIGN far *	Active campaign state (0x14c bytes, see docs/re/seg_365e_b.md)
+eec6	g_mission_success	u8	Primary objective achieved (written by score_mission)
+eec7	g_secondary_success	u8	Secondary objective achieved
+eec8	g_tertiary_success	u8	Tertiary objective achieved
+eef2	g_recruit_done	i16	Leave the recruit screen loop
+eef4	g_font_dialog	FONT far *	prop.fnt (proportional 9-pixel font)
+eef8	g_font_title	FONT far *	propbold.fnt (bold 8-pixel font)
+eefc	g_font_clipboard	FONT far *	memo.fnt (12-pixel handwriting font)
+ef00	g_font_cur	FONT far *	Current DeluxeFont used by font_draw_* and 4dec:0002
+ef04	g_cmpscr_done	i16	Leave the campaign screen loop
+ef06	g_cur_roster	ROSTER far *	Selected 0x18-byte roster entry (recruit slot 51d0:0000 on the recruit screen, point man on the campaign screen)
+ef0a	g_bull_done	i16	Leave the Bull Session loop
+ef0c	g_bull_line_time	u32	Timer of the last Bull Session line
+ef10	g_bull_anim_time	u32	Timer of the last figure animation step
+ef14	g_bull_line	u8	Bull Session sequencer 0..8
+ef15	g_bull_talking	u8	Conversation running (restart after 0x1e00 idle ticks otherwise)
+ef16	g_bull_unused1	u32	Cleared by bull_leave, otherwise unused
+ef1a	g_bull_unused2	u32	Cleared by bull_leave, otherwise unused
+ef1e	g_dbrf_score	i16	Mission score (53ba:3044, negative -> 0) shown on the report
+ef20	g_dbrf_state	u8	0 idle, 1 talking, 2 Post-Mission Report, 3 Historic Report
+ef22	g_dbrf_done	i16	Leave the debriefing loop
+ef24	g_dbrf_time	u32	Timer of the last debrief line / idle start
+ef28	g_dbrf_line	u8	Debriefing sequencer 0..7
+ef2a	g_cut_done	i16	Leave the insertion/extraction loop
+ef2c	g_cut_start_time	u32	Cut-scene start time (moved forward when the music finishes)
+ef30	g_speech_done	i16	Leave the speech loop
+ef32	g_speech_line_time	u32	Timer of the last speech line
+f240	g_clip_y0	i16	Clip rectangle top (font_draw_text_shadow shifts it by +1 for the shadow pass)
+f242	g_clip_y1	i16	Clip rectangle bottom
+f248	g_clip_cx	i16	Clip rectangle centre x (centred text)
+f424	g_text_flags	u8	Opaque-background flag for text output; cleared before every text pass

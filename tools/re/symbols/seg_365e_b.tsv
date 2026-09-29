@@ -1,0 +1,118 @@
+365e:8001	recruit_load_background	pic_load(year+10): new/new2/new3/new4.pic background for the recruit screen of starting year 0..3
+365e:8015	recruit_load_media	Load the year background, the 'port' portrait sprite set (53ba:22bc, 2 frame sets) and the year's two voice samples
+365e:8055	recruit_enter	recruit_load_media, focus button 3 (Start Campaign, 51d0:0048), show the Biography page
+365e:8074	recruit_leave	Hide cursor, free voice samples and the 'port' portrait set
+365e:8095	recruit_screen	(missed by Ghidra) UDT/SEAL Training School loop (new campaign: pick starting year + point man, nickname); returns 0 quit, 1 back, 2 start
+365e:81f1	ui_draw_bio_panel	Draw the 'Biography' panel for an SE record at (x,y): rating/rank, SEAL Team, name+nickname, portrait, age, height, weight, home town, BUD/S class, best weapon, camouflage
+365e:889d	ui_draw_rating_panel	Draw the 'Rating' panel for an SE record at (x,y): rank/name lines, STR rating, 9 skill bars (roster skills)
+365e:8d91	recruit_draw_contents	Draw title tab, Biography or Rating panel, and update the year and Rating/Biography button labels/hot keys
+365e:8e5d	recruit_draw_buttons	ui_draw_buttons(51d0:0018, labels DS:246E)
+365e:8e72	recruit_handle_input	Recruit-screen keys: 1 year, n/p next/previous recruit, r/b page toggle, s nickname+start, e/w cycle best weapon, Esc back, Alt-X quit
+365e:91d8	recruit_render	Render one recruit-screen frame (full redraw while g_redraw_frames>0, else cursor only)
+365e:921e	font_load_all	Load memo.fnt, propbold.fnt and prop.fnt into g_font_clipboard/g_font_title/g_font_dialog; select propbold
+365e:925d	font_select	Set g_font_cur to a loaded DeluxeFont (far pascal)
+365e:9271	font_load	(near, BX=file name) Load a DeluxeFont .fnt file: 0x21e-byte header block + 1bpp glyph bitmap into two far-heap blocks; returns far ptr or 0
+365e:934f	font_free	(near pascal) Free a font's bitmap block and header block
+365e:9377	font_char_width	(AL=char) Advance width of a glyph in g_font_cur = off[c+1]-off[c]
+365e:938e	font_text_width	(BX=near string) Pixel width of a string in g_font_cur
+365e:93bc	font_draw_text	(AX=x, DX=y, BX=near string) Draw a DS string with g_font_cur (no-op when no font selected)
+365e:93fc	font_draw_text_far	(AX=x, DX=y, far string on stack) Draw a far string with g_font_cur
+365e:9438	font_draw_text_far_centered	(DX=y, far string) Draw a far string centred on the clip-rect centre x (g_clip_cx)
+365e:9489	font_draw_text_shadow	(AX=x, DX=y, BX=string; pascal colours) Draw text at (x+1,y+1) in colour A, then at (x,y) in colour B
+365e:94de	text4x6_draw_centered	(AX=y, BX=string) Draw a 4x6-font string centred on g_clip_cx, x rounded down to a multiple of 4
+365e:9505	font_draw_text_emboss	(AX=x, DX=y, BX=string; 3 colours) Two font_draw_text_shadow passes giving a raised 3-colour look
+365e:9540	cmpscr_load_media	(missed by Ghidra) Load load.pic and sprite sets bos/bin/bis/bil (dog tags, lbtn.lib), mdl (medals) and prt2 (portraits)
+365e:9607	cmpscr_enter	(missed by Ghidra) cmpscr_load_media, focus Next (51d9:0120), reset message queue, info page 0
+365e:962b	cmpscr_leave	(missed by Ghidra) Hide cursor, clear messages, free prt2/mdl/bil/bis/bin/bos sprite sets
+365e:96c0	cmpscr_msg_campaign_over	(missed by Ghidra) If the campaign has ended queue 'Your Campaign has ended.' / 'Load a Campaign, or press Next ...'
+365e:96fb	cmpscr_msg_new_members	(missed by Ghidra) For each SEAL KIA last mission activate a reserve recruit and queue 'Welcome your new team member <name>.'
+365e:97db	cmpscr_msg_awards	Queue messages for the point man's last-mission medals (with medal picture) and promotion
+365e:9998	ui_draw_ribbons	Draw the point man's medal ribbons (mdl sprites, bits 0-6 of each history entry) 4 per row at (x,y), max 16
+365e:9aa6	cmpscr_screen	Campaign screen loop (continue-campaign mode only): load campaign/autosave, save/load dog tags, info window; returns 0 quit, 1 main menu, 2 next
+365e:9c20	ui_draw_campaign_panel	Draw the 'Campaign' info panel: rank/name, date, status, tours, missions, victories, total/best score, ribbons
+365e:a2fb	cmpscr_draw_contents	Draw ' SEAL Campaign ' title tab and the info panel page (0 campaign, 1 biography, 2 rating) at (0x16,0x56)
+365e:a36b	cmpscr_draw_dogtags	Draw save/load dog-tag sprites for the 16 slot buttons (bos=saved, bin/bis=focused save tag, bil=focused load tag)
+365e:a4c3	cmpscr_draw_buttons	ui_draw_buttons(51d9:0000, labels DS:2478)
+365e:a4d8	cmpscr_handle_input	Campaign-screen keys: v save slot (name prompt), l load slot, m more (info page), n next, Alt-E erase slot, c page reset, Esc, Alt-X
+365e:a54c	cmpscr_handle_input_redraw	(case fragment of cmpscr_handle_input) g_redraw_frames=2 and return
+365e:a670	cmpscr_handle_input_load_tail	(case fragment of cmpscr_handle_input) tail of the load case: set portrait index, queue award messages
+365e:a695	cmpscr_handle_input_more	(case fragment of cmpscr_handle_input) 'm': info page = (page+1) mod 3
+365e:a6a6	cmpscr_handle_input_next	(case fragment of cmpscr_handle_input) 'n': leave, result 1 if the campaign has ended
+365e:a6bc	cmpscr_handle_input_save	(case fragment of cmpscr_handle_input) 'v': confirm overwrite, prompt name, save slot and set last slot
+365e:a787	cmpscr_handle_input_erase	(case fragment of cmpscr_handle_input) Alt-E: delete the focused save slot
+365e:a7a7	cmpscr_handle_input_quit	(case fragment of cmpscr_handle_input) Alt-X: result 0 and leave
+365e:a7b2	cmpscr_handle_input_return	(case fragment of cmpscr_handle_input) common return of the handler result
+365e:a7bb	cmpscr_render	Render one campaign-screen frame
+365e:a862	bull_draw_background	Clear screen and draw the two stacked Bull Session background images (bull set 1, frames 2/3) scrolled by g_bull_scroll_y
+365e:a949	bull_load_media	(missed by Ghidra) Load the 'bull' sprite set (3 frame sets) and draw the background
+365e:a96d	bull_enter	(missed by Ghidra) bull_load_media, focus Next, load mission text cYmNN.s and the OIC's sealNN.s chatter
+365e:a9d1	bull_leave	(missed by Ghidra) Clear messages, hide cursor, bump chatter index, free texts and the bull sprite set
+365e:aa23	bull_next_line	Speak the next Bull Session line (mission lines 9-13, OIC wrap-up, SEAL chatter) alternating speakers
+365e:ab3d	bull_auto_advance	Call bull_next_line every 0x500 timer ticks
+365e:ab8b	bull_start_talk	(missed by Ghidra) Re-centre the mouse (105,105), redraw, restart the conversation (line 0, active)
+365e:abb9	bull_screen	(missed by Ghidra) Bull Session loop (campaign only); returns 0 quit, 1 back (Esc), 2 next
+365e:ad8f	bull_draw_title	Draw messages and the ' SEAL Bull Session ' title tab
+365e:adc2	bull_draw_buttons	ui_draw_buttons(51f1:0000, labels DS:24AA)
+365e:add7	bull_handle_input	(missed by Ghidra) Bull keys: Space next line, b restart talk, n/Enter next, Esc back, Alt-X quit
+365e:ae8e	bull_draw_seals	Draw the 4 animated SEAL figures of the chosen seating variant (bull sets 0-2, 12-step animation table 51f1:0058)
+365e:af75	bull_render	Render one Bull Session frame
+365e:afdc	dbrf_enter_main	pic_load debrf.pic, palette 0 transition, Next button label 'Next'
+365e:b002	dbrf_load_camp_anim	Load the 'camp' sprite set (53ba:21e0) used as debriefing backdrop
+365e:b022	dbrf_enter_report	pic_load pwo.pic, palette 10, hide cursor, focus Next, label 'Exit'
+365e:b064	dbrf_init	Debriefing setup: label Next, focus Next, load mission text, historic report + cliph.RLE when the mission has one
+365e:b191	dbrf_free	Free camp sprite set, historic text/clipboard sprite and the mission text
+365e:b1dd	dbrf_say_casualties	OIC reports KIA ('<name> is dead.') and hospitalised ('<name> is in the hospital.') team members
+365e:b3f9	dbrf_next_line	Speak the next debriefing line (success lines 14-18 or failure lines 19-23 of cYmNN.s), then casualties
+365e:b495	dbrf_auto_advance	Call dbrf_next_line every 0x800 timer ticks
+365e:b4e3	dbrf_start_talk	Re-centre the mouse (105,105), redraw, start the debriefing talk (state 1, line 0)
+365e:b511	dbrf_screen	Mission Debriefing loop: 3D camp view, talk, Post-Mission/Historic reports; afterwards records the mission and runs the speech screen
+365e:b84f	dbrf_draw_overlay	Range readout (Meters) while talking, ' Mission Debriefing ' title, messages, camera update
+365e:b8ce	dbrf_draw_post_mission_report	Draw the Post-Mission Report clipboard (4x6 font lines + memo-font score)
+365e:c952	dbrf_draw_historic_report	Draw the Historic Report clipboard: 28 lines of hNmNN.s in the 4x6 font
+365e:c9e0	dbrf_draw_buttons	ui_draw_buttons(5200:0000, labels DS:24BC)
+365e:c9f5	dbrf_handle_input	Debriefing keys: d talk, Space next line, p/h reports, e exit report, n/Esc leave, Alt-X quit
+365e:cbf5	dbrf_init_viewports	Initialise the three viewport/camera structs (0xd84e, 0xd86e, 0xd88a) and select the full-screen one
+365e:cc6e	dbrf_init_scene	Eye height, map camera, dbrf_init, camp sprites, camera distance 0x690 / pitch 0xc0
+365e:cca0	dbrf_render	Render one debriefing frame (backdrop, 3D panel, clip sprite, report clipboards, buttons, overlay)
+365e:cea8	cut_nop	Empty function
+365e:cea9	cut_focus_button	Focus button 0 of the insertion/extraction list (5207:0000)
+365e:cec2	cut_insertion_timeout	Set g_cut_done after 0x1e00 ticks, or 0x200 ticks after the music finished if that is earlier
+365e:cf50	cut_extraction_timeout	Set g_cut_done after 0x1400 ticks or as soon as the music has finished; stop finished music
+365e:d010	cut_queue_caption	Queue '<HH><MM> Hours  <n> <Month> <Year>' and 'SEAL Team Camp, <location>' messages
+365e:d279	cut_setup_insertion	19ac:6945 - place the team and camera for the insertion scene
+365e:d27f	cut_setup_extraction	(missed by Ghidra) 19ac:6b07 - place the team and camera for the extraction scene
+365e:d285	cut_insertion_screen	Insertion cut-scene before the mission (3D orbit view, clock = start - 1h - rand(60) min, caption); returns 0 quit else 1/2
+365e:d3db	cut_nop2	Empty function
+365e:d3dc	cut_draw_messages	Select propbold and draw queued messages
+365e:d3ef	cut_handle_input	Cut-scene input: mouse x / arrows rotate, mouse y zoom (0x60..900), Enter/Esc/n leave, Alt-X quit
+365e:d54a	cut_init_viewport	Initialise viewport 0xd88a (y 0x18, 320x139) and select it
+365e:d576	cut_init_camera	Scene start time, view mode 5, focus button, camera distance 0x690, zoom 0x180
+365e:d5b2	cut_render	Render one cut-scene frame (sky/ground, 3D view, messages)
+365e:d659	cut_extraction_screen	(missed by Ghidra) Extraction cut-scene after the mission (random +30..59 min clock advance); returns 0 quit, else 1/2
+365e:d7d6	speech_load_background	pic_load(kind+14): cm0..cm5.pic
+365e:d7e6	speech_enter	Load background, focus Next (520a:0010), load cK.s speech text
+365e:d82d	speech_leave	Clear messages, hide cursor, free the speech text
+365e:d84f	speech_next_line	Speak the next non-empty line (0..10) as 'Chaplain' (kind 0) or 'Commander'
+365e:d8ce	speech_auto_advance	Call speech_next_line every 0x800 timer ticks
+365e:d91c	speech_start	Re-centre the mouse (105,105), redraw, clear messages, restart the speech at line 0
+365e:d94a	speech_screen	Chaplain (funeral) / Commander (year end, campaign end, relieved) speech screen; kind 0..5
+365e:da56	speech_draw_messages	msg_draw
+365e:da5c	speech_draw_buttons	ui_draw_buttons(520a:0000, labels DS:24C8)
+365e:da71	speech_render	Render one speech-screen frame
+365e:dae7	speech_handle_input	Speech keys: Space next line, n/Esc leave, Enter (modes >2) button, Alt-X quit
+365e:dbe6	score_reset_stats	Zero the mission statistics (rounds fired/hit, grenades thrown/hit, bonus count, mission score) in far seg 53ba
+365e:dc11	score_eval_objective	Evaluate an objective record by type 1..7 (Patrol .. Recover) at mission end; returns 1 when achieved
+365e:dcea	score_try_medal	If score/previous score/total reach thresholds award a medal to the point man (+30% chance of a lesser one per member)
+365e:dd6f	score_train_skill	Skill byte gets +1..3 (cap 90) with probability (90-skill)%
+365e:dda9	score_snatch_casualties	For Snatch objectives: -penalty per dead target (note: caller subtracts, so it ends up as a bonus)
+365e:de0a	score_survival_points	Team survival points: 200 point man alive, +50 all alive or -100 per loss, +35 no craft lost; returns alive count
+365e:deb0	score_mission	End-of-mission scoring, promotions, Purple Hearts, medals, unit citations and skill training (called from 19ac:00b6)
+365e:e554	diff_render	Render one Difficulty-screen frame
+365e:e59a	diff_load_background	pic_load(0): mapscr.pic
+365e:e5a4	diff_enter	Load background, focus Save (52c0:00c0)
+365e:e5bd	diff_screen	Difficulty (options) screen loop reached with F10; returns 0 quit, else 1
+365e:e662	diff_choose_option	Sub-selection for one setting: show its option buttons, highlight the current value, run until chosen
+365e:e7c1	diff_draw_title	Draw ' Difficulty ' title tab
+365e:e7d7	diff_draw_buttons	ui_draw_buttons(52c0:0040, labels DS:4E6A)
+365e:e7ec	diff_handle_input	Difficulty keys: a/e/i/p/r/t/w/m open a setting, s save st1.dfr and leave, q leave, Alt-X quit
+365e:e967	diff_option_handle_input	Option-choice keys for the open setting: store value in 5178:0148[setting], repeat setting key closes
