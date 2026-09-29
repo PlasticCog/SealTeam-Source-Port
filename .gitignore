@@ -1,0 +1,52 @@
+# --- Original game data (copyrighted; never commit) ---
+/SealTeam-DOS/
+/Game/
+*.lib
+*.LIB
+*.pic
+*.PIC
+*.rle
+*.RLE
+*.rlx
+*.RLX
+*.adv
+*.adg
+*.add
+*.adi
+*.cmp
+*.cnf
+*.dfr
+*.fnt
+*.xmi
+*.voc
+st.exe
+setd.exe
+setm.exe
+sealteam.pdf
+
+# --- Ghidra install, projects and reverse-engineering output ---
+/ghidra_*/
+*.gpr
+*.rep/
+/re/
+
+# --- Build output ---
+/build/
+/out/
+cmake-build-*/
+*.o
+*.obj
+*.exe
+*.dll
+*.pdb
+*.ilk
+
+# --- Tooling / editors ---
+__pycache__/
+*.pyc
+.vs/
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
