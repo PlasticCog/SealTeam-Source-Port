@@ -30,6 +30,16 @@ if(NOT SDL3_FOUND)
     FetchContent_MakeAvailable(SDL3)
 endif()
 
+# --- ymfm: Yamaha FM (OPL2/OPL3) emulator, BSD-3-Clause, vendored in third_party/ymfm
+add_library(ymfm STATIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/ymfm/src/ymfm_opl.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/ymfm/src/ymfm_adpcm.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/ymfm/src/ymfm_pcm.cpp)
+target_include_directories(ymfm PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/third_party/ymfm/src)
+if(NOT MSVC)
+    target_compile_options(ymfm PRIVATE -w)  # third-party code
+endif()
+
 # --- Main executable
 file(GLOB_RECURSE SEALTEAM_SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
@@ -39,6 +49,7 @@ list(FILTER SEALTEAM_SOURCES EXCLUDE REGEX "/src/tools/")  # standalone test too
 add_executable(sealteam ${SEALTEAM_SOURCES})
 target_include_directories(sealteam PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_link_libraries(sealteam PRIVATE SDL3::SDL3)
+target_link_libraries(sealteam PRIVATE ymfm)
 
 if(MSVC)
     target_compile_options(sealteam PRIVATE /W4 /permissive-)
@@ -59,4 +70,24 @@ if(WIN32 AND TARGET SDL3::SDL3-shared)
     add_custom_command(TARGET sealteam POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             $<TARGET_FILE:SDL3::SDL3-shared> $<TARGET_FILE_DIR:sealteam>)
+endif()
+
+# --- Audio test tool (offline XMIDI/VOC rendering; not part of the game)
+file(GLOB SEALTEAM_AUDIO_SOURCES CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/audio/*.cpp)
+add_executable(sealteam_audiotest
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/tools/audiotest.cpp
+    ${SEALTEAM_AUDIO_SOURCES}
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/data/ealib.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/data/gamefs.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/core/log.cpp)
+target_include_directories(sealteam_audiotest PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_link_libraries(sealteam_audiotest PRIVATE ymfm SDL3::SDL3)
+if(NOT MSVC)
+    target_compile_options(sealteam_audiotest PRIVATE -Wall -Wextra -Wno-unused-parameter)
+endif()
+if(MINGW)
+    target_link_options(sealteam_audiotest PRIVATE -static-libgcc -static-libstdc++)
+    if(NOT TARGET SDL3::SDL3-shared)
+        target_link_options(sealteam_audiotest PRIVATE -static)
+    endif()
 endif()
