@@ -26,19 +26,19 @@
 2dbd:2841	evt_set_altitude_level	Store altitude level in mover+0x25 and set target height from high/low heights
 2dbd:287f	evt_set_dest_to_terrain_obj	Destination = target (or nearest water object within 24000) position; returns target
 2dbd:2933	evt_is_positive_turn	1 if the shorter turn from b to a (1/8 deg inputs) is non-negative; craft banking
-2dbd:297d	evt_update_support_fire	Support-team (craft) fire and ordnance handling ("Dud.", "Support Team Out of Ammo."), contains a 7-way jump table; PROVISIONAL
-2dbd:31ec	evt_team_set_mover_flags	OR a flag mask into mover+0x26 of every member of a team
-2dbd:3232	evt_update_selected_team	Per-frame update of the currently selected team (g_ec92); PROVISIONAL
-2dbd:3517	evt_trigger_minute_job	Set the 60-second job timer g_0a6e to now-0x3c00 so the job runs on the next tick
-2dbd:352c	evt_minute_job	Job run every 0x3c00 ticks (60 s) from evt_mission_tick; PROVISIONAL
+2dbd:297d	evt_update_support_craft	Per frame: boat/helicopter/aircraft steering, orders (extract, loiter, attack, cease), speed, altitude, bank/pitch
+2dbd:31ec	evt_team_set_mover_flags	OR bits into the mover flags of every team member (0x40 = aboard craft)
+2dbd:3232	evt_update_extraction_pickup	Per frame: carry the aboard squad with the craft; board SEALs/friendlies near a craft extracting; trigger mission end
+2dbd:3517	evt_force_craft_engine_sound	Backdate the engine-sound timer so the loops restart next frame
+2dbd:352c	evt_play_craft_engine_sounds	Start engine loops for support craft (heli sfx23, aircraft sfx22, boat sfx20/21)
 2dbd:3628	evt_unit_find_weapon	First item of a given type in the unit weapon list (unit+0x16, next at item+0x0e), or NULL
 2dbd:3684	evt_split_teams_update	Every 0x400 ticks: drive split SEAL team leaders to their waypoint; Demolish (satchel) and Snipe (silenced pistol) special orders
 2dbd:3d52	evt_announce_medic_assignments	Per frame: "<role> <name>: Medical aid to <name>." for pending medic assignments (525b:0000[4]), then clear them
 2dbd:3f4c	evt_mission_tick	Per-frame mission event dispatcher: support fire, 60 s and 4 s jobs, unit checks, per-team updates, ordnance (DS:2670) and DS:3100-list updates
 2dbd:4088	evt_calc_launch_velocity	Projectile flight: shorten range, flight time t=(range<<8)/speed, fuse time 2t/4t, return initial vertical velocity
 2dbd:41a4	evt_projectile_init_motion	Initialise projectile motion record by weapon class (speed, bounce, gravity, launch height); calls 4088 for launch velocity
-2dbd:4429	evt_update_ordnance	Per-frame update of a live ordnance object from the DS:2670 pool (flag +0x29 bit 7): flight, fuse, explosion, "Dud."; PROVISIONAL
-2dbd:4c74	evt_update_area_effect	Per-frame update of an object of the DS:3100 list (flag +2 bit 0); PROVISIONAL
+2dbd:4429	evt_update_ordnance	Per frame: projectile muzzle phase, flight, gravity, detonation, bounce, collision and slot release
+2dbd:4c74	evt_update_ambient_flyer	Per frame: ambient bird (low) or high aircraft flight and culling
 2dbd:4e56	evt_search_begin	Start a team Search order (fails if a search is active); clears search counters, primes search record 0
 2dbd:4eca	evt_take_prisoner_phk	Prisoner Handling Kit on reticle target: VC/NVA unit in range 0x78 becomes the player's prisoner
 2dbd:4fcc	evt_search_body	Search the body in search record 0: mark searched, capture/rescue live units with an escort, medical aid, count weapons/documents
