@@ -1,0 +1,343 @@
+07b4	g_world_obj_count	u16	Number of objects added with world_add_object since world_begin
+07b6	g_tod_pit_colors	u8[4]	Pit colours by |hour-12|>>2: 37 3B 57 5F
+07ba	g_tod_tunnel_colors	u8[4]	Tunnel colours by |hour-12|>>2: 31 37 4B 5F
+07be	g_str_pnt_ext	char[5]	'.pnt' appended to the model name by mdl_load_pnt
+07c3	g_str_no_coherence	char[]	"Couldn't init coherence" (fatal message when view_init fails)
+4f92	g_gfx_mode	s16	Current library video mode (-1 none; 6 = VGA 320x200x256 unchained)
+4f98	g_screen_w	s16	Screen width in pixels (320)
+4f9a	g_screen_h	s16	Screen height in rows (200)
+4f9c	g_gfx_planar16	u8	Non-zero for 16-colour EGA planar modes (0 in mode 6)
+4f9e	g_nibble_double	u8[16]	Nibble -> byte with every bit doubled (00 03 0C 0F ...) for gfx_expand_nibbles
+4fae	g_gfx_buffer_seg	u16	Segment of an optional graphics buffer freed by gfx_pages_reset (0 in mode 6)
+4fb0	g_mode_flag_tbl	u8[8]	Per-mode flags (bit0 colour equipment bits, bit1 frame limiter allowed): 00 02 02 02 00 02 02 FF
+4fb7	g_mode_masks_a	u8[8]	F0 0F C0 30 0C 03 80 40 copied to F09A by gfx_init (mode 6)
+4fc6	g_mode_masks_b	u8[8]	04 00 06 04 02 00 07 06 copied to F0A2 by gfx_init (mode 6)
+4fd6	g_crtc_start_lo	u8	CRTC start-address-low value written by gfx_write_crtc_start_lo (screen shake)
+4fd9	g_str_clip_recursive	char[]	"can't SaveClipBox recursively."
+4ff8	g_clip_saved	u8	gfx_clip_push has a saved rectangle
+4ffa	g_circ_cx	s16	gfx_fill_circle centre x
+4ffc	g_circ_cy	s16	gfx_fill_circle centre y
+4ffe	g_circ_y0	s16	gfx_fill_circle first visible row
+5000	g_circ_y1	s16	gfx_fill_circle last visible row
+5002	g_circ_spans	s16*	Stack buffer (400 bytes) of left x per row for gfx_fill_circle
+5004	g_circ_saved_bp	u16	Saved BP during gfx_fill_circle
+5008	g_fill_rows_left	u16	Row counter of gfx_fill_rows_x
+5010	g_split_color_l	u16	gfx_fill_split_rows colour left of the split (low byte)
+5012	g_split_color_r	u16	gfx_fill_split_rows colour right of the split (low byte)
+5033	g_split_unused	u16	gfx_fill_split_rows first argument (non mode-6 only)
+5035	g_split_xs	s16*	gfx_fill_split_rows current split x pointer
+5037	g_split_y	s16	gfx_fill_split_rows current row
+5039	g_split_y1	s16	gfx_fill_split_rows last row
+503b	g_fill_rows_tbl	u16[8]	Per-mode fill-rows routine (mode 6 = 2255:0AF0)
+5049	g_set_clip_tbl	u16[8]	Per-mode tail of gfx_set_clip (mode 6 = 2255:101A)
+5057	g_saved_video_mode	u8	BIOS video mode at startup
+5058	g_saved_equip_byte	u8	BIOS equipment byte 0040:0010 at startup
+5059	g_vretrace_level	u8	Value of VGA status bit 3 during vertical retrace (8, or 0 if inverted)
+5076	g_bitrev4	u8[16]	4-bit bit reversal table (00 08 04 0C ...)
+5086	g_cur_color	u8	Current drawing colour index (gfx_begin_color)
+5088	g_poly_n	u16	gfx_fill_polygon vertex count
+508a	g_poly_edges_left	s16	Edges not yet consumed by the polygon walker
+508c	g_poly_top_a	s16	Byte offset of the (first) top vertex
+508e	g_poly_top_b	s16	Byte offset of the other top vertex of a flat top (-1 if none)
+5092	g_poly_ymin	s16	Smallest vertex y
+5096	g_poly_pts	s16*	Polygon point array (x,y pairs)
+5098	g_poly_l_cur	s16	Left chain: offset of the current vertex
+509a	g_poly_r_cur	s16	Right chain: offset of the current vertex
+509c	g_poly_l_next	s16	Left chain: offset of the next vertex
+509e	g_poly_r_next	s16	Right chain: offset of the next vertex
+50a0	g_poly_xl	s16	Current left edge x
+50a2	g_poly_yl	s16	Left edge y at the clip top
+50a4	g_poly_l_nx	s16	Left chain next vertex x
+50a6	g_poly_l_ny	s16	Left chain next vertex y
+50a8	g_poly_xr	s16	Current right edge x
+50aa	g_poly_yr	s16	Right edge y at the clip top
+50ac	g_poly_r_nx	s16	Right chain next vertex x
+50ae	g_poly_r_ny	s16	Right chain next vertex y
+50b0	g_poly_r_err	s16	Right edge DDA error term
+50b2	g_poly_l_err	s16	Left edge DDA error term
+50c8	g_poly_dx_hi	s16	High word of the 32-bit edge dx
+50ca	g_poly_dy_hi	s16	High word of the 32-bit edge dy
+50d2	g_poly_last	s16	Byte offset of the last vertex ((n-1)*4)
+50d4	g_poly_top_count	s16	Number of vertices sharing the top y
+50d8	g_poly_clip_d	s16	gfx_poly_clip_top work value
+50da	g_poly_clip_dy	s16	gfx_poly_clip_top half height
+50dc	g_poly_prev_l	s16	Left end of the previous span (row connection)
+50de	g_poly_prev_r	s16	Right end of the previous span
+5114	g_line_frac	u16	gfx_line minor-axis start fraction
+5116	g_line_slope	s16	gfx_line slope (2.14 fixed point)
+5118	g_line_count	s16	gfx_line pixel count - 1
+5128	g_line_dx	s16	gfx_line major delta (halved on overflow)
+512a	g_line_dy	s16	gfx_line minor delta (+-1 extended)
+5134	g_line_color	u8	gfx_line colour
+5135	g_plane_bit	u8[4]	Map-mask bit for x&3: 01 02 04 08
+5139	g_line_xmajor_tbl	u16[8]	Per-mode x-major line inner loop (mode 6 = 2255:1DEF)
+5147	g_line_ymajor_tbl	u16[8]	Per-mode y-major line inner loop (mode 6 = 2255:1ED1)
+5155	g_pixel_tbl	u16[8]	Per-mode pixel routine (mode 6 = 2255:2023)
+5164	g_fillrect_x0	s16	gfx_fill_rect left x
+5166	g_fillrect_x1	s16	gfx_fill_rect right x
+516a	g_ega_lmask	u8[8]	EGA left-edge bit masks FF 7F 3F 1F 0F 07 03 01
+5172	g_ega_rmask	u8[8]	EGA right-edge bit masks 80 C0 E0 F0 F8 FC FE FF
+51a2	g_cga_patterns	u8[2*48]	CGA 2bpp dither patterns built by gfx_build_pattern
+5202	g_mode5_patterns	u16[3*48]	Mode-5 dither patterns built by gfx_build_pattern
+52c2	g_span_fn	u16	Near address of the span routine selected by gfx_begin_color
+52c4	g_span_tbl	u16[21]	Span routines by mode (+7 patterned, +14 planar high colours); mode 6: 2129 solid, 21C5 patterned
+52ee	g_pattern_vram_seg	u16	Video segment used to latch EGA patterns
+52f0	g_pattern_on	u8	Current colour uses a dither pattern
+52f2	g_pattern_id	u8	Current dither pattern (0xFF = solid)
+52f4	g_pattern_masks	u8[2]	Mode 6: plane masks of the pattern for even (52F4) and odd (52F5) rows
+52f6	g_mode5_pat_a	u16	Mode-5 pattern word (low nibble)
+52f8	g_mode5_pat_b	u16	Mode-5 pattern word (high nibble)
+52fa	g_pattern_rowmask	u8	Pattern plane mask of the row being drawn
+52fc	g_plane_lmask	u8[4]	Left partial-byte plane masks by x&3: 0F 0E 0C 08
+5300	g_plane_rmask	u8[4]	Right partial-byte plane masks by x&3: 01 03 07 0F
+5304	g_mode5_nibble_tbl	u16[16]	Mode-5 nibble expansion words
+5324	g_pattern_templates	u8[32][8]	Dither pattern templates for patterns 0x10..0x2F
+54e4	g_aspect_ba	s32	Pixel aspect b/a (16.16, 20/23 = 0xDEAA)
+54e8	g_aspect_ab	s32	Pixel aspect a/b (16.16, 23/20 = 0x12666)
+54ec	g_aspect_x	u8	Aspect correction on x (a<b)
+54ed	g_aspect_y	u8	Aspect correction on y (a>b; set in the game)
+54ee	g_cam_angles_cached	s16[3]	Camera angles of the cached camera matrix (FFFF = invalid)
+54f4	g_in_view_list	u8	Processing the persistent view list (skips the world-box test)
+54f6	g_origin_2d	s16[2]	(0,0) rotation origin used by other modules with math_rotate_2d
+54fa	g_sky_only	u8	All four frustum corners point upwards (hides objects with flag 4)
+54fc	g_obj_angles_cached	s16[3]	Object angles of the matrix in F62C (FFFF = invalid)
+5502	g_xf_angles	s16[6]	Camera (3) and object (3) angles of the current transform tables (FFFF = invalid)
+550e	g_xf_saved_angles	s16[6]	Camera and object angles of the tables saved in far 5386:0000
+551a	g_vert_buf	u16	Base of the transformed-vertex buffer (16-byte slots; DS:CF8A)
+551c	g_vert_buf_max	u16	Capacity of the vertex buffer (128)
+551e	g_mdl_swap_size	u16	Size of the model swap buffer (0x10)
+5520	g_mdl_swap_buf	u16	DS offset of the model swap buffer (0xD78A)
+5522	g_mdl_swap_desc	u16	Descriptor whose models are in the swap buffer
+5524	g_vis_save_a	u16	Saved across nested group visibility tests
+5526	g_vis_save_b	u16	Saved across nested group visibility tests
+5528	g_vis_desc	u16	Descriptor of the object under test in r3d_obj_visible
+552a	g_frus_zoom	s16	1<<zoom (frustum normal computation)
+552c	g_frus_half	s16	Half viewport width/height (frustum normal computation)
+552e	g_cull_rx	s16	Horizontal bounding radius of the object under test
+5530	g_cull_ry	s16	Vertical bounding radius of the object under test
+5532	g_cull_px	s32	x * normal (shifted)
+5536	g_cull_pz1	s32	z * normal (left/right)
+553a	g_cull_py	s32	y * normal (shifted)
+553e	g_cull_pz2	s32	z * normal (top/bottom)
+5542	g_frus_len	s32	Normal length (16.16)
+5546	g_cull_left	s16	Distance to the left plane
+5548	g_scale_shift_tbl	u16[14]	Entry points into the unrolled shift of r3d_obj_to_camera by k
+5568	g_obj_cam_vec	s32[3]	Object centre relative to the camera (scaled, then rotated)
+5574	g_clipl_result	u16	clip_line_frustum result bits
+5576	g_clipl_iter	u8	clip_line_frustum iteration counter (8)
+5577	g_clipl_p0	s16[3]	clip_line_frustum endpoint 0 (rounded x,y,z hi words)
+557d	g_clipl_p1	s16[3]	clip_line_frustum endpoint 1
+5583	g_clipl_num	s32	clip_line_frustum numerator
+5587	g_clipl_den	s32	clip_line_frustum denominator
+558c	g_horiz_dy	s16	r3d_horizon_rows row count
+558e	g_horiz_slope	s32	r3d_horizon_rows x step per row (8.8)
+5592	g_near_dx	s32	world_obj_near_cell work
+5596	g_rot2d_dx	s16	math_rotate_2d dx
+5598	g_rot2d_dy	s16	math_rotate_2d dy
+559a	g_sqrt_shift	s16	math_sqrt_long normalisation count
+559c	g_horizon_alt_mode	u8	Alternative horizon computation (always 0)
+55b2	g_proj_zoom	s16	Zoom the projection code was generated for
+55b4	g_div_overflow	u8	Set to 0xFF by the INT 0 handler on a divide overflow
+55b5	g_div0_installed	u8	INT 0 handler installed
+55b6	g_old_int0	void far*	Saved INT 0 vector
+55ba	g_xf_sign	u8[3]	Signs of the vertex coordinates (xf_transform_vertex)
+55bd	g_xf_abs	u16[3]	Absolute vertex coordinates (xf_transform_vertex)
+55c3	g_xf_7bit	u8	Only 7 bits of the coordinates are significant (model flag 4)
+55d8	g_rng_state	u16[32]	Random generator state, initialised to the 5382:0000 table
+5618	g_rng_i	u16	Random generator index i (initially 0)
+561a	g_rng_j	u16	Random generator index j (initially 15)
+561c	g_clip_a	s16[3]	Clip edge endpoint A (rounded hi words)
+5622	g_clip_b	s16[3]	Clip edge endpoint B (rounded hi words)
+5628	g_clip_num	s32	Clip intersection numerator (<<12)
+562c	g_clip_den	s32	Clip intersection denominator
+5630	g_clip_degenerate	u8	Both endpoints lie on the camera axis (result forced to x=y=0)
+5632	g_prim_draw_tbl	u16[8]	Primitive draw routines by type: 86F8 polygon, 8CB9 line, 8E08 point, 8E67 disc, 8EF6 callback
+563c	g_cache_cx	s16	Projected centre x (cache replay)
+563e	g_cache_cy	s16	Projected centre y (cache replay); also start of the xf_invalidate_proj jump table (563E..5665)
+5668	g_xf_tab_x	s32[16][3]	Transform table for the model x axis: row k = rotated unit x * 2^(k-14) (hi words used)
+5728	g_xf_tab_y	s32[16][3]	Transform table for the model y axis
+57e8	g_xf_tab_z	s32[16][3]	Transform table for the model z axis
+58a8	g_wbox_age	s16	Calls since the world boxes were rebuilt
+58aa	g_wbox_angles	s16[3]	Camera angles of the world boxes
+58b0	g_wbox_cam	s32[3]	Camera position of the world boxes
+58bc	g_wbox_zoom	s16	Zoom of the world boxes
+58be	g_wbox_w	s16	Viewport width of the world boxes
+58c0	g_wbox_h	s16	Viewport height of the world boxes
+58c2	g_screen_pts	s16[25][2]	Projected polygon points for gfx_fill_polygon
+5926	g_clip_ring	clipvert[25]	Clip vertex ring (16 bytes: x,y,z s32, src vertex*, new flag)
+5ab6	g_poly_verts	u16[25]	Vertex slot pointers of the polygon being drawn
+5ae8	g_point_color	u16	Colour of the point primitive being drawn
+5aea	g_cur_prim	u16	Primitive being drawn (polygon)
+5aec	g_cur_nverts	u16	Vertex count of the polygon being drawn (after clipping)
+5aee	g_line_sx0	s16[2]	Projected line endpoint 0
+5af2	g_line_sx1	s16[2]	Projected line endpoint 1
+5af6	g_line_clip_res	u16	clip_line_frustum result for the line primitive
+5af8	g_line_cv0	clipvert	Clipped line endpoint 0
+5b04	g_line_cv1	clipvert	Clipped line endpoint 1
+5b10	g_line_prim	u16	Line primitive being drawn
+5b12	g_bisect_iter	u16	Bisection counter (32)
+5b18	g_bisect_a	s32[3]	Bisection endpoint A
+5b24	g_bisect_b	s32[3]	Bisection endpoint B
+5b30	g_bisect_m	s32[3]	Bisection midpoint
+5b3c	g_face_nx	s32	Face normal x
+5b40	g_face_ny	s32	Face normal y
+5b44	g_face_prim	u16	Primitive whose facing is computed
+5b46	g_face_tmp	s32	Face normal temporary product
+5b4a	g_mat_tmp	s16[9]	3x3 matrix product temporary
+5b5c	g_vec_tmp_z	s16	math_mat_vec z component
+5b5e	g_vm_cos_h	s16	cos(-heading)
+5b60	g_vm_sin_h	s16	sin(-heading)
+5b62	g_vm_cos_p	s16	cos(-pitch)
+5b64	g_vm_sin_p	s16	sin(-pitch)
+5b66	g_vm_cos_r	s16	cos(-roll)
+5b68	g_vm_sin_r	s16	sin(-roll)
+5b6a	g_vm_angle	s16	Negated wrapped angle being looked up
+5b7e	g_bit_msb	u8[8]	80 40 20 10 08 04 02 01
+5b86	g_tpl_len	u16[5]	Lengths of the code templates: prologue 7, per-part 0x1A, epilogue 3, part-rot begin 0x6C, part-rot end 0x1C
+5b90	g_tpl_call_ofs	u16[3]	Offsets of the 3 CALL rel16 fields in the per-part template (6, 0x0F, 0x18)
+5b96	g_digit_end	u16	End of the signed-digit window (mdl_digits_optimize)
+5b98	g_obj_centre_cam	s32[3]	Camera-space centre of the object being drawn (hi words at 5B9A/5B9E/5BA2)
+5ba4	g_part_saved_mat	s16[9]	Object rotation matrix saved while an articulated part is transformed
+5bb6	g_part_saved_ang	s16	Saved F626 during a part table rebuild
+5bb8	g_part_rotated	u8	The current part has its own rotation
+5bba	g_blit_count	u16	Blit bytes per row / work
+5bbc	g_blit_mask_seg	u16	aa26 mask segment / blit skip
+5bbe	g_blit_rows	u16	Blit rows left / skip
+5bca	g_blit_src_skip	s16	Blit source row skip
+5bcc	g_blit_dst_skip	s16	Blit destination row skip
+5bce	g_blit_sx	u16	Blit source x byte
+5bd0	g_blit_dx	u16	Blit destination x byte
+5c06	g_spr_dw	s16	Sprite destination width
+5c08	g_spr_dh	s16	Sprite destination height
+5c0a	g_spr_skip_cols	s16	Sprite destination columns clipped on the left
+5c0c	g_spr_skip_rows	s16	Sprite destination rows clipped on the top
+5c0e	g_spr_vis_w	s16	Sprite visible destination width
+5c10	g_spr_vis_h	s16	Sprite visible destination height
+5c12	g_spr_sw	s16	Sprite source width
+5c14	g_spr_sh	s16	Sprite source height
+5c16	g_spr_row_skip	s16	Sprite destination row advance
+5c18	g_spr_row_len	u16	Current sprite row byte length
+5c1a	g_spr_transparent	u8	Sprite transparent colour (header +4)
+5c1b	g_spr_hdr6	u8	Sprite header byte +6
+5c1d	g_spr_mask	u16	Current map-mask (rotating plane bit)
+5c1f	g_spr_mask0	u16	Map-mask of the first column
+5c21	g_spr_y	s16	Sprite destination top row
+5c35	g_mode_tbl_5c35	u16[7]	Per-mode routines of gfx_mode_dispatch_5c35 (unused)
+5c43	g_sprite_tbl	u16[7]	Per-mode sprite inner loop (mode 6 = 2255:B1EB)
+5c52	g_cache_seg	u16	Projection cache segment of the object being drawn (0 = none)
+5c54	g_cache_vsize	u16	Cache size of the vertex part (nverts*4)
+5c56	g_cache_psize	u16	Cache size of the primitive list ((nprims+1)*2)
+cefe	g_temp_obj	u16[5]	Temporary draw slots: object pointers
+cf08	g_temp_frames	u8[5]	Temporary draw slots: frames left
+cf0e	g_temp_view	u16[5]	Temporary draw slots: view the object is drawn in
+cf18	g_arena_group	obj far*	Group being filled by obj_arena_append (never set: groups unused)
+cf1c	g_arena_head	obj far*	First object of the arena chain
+cf20	g_arena_base	void far*	Object arena start (offset CF20, segment CF22)
+cf24	g_arena_end	void far*	Last byte of the arena
+cf28	g_arena_ptr	void far*	Arena allocation pointer
+cf2c	g_arena_tail	obj far*	Last object of the arena chain
+cf30	g_mdl_32bit	u8	Compiling in 32-bit precision (PNT LOD flag 8)
+cf32	g_mdl_max_coord	s16	Largest absolute vertex coordinate of the model being compiled
+cf34	g_mdl_nparts	s16	Number of articulated parts found
+cf36	g_mdl_parts	u16[8]	Extra-data pointers of the articulated parts
+cf3c	g_reloc_base	s16	Relocation: offset added to read pointers
+cf3e	g_reloc_delta	s16	Relocation: delta added to stored pointers
+cf40	g_grid_nlists	u16	Number of distinct per-cell visibility lists built
+cf42	g_grid_list_bytes	u16	Bytes used by the per-cell visibility lists
+cf8a	g_vert_slots	vslot[128]	Transformed-vertex buffer (16-byte slots: x,y,z s32, sx, sy)
+d78a	g_mdl_swap_area	u8[16]	Model swap buffer given to mdl_swap_buffer_set
+f09a	g_masks_a	u8[8]	Copy of 4FB7 (mode 6)
+f0a2	g_masks_b	u8[8]	Copy of 4FC6 (mode 6)
+f0aa	g_row_color	u8[200]	Draw page row cache: solid colour of each row or 0xFF (mixed)
+f172	g_row_color_other	u8[200]	Row cache of the displayed page (swapped by gfx_flip)
+f23a	g_gfx_mode_flags	u8	Flags of the current mode (4FB0[mode]); bit 1 enables the frame limiter
+f23c	g_clip_x0	s16	Clip rectangle left (inclusive)
+f23e	g_clip_x1	s16	Clip rectangle right (inclusive) = x+w-1
+f240	g_clip_y0	s16	Clip rectangle top (inclusive)
+f242	g_clip_y1	s16	Clip rectangle bottom (inclusive) = y+h-1
+f244	g_clip_w	s16	Clip width
+f246	g_clip_h	s16	Clip height
+f248	g_clip_cx	s16	Clip centre x = (x0+x1)>>1 (projection centre)
+f24a	g_clip_cy	s16	Clip centre y = (y0+y1)>>1 (projection centre)
+f24c	g_clip_wbytes	u16	Mode 6: clip width >> 2
+f24e	g_clip_wwords	u16	Mode 6: clip width >> 3 (words filled by gfx_fill_rows_x)
+f250	g_clip_xb0	u16	Mode 6: first byte column (x0>>2)
+f252	g_clip_xb1	u16	Mode 6: last byte column (x1>>2)
+f254	g_row_bytes	u16	Bytes per row of a page (80)
+f256	g_gfx_val_f256	u16	Mode constant 8
+f258	g_text_align	u16	Mode constant 4 (pixel alignment of fast text)
+f25a	g_pixel_scale	u16	Mode constant 8
+f25c	g_px_align_mask	u16	Surface width rounding mask (7)
+f25e	g_px_shift	u16	Surface width shift (3): bytes/row = ((w+7)>>3)*2
+f260	g_display_page	s16	Page shown by the CRTC (set by gfx_set_display_page)
+f262	g_num_colors	u16	Number of colours of the mode (0x100)
+f264	g_draw_page	s16	Page drawn to (set by gfx_set_draw_page)
+f266	g_row_offsets	u16[200]	Byte offset of each row in a page (80*y)
+f3f6	g_draw_seg	u16	Segment of the page being drawn (A000 or A400)
+f3f8	g_page_seg	u16[2]	Page segments A000, A400
+f400	g_screen	bitmap	Descriptor of the draw page (flags 1, 320, 200, 80, seg)
+f40a	g_page0_bmp	bitmap	Descriptor of page 0
+f414	g_page1_bmp	bitmap	Descriptor of page 1 (segment A400)
+f41e	g_half_row_bytes	u16	Bytes per row / 2 (40)
+f422	g_page_bytes	u16	Bytes per page (16000)
+f430	g_rv_world	world*	World being rendered
+f432	g_cam_x	s32	Camera x (world units = game units*256)
+f436	g_cam_y	s32	Camera y (up)
+f43a	g_cam_z	s32	Camera z
+f43e	g_cam_heading	s16	Camera heading (1/8 degree)
+f440	g_cam_pitch	s16	Camera pitch
+f442	g_cam_roll	s16	Camera roll
+f444	g_rv_viewport	s16*	Viewport rectangle {x,y,w,h}
+f446	g_zoom	s16	Projection zoom: focal length = 2^zoom pixels
+f448	g_work_buf	u16	Render work buffer (DS:D8BE)
+f44a	g_work_size	u16	Render work buffer size (5000)
+f44c	g_rv_view	view*	View being rendered
+f44e	g_rv_arg_b	u8	Second byte argument of r3d_render_view (0)
+f44f	g_rv_wait	u8	Wait for the frame limiter before drawing the sky/ground
+f450	g_obj_seg	u16	Segment of the object arena (object records are far pointers g_obj_seg:off)
+f452	g_cam_mat	s16[9]	Camera matrix (1.14, rows x,y,z; y row aspect scaled)
+f464	g_cam_mat_pr	s16[9]	Pitch/roll-only camera matrix (for the horizon)
+f476	g_stat_batches	u16	Statistics: batches gathered
+f478	g_stat_tested	u16	Statistics: objects tested
+f47a	g_stat_far	u16	Statistics: objects rejected by distance/world box
+f47c	g_stat_out	u16	Statistics: objects outside the frustum
+f47e	g_stat_in	u16	Statistics: objects fully inside the frustum
+f480	g_stat_clipped	u16	Statistics: objects needing clipping
+f482	g_cpu_type	u16	CPU class from sys_cpu_detect (86, 186, 286, 386)
+f484	g_cam_mat_inv	s16[9]	Inverse (transposed) camera matrix
+f496	g_frus_corner	s32[4][3]	World-space frustum corner directions (F496, F4A2, F4AE, F4BC)
+f4ba	g_rv_status	u8	r3d_render_view status: 0 ok, 1 work buffer full, 2 view list full
+f4c8	g_batch_count	s16	Render records in the current batch
+f4f2	g_wbox_xmin	s32[10]	World box min x for size classes 10..19
+f51a	g_draw_list	u16	Head of the sorted draw list (render records linked at +2)
+f544	g_wbox_xmax	s32[10]	World box max x for size classes 10..19
+f56c	g_batch_start	u16	Start of the render record pointer array (work buffer start)
+f596	g_wbox_zmin	s32[10]	World box min z for size classes 10..19
+f5be	g_batch_ptr	u16	Next free slot of the pointer array
+f5e8	g_wbox_zmax	s32[10]	World box max z for size classes 10..19
+f610	g_rec_ptr	u16	Next render record (allocated downwards, 0x16 bytes)
+f612	g_precise	u8	Precise mode for the object being drawn (32-bit projection, bisection clipping)
+f614	g_clip_shift_x	s16	Shift turning the left/right planes into x=+-z
+f616	g_clip_shift_y	s16	Shift turning the top/bottom planes into y=+-z
+f618	g_clip_side_x	u8	0: shift x, 1: shift z (left/right)
+f619	g_clip_side_y	u8	0: shift x,y, 1: shift z (top/bottom)
+f61a	g_scale_k	u16	Scale shift k of the object being drawn (rec+5)
+f61c	g_draw_obj	obj far*	Object being drawn (read by the model hooks)
+f620	g_draw_rec	rec*	Render record being drawn
+f622	g_draw_desc	desc*	Descriptor of the object being drawn
+f624	g_draw_model	model*	LOD model being drawn
+f626	g_obj_angles	s16[3]	Rotation angles of the object being drawn (0 if static)
+f62c	g_obj_mat	s16[9]	Rotation matrix of the object being drawn
+f642	g_draw_clip	u8	Clip flags of the object being drawn (rec+4)
+f643	g_cache_record	u8	Record drawn primitives into the projection cache
+f644	g_cache_prim_ptr	u16 far*	Next slot of the cached primitive list
+f648	g_stat_clip_edges	u16	Statistics: clip intersections
+f64a	g_stat_clip_same	u16	Statistics: clip intersections with both z on the same side
+f64c	g_code_ptr	u8 far*	Code emission pointer (offset F64C, segment F64E)
+f650	g_code_end	u16	End of the code buffer
+f652	g_code_seg	u16	Segment of the code buffer
+f654	g_code_ok	u8	Code buffer did not overflow
+f656	g_code_total	u32	Total bytes of generated model code
+f65a	g_digit_bits	s16	Highest significant bit of the model coordinates (digit window)
+f65c	g_horizon_alt_lim	s16	Limit used only by the alternative horizon mode (0)
+f6d4	g_sprite_centred	u8	Set while gfx_sprite_centered draws

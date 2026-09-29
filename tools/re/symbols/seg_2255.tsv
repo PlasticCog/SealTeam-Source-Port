@@ -1,0 +1,274 @@
+2255:000a	mdl_time_of_day_colors	Recolour the pit/tunnel models for the time of day: idx=|g_clock_hour-12|>>2, pit colour word 0x5A00|T7B6[idx], tunnel colour words 0xFF00|T7BA[idx], c5de=0x7800
+2255:003b	mdl_load_pnt	Load '<desc.name>.pnt' (far, via ealib_load_far with alloc-from-top) and for each of the 3 LOD models: compile its vertex data (mdl_compile) and in 256-colour mode copy the PNT colour bytes into its primitives; frees the file; returns AND of results (pascal desc)
+2255:0176	eng_shutdown_stub	Empty far procedure called at shutdown (placeholder)
+2255:0177	mdl_load_all	Load every model of the far model table 514B:0000 (6-byte entries, desc==0 ends): swap in, mdl_load_pnt (fatal on failure), swap out; then mdl_time_of_day_colors
+2255:01cf	world_free	Free the scenery work buffers (4ff8:006c), the view object list (view_free 0x74A) and the world grid (world_free_grid 0x7A4)
+2255:01e7	world_begin	Create the default view 0x74A (max 200 listed objects, subsample 2, projection cache on, 25 frames / 16 angle units), clear world 0x7A4 and open the object arena (0x4C90 bytes); object count DS:07B4=0
+2255:0234	world_add_object	Create a world object (cdecl desc, x_long, z_long, flags): pos x=x<<8, y=desc+0x2C, z=z<<8; flags bit 0x4000 -> static grid object (arena chain) else pushed on the world dynamic list; count++
+2255:02b0	world_end	Close the object arena (shrink, terminate chain) and distribute the static objects into the world grid (extent 24000x24000 game units), then init scenery buffers (4ff8:000c)
+2255:02d1	mdl_hook_uh1_rotor	(not in Ghidra function list) UH-1 pre-draw hook: rotor angle (deg) = (old + 1200*frame_dt/256) mod 360 (frame_dt = DS:ECAA), stored *8 into two sub-object angle words
+2255:031c	mdl_hook_mike2	Mike-boat pre-draw hook: BSP leaf flags 91CE/9214/9223 (3 shown / 1 hidden) from object word +0x14, turret part angle 912A = 8*1000:3300(obj+6, DS:0EA0), leaf 911A = 7
+2255:037a	mdl_hook_lssc	LSSC-boat pre-draw hook: BSP leaf flags 8D9C (+0x14==0 ? 3 : 1) and 8D7E/8D8D (+0x14<0x20 ? 1 : 3)
+2255:03b9	mdl_hook_ripples	Small-ripple pre-draw hook: choose the animation frame by object word +0x14: BSP leaf flags B189/B197 = 3/1 or 1/3
+2255:03f4	mdl_hook_rippleb	Big-ripple pre-draw hook: BSP leaf flags B097/B0A1/B0B1 = 3,3,1 or 1,1,3 by object word +0x14
+2255:0435	mdl_hook_tunnel	Tunnel pre-draw hook: BSP leaf flags C581/C585 = 3/1 or 1/3 by object word +0x14
+2255:0470	mdl_hook_cobra_rotor	Cobra pre-draw hook: advance the rotor sub-object angle words 75A5/75C6 by 60 degrees ((a>>3)+60)<<3 each draw
+2255:0494	mdl_hook_pit	Pit pre-draw hook: pit colour word = 0x5A00 | (T7B6[|g_clock_hour-12|>>2] + (obj+0x14 ? 0x20 : 0))
+2255:04de	gfx_init	Enter graphics mode AX (only mode 6 = VGA 320x200x256 unchained is fully set up): BIOS mode, row offset table, pages A000/A400, patterns, vsync polarity, pages 0/0, screen bitmaps, full clip, row caches, VGA heap A800..AFFF; returns 1
+2255:060d	gfx_pages_init	gfx_pages_reset; in mode 6 draw on page 1 while page 0 is displayed; returns 1
+2255:062c	gfx_pages_reset	Free the buffer DS:4FAE and select page 0 for drawing and display
+2255:0649	gfx_flip	Page flip (AL=do_flip, DL=wait): draw page := displayed page, display the other one, swap the per-page row caches; if DL, reset the tick counter and wait 5 ticks (~19.5 ms, 4a1c:0192) so the new start address is latched
+2255:0695	gfx_set_draw_page	Select drawing page AX (mode 6: segment A000/A400 into g_draw_seg)
+2255:06bc	gfx_set_display_page	Select displayed page AX (mode 6: CRTC start address = page segment << 4)
+2255:06e2	gfx_clip_full	Set the clip rectangle to the whole screen (0,0,320,200)
+2255:06f4	gfx_hline	Horizontal line x0..x1 on row y (pascal x0,x1,y,color)
+2255:0718	gfx_vline	Vertical line x, y0..y1 (pascal x,y0,y1,color) via gfx_line
+2255:0735	gfx_clear	Fill every row of the draw page with colour AL ignoring the clip, then restore the clip
+2255:0786	gfx_rect	Rectangle outline (pascal x,y,w,h,color)
+2255:07dd	gfx_row_cache_reset	Set both 200-byte row colour caches (draw page F0AA, other page F172) to 0xFF (unknown)
+2255:07f7	gfx_clip_push	(not in Ghidra function list) Save the clip rectangle (one level; error 'can't SaveClipBox recursively.' if already saved)
+2255:0825	gfx_clip_pop	(not in Ghidra function list) Restore the clip rectangle saved by gfx_clip_push
+2255:0840	gfx_set_crtc_start	Write CRTC start address registers 0x0C/0x0D (pascal addr)
+2255:0856	gfx_vram_copy	Latched VRAM-to-VRAM byte copy (write mode 1, all planes) (cdecl src_seg,src_off,dst_seg,dst_off,count)
+2255:08b0	gfx_set_write_mode	Write VGA graphics-controller register 5 (read/write mode) (cdecl mode)
+2255:08be	gfx_circle_octants	Filled-circle helper (near, CX/DX = midpoint x,y offsets): store the half-span for the 4 rows yc+-dy, yc+-dx into the span table
+2255:099a	gfx_fill_circle	Filled circle by midpoint algorithm, r in [2,749]; r 0 = pixel, r 1 = plus-shaped 3 rows (pascal x,y,r,color)
+2255:0ae6	gfx_fill_rows	Mode dispatch (table 503B) to fill whole clipped rows (pascal y,rows,color); mode 6 -> gfx_fill_rows_x
+2255:0af0	gfx_fill_rows_x	Mode 6: fill rows y..y+n-1 across the byte-aligned clip width with a solid colour, skipping rows whose row cache already holds that colour (pascal y,rows,color)
+2255:0b74	gfx_fill_split_rows	For rows y0..y1: pixels up to and including xs[i] get colour L, pixels right of it colour R (whole row L or R when outside the clip); used for the horizon (pascal xs*,y0,y1,L,R,unused)
+2255:0ca6	gfx_bios_set_mode	Set BIOS equipment video bits and INT 10h mode for library mode 0..6 (6 = mode 13h then unchained Mode X, clear 256K, byte mode)
+2255:0d7e	gfx_save_video_mode	Remember the current BIOS video mode (INT 10h/0F) and equipment byte 0040:0010
+2255:0d92	gfx_restore_video_mode	Restore the saved equipment byte and BIOS video mode
+2255:0da6	gfx_present_linear	(not in Ghidra function list) Copy changed clipped rows from a system-memory back buffer to A000 (linear 320-byte rows); not used in mode 6
+2255:0e02	mem_copy_far	Copy n bytes (pascal src far*, dst far*, n)
+2255:0e2e	mem_fill_far	Fill n bytes with a value (pascal dst far*, n, value)
+2255:0e50	mem_swap_far	Exchange n bytes between two far buffers (pascal a far*, b far*, n)
+2255:0ed6	mem_swap	Exchange n bytes between two DS buffers (pascal a*, b*, n)
+2255:0f4e	gfx_vsync_detect	Measure the VGA status bit 3 duty cycle to learn which level means vertical retrace (DS:5059 = 8 normally, 0 if inverted)
+2255:0f7b	sys_iret_stub_a	IRET used as a far POPF helper by gfx_vsync_detect
+2255:0f7c	gfx_vsync_detect_ret_a	Tail of gfx_vsync_detect: restore flags and return (retrace polarity 0)
+2255:0f88	sys_iret_stub_b	IRET used as a far POPF helper
+2255:0f89	gfx_vsync_detect_ret_b	Tail of gfx_vsync_detect: restore flags and return (retrace polarity 8)
+2255:0f8e	gfx_wait_vretrace_end	(not in Ghidra function list) Wait for vertical retrace, then for its end
+2255:0fae	gfx_wait_vretrace	Wait until the VGA is in vertical retrace
+2255:0fbe	sys_iret_stub_c	IRET used as a far POPF helper by gfx_wait_vretrace
+2255:0fbf	gfx_wait_vretrace_ret	Tail of gfx_wait_vretrace: restore flags and return
+2255:0fc4	gfx_write_crtc_start_lo	Write CRTC register 0x0D from DS:4FD6 (start address low byte)
+2255:0fd0	gfx_set_clip	Set the clip rectangle and its derived values (x1,y1, centre, mode-6 byte columns) (pascal x,y,w,h)
+2255:103c	sys_get_dgroup	Return DS (the DGROUP segment)
+2255:104e	math_imul16	DX:AX = AX*DX (signed)
+2255:1056	math_muldiv16	AX = (AX*DX)/BX (signed 32-bit intermediate)
+2255:1062	math_mul_8_8	AX = (AX*DX)>>8 (signed 8.8 multiply)
+2255:106a	gfx_expand_nibbles	Expand n source bytes into n words by doubling every bit of each nibble (table 4F9E; CGA 2bpp conversion) (cdecl src,dst,n)
+2255:109e	dos_first_mcb	INT 21h/52h: return the first DOS memory control block segment (word at ES:BX-2)
+2255:10a8	gfx_set_palette	Wait for vertical retrace and load all 256 DAC entries from a far RGB table (6-bit components) (cdecl rgb far*)
+2255:10de	dos_print	Print a NUL-terminated DS string with INT 21h/02h, emitting CR after every LF (cdecl str*)
+2255:10fc	gfx_fill_polygon	Scan-convert a filled polygon (two monotone chains from the top vertex, Bresenham-style edges, row-connected spans, clipped) (cdecl pts*,n,color)
+2255:140e	gfx_poly_clip_top	Polygon helper (near): advance an edge that starts above the clip top to the first visible row by repeated halving
+2255:1597	gfx_poly_done	Polygon exit: reset the EGA graphics controller (gfx_end_draw)
+2255:1615	gfx_poly_left_edge	Polygon helper (near): step to the next vertex of the left chain and set up its x DDA (integer step, error terms patched into the span loop)
+2255:1732	gfx_poly_right_edge	Polygon helper (near): step to the next vertex of the right chain and set up its x DDA
+2255:1844	gfx_poly_swap_chains	Polygon helper (near): exchange the left and right chain state when they cross
+2255:18c5	gfx_begin_color	Select colour AL / dither pattern AH (0xFF = solid) and the span routine for the current mode (table 52C4)
+2255:1933	gfx_end_draw	Restore the EGA graphics controller after drawing (no-op in mode 6)
+2255:194d	gfx_select_pattern_far	(not in Ghidra function list) Select the dither pattern of colour word (cdecl color)
+2255:1962	gfx_line	Clipped line with 2.14 fixed-point DDA, honours dither patterns (pascal x0,y0,x1,y1,color)
+2255:1f9e	gfx_pixel	Plot one pixel if inside the clip (pattern aware) (pascal x,y,color)
+2255:205a	gfx_hspan	Draw span x0..x1 on row y in the current colour set by gfx_begin_color (pascal x0,x1,y)
+2255:20b9	gfx_hspan_ega	Span routine for 16-colour planar modes (near; not used in mode 6)
+2255:2422	gfx_set_pattern	Near: make pattern AL current (0xFF = solid) and precompute its per-row plane masks (DS:52F4)
+2255:24aa	gfx_init_patterns	Build the 32 dither patterns 0x10..0x2F from the 8-byte templates at DS:5324 (EGA/CGA forms)
+2255:2508	gfx_build_pattern	Convert one 8-byte pattern template for the current mode (pascal index,src*)
+2255:25ce	gfx_fill_rect	Filled rectangle (pascal x,y,w,h,color)
+2255:2622	rect_has_point	1 if (x,y) lies inside rect {x,y,w,h} (pascal rect*,x,y)
+2255:2656	rect_in_rect	1 if rect a lies completely inside rect b (pascal a*,b*)
+2255:2695	rect_intersect	out = intersection of two rects; returns 0 and zeroes out if empty (pascal out*,a*,b*)
+2255:2717	rect_has_point_p	1 if point {x,y} lies inside rect (pascal pt*,rect*)
+2255:275b	rect_union	dst = bounding box of dst and src (pascal dst*,src*)
+2255:27cc	rect_from_corners	Build a rect from two corner points in any order (pascal out*,x0,y0,x1,y1)
+2255:2824	rect_align_x	Widen rect BX horizontally to 8-pixel boundaries
+2255:2859	bmp_desc_clear	Zero the 10-byte bitmap descriptor at BX
+2255:2867	bmp_create	Fill descriptor BX for a w=AX x h=DX bitmap (bytes/row = ((w+7)>>3)*2) and allocate its memory (off-screen VGA heap in mode 6); returns success
+2255:28ca	bmp_free	Free the memory of bitmap descriptor BX (VGA heap in mode 6) and clear its segment
+2255:28fa	gfx_sprite_centered	Draw an RLE sprite scaled to w x h centred on (cx,cy) if |cx|,|cy| < 10000, with flag DS:F6D4 set (pascal sprite far*,cx,cy,w,h)
+2255:295e	heap_access_begin	Heap helper (near): prepare VGA registers when the heap lives in video memory
+2255:2982	heap_unlink	Heap helper (near): unlink the block at ES from its neighbours
+2255:29a6	heap_init	Initialise heap descriptor over [seg, seg+paras) as one free block (cdecl heap*,seg,paras,flags); fatal if already initialised or too small
+2255:2a36	heap_alloc	Allocate n bytes (paragraph granular, 16-byte header, rover first fit, optional top allocation) (cdecl heap*,n); returns data segment or 0
+2255:2b42	heap_free	Free the block with data segment seg, check guard words, merge with free neighbours (cdecl heap*,seg); 1 = ok
+2255:2c74	heap_realloc	Resize a block in place (shrink or grow into the following free block) (cdecl heap*,seg,n); 1 = ok
+2255:2dac	heap_set_owner	Set the owner tag stamped into newly allocated blocks (cdecl heap*,tag)
+2255:2dd0	heap_set_flags	Set the heap flag byte (bit1 top allocation, bit2 fill freed 0xAA) (cdecl heap*,flags)
+2255:2df4	heap_free_owner	Free every block carrying owner tag (cdecl heap*,tag)
+2255:2e4b	r3d_temp_clear	(not in Ghidra function list) Clear the 5 temporary draw slots (DS:CEFE)
+2255:2e5c	r3d_temp_add	Register an object to be drawn in a view for the next 8 frames even if not in the scene (5 slots, overwrites slot 0 when full) (cdecl view*,obj*)
+2255:2e96	r3d_merge_draw_list	Merge a sorted batch of render records into the sorted draw list (links at rec+2) (near pascal array*,n,head); returns new head
+2255:2f40	r3d_clip_shifts	Compute (cached per view) power-of-two approximations of the frustum slopes: shift/side for x (F614/F618) and y (F616/F619)
+2255:300c	r3d_pow2_ratio	Approximate a 16.16 slope by 2^n: returns shift and whether x (0) or z (1) must be shifted (cdecl out_shift*,out_side*,frac,int)
+2255:3090	r3d_render_view	Render one 3D view: set camera/clip/projection, gather and cull objects (grid cells, dynamic list, persistent view list, temp slots), sort, draw sky/ground and objects, rebuild the view list; returns 0 ok, 1 work buffer full, 2 view list full (pascal world*,x_long,y_long,z_long,heading,pitch,roll,viewport*,zoom,buf*,buf_size,view*,unused,wait)
+2255:35fe	r3d_group_visible	Visibility of a group object for this frame (cached): 0 fully inside, 0xFF culled, else clip flags; inherits from its parent group (near obj*)
+2255:3726	math_rot_matrix	Build 3x3 1.14 rotation matrix R = Ry(a0)*Rx(a1)*Rz(a2) (pascal out*,a0,a1,a2)
+2255:3814	clip_top_bisect_cb	Clip-edge callback (precise mode) for the plane y=z: counts, zero-z special case, then bisection (clip_top_bisect)
+2255:38c6	clip_bottom_bisect_cb	Clip-edge callback (precise mode) for the plane y=-z
+2255:3978	clip_left_bisect_cb	Clip-edge callback (precise mode) for the plane x=-z
+2255:39c0	clip_right_bisect_cb	Clip-edge callback (precise mode) for the plane x=z (never referenced)
+2255:3a08	xf_update_tables	Rebuild the transform tables for the current camera and object rotation, or swap in the cached copy (far 5386) if it matches
+2255:3b3d	obj_arena_init	Allocate the object arena (size bytes of far heap) and set the world's object segment (pascal world*,size)
+2255:3b99	obj_arena_room	1 if n more bytes fit in the arena (pascal n)
+2255:3bc0	obj_arena_copy	Append n bytes copied from a DS buffer to the arena; returns far pointer (pascal src*,n)
+2255:3c08	obj_arena_store	Near: copy an object record into the arena (0x12 bytes if flag 2 static, else 0x18)
+2255:3c2e	obj_arena_append	Store an object record and link it at the end of the arena chain (or into the current group's child list) (pascal rec*)
+2255:3cea	obj_arena_append_static	Append an object record, forcing the compact static form if all three angles are 0 (pascal rec*)
+2255:3d1f	obj_list_add	Store an object record and push it on the list of owner+0xC (pascal rec*,owner*)
+2255:3d44	obj_arena_close	Terminate the arena chain, shrink the arena to its used size; returns the chain head (far)
+2255:3d70	obj_list_push	Push a far object record on the list whose head is at owner+0xC (link at rec+4) (pascal rec far*,owner*)
+2255:3d93	math_log2_long	Near: smallest n (<=24) with value <= 0x100<<n (long value)
+2255:3dcd	r3d_set_aspect	Set the pixel aspect ratio (pascal p,q): DS:54E4 = p/q, 54E8 = q/p (16.16), 54EC = p>q, 54ED = q>p; invalidate matrix caches
+2255:3e73	r3d_set_default_aspect	r3d_set_aspect(20,23): screen y is scaled by 20/23
+2255:3e83	mdl_aspect_radii	Store the aspect-corrected horizontal (+4) and vertical (+6) bounding radii of a model descriptor from +2 (pascal desc*)
+2255:3ede	obj_aspect_cb_group	Callback: mdl_aspect_radii of the object's descriptor if the object is a group (flag 0x20)
+2255:3ef7	obj_aspect_cb	Callback: mdl_aspect_radii of the object's descriptor
+2255:3f09	world_aspect_all	Apply obj_aspect_cb to every object of a world (pascal world*)
+2255:3f22	world_aspect_groups	Apply obj_aspect_cb_group to every object of a world (pascal world*)
+2255:3f3b	view_remark	Set the object segment; persistent views: unmark the list and clear all cull flags, else mark the listed objects (pascal view*)
+2255:3f6f	view_init	Initialise a view record (0x5A bytes) and allocate its object list (pascal view*,world*,persist,subsample,max_objs,cache_on,cache_age,cache_rot); 1 = ok
+2255:400b	view_free	Free every listed projection cache, unmark and free the object list, free the planar-mode buffer (pascal view*)
+2255:40ac	view_clear_list	Free every listed projection cache, unmark the objects and empty the list (pascal view*)
+2255:4114	view_unmark	Clear object flag 8 (in view list) on every listed object (pascal view*)
+2255:415f	view_mark	Set object flag 8 on every listed object (pascal view*)
+2255:41aa	obj_clear_cull_flags	Callback: clear object flags 0x40/0x80 (cdecl obj far*)
+2255:41b7	world_clear_cull_flags	Apply obj_clear_cull_flags to every object of a world (pascal world*)
+2255:41d0	obj_foreach_list	Near: call fn(obj far*) for every object of a linked list, recursing into group children (+0x18)
+2255:421d	world_foreach	Call a far callback for every object of the world dynamic list and of every grid cell (pascal world*,fn far*)
+2255:4275	math_obj_angles	Heading/pitch and ground distance between two object positions (wrapper of math_heading_pitch) (pascal)
+2255:42b6	xf_set_vertex_buffer	Set the transformed-vertex buffer base (DS:551A) and capacity (DS:551C) (pascal base,max)
+2255:42c9	world_cell_at	Far pointer to the grid cell containing world position (x,z) (clamped) (pascal world*,x_long,z_long)
+2255:4328	r3d_project	Project a camera-space vertex record to screen x,y with the current projection (pascal vert*,sx*,sy*)
+2255:433d	math_rotate_about	Rotate point pt about centre by an angle using 16.16 sin/cos (pascal pt*,centre*,angle); unused
+2255:4415	mdl_apply_colors	Near: copy one PNT colour byte per primitive into the primitive colour fields (type 4 records skipped)
+2255:4481	math_atan2	Angle of (AX,DX) in 1/8 degree (0..2879) from the atan table 52E7:0008; 0 along +AX, 720 along +DX
+2255:4500	mdl_find_subobjects	Near: collect the extra-data pointers of BSP leaves with flag 4 (articulated sub-objects) into DS:CF36
+2255:4542	mdl_compile	Generate x86 code that transforms a model's vertices (signed-digit add/sub of transform table rows, hierarchical parents, articulated parts) (pascal model*,verts far*,parents far*,flags); 1 = ok
+2255:478b	mdl_emit_range	Near: emit the code for vertices first..last of one part
+2255:4886	mdl_emit_block	Near: append n bytes (code template) to the code buffer
+2255:48be	mdl_free_compiled	Free the generated code of the (up to 3) compiled LOD models of a descriptor (pascal desc*)
+2255:4904	mdl_emit_byte	Near: append one byte to the code buffer
+2255:4929	mdl_emit_digit	Near: emit |d| ADD/SUB (and ADC/SBB in 32-bit mode) instructions for signed digit d of bit k of one axis table
+2255:49e5	mdl_emit_vertex	Near: emit load-base (object centre or parent vertex, skipped if parent is the previous vertex), 3 axis sums and the store for one vertex
+2255:4ae5	mdl_vertex_digits	Near: signed-digit form of the vertex offset (dx,dy,dz)
+2255:4b24	mdl_reloc_poly0	Near: relocate the shared-record pointer of a type-0 primitive
+2255:4b34	mdl_reloc_poly1	Near: relocate the shared-record pointer of a type-1 primitive
+2255:4b44	mdl_reloc_poly2	Near: relocate the shared-record pointer of a type-2 primitive
+2255:4b54	mdl_reloc_poly3	Near: relocate the shared-record pointer of a type-3 primitive
+2255:4b64	mdl_reloc_poly4	Near: relocate the shared-record pointer of a type-4 primitive
+2255:4b74	mdl_reloc_leaf	Near: relocate the primitive pointers of a BSP leaf and the primitives themselves
+2255:4bdf	mdl_reloc_polys	Near: relocate the leading type-0 primitive records of a model
+2255:4c08	mdl_reloc_bsp	Near: relocate a BSP subtree
+2255:4c47	mdl_reloc_model	Near: relocate one LOD model (primitives and BSP)
+2255:4c7a	mdl_relocate	Near: add a delta to every internal pointer of a descriptor's LOD models
+2255:4cbf	mdl_swap_buffer_alloc	Allocate the model swap-in buffer from the near heap (pascal size)
+2255:4ce5	mdl_swap_buffer_set	Use a caller supplied model swap-in buffer (pascal ptr,size)
+2255:4cf8	mdl_swap_invalidate	(not in Ghidra function list) Forget which descriptor is in the swap buffer
+2255:4cff	mdl_swap_buffer_free	(not in Ghidra function list) Free the near-heap model swap buffer
+2255:4d1e	mdl_swap_in	If a descriptor keeps its models in far memory, copy them into the swap buffer (relocating once) (pascal desc*)
+2255:4d7d	mdl_swap_out	Copy the swap buffer back to the descriptor's far storage (pascal desc*)
+2255:4d9c	r3d_frustum_normals	Near: unit normals (2.14) of the four frustum side planes for the viewport and zoom, cached in the view (+0x24..+0x31)
+2255:4e9c	r3d_cull_sphere	Near: test an object's bounding sphere (camera space) against the four frustum planes; 0 culled, else sets rec+4 clip flags (0 = fully inside)
+2255:506b	r3d_obj_to_camera	Near: camera-space centre of an object in model units scaled by 2^k (k in rec+5 chosen for 14-bit precision), stored at rec+6/+8/+A
+2255:52db	r3d_scale_shift_table	(not in Ghidra function list) Unrolled 13-step 3x32-bit left shift entered through table DS:5548 (part of r3d_obj_to_camera)
+2255:53bb	r3d_obj_visible	Near: full visibility test of one object for a render record (near pascal obj,rec): enable/cull-memory flags, Manhattan distance, LOD choice (+callback), world box cull, camera transform, group and frustum tests; 1 = draw
+2255:5553	r3d_draw_order_cmp	Near: compare two render records (near pascal p,q): <0 if p is drawn first: lower descriptor layer byte, or (same layer >= 0x80) farther
+2255:55a8	r3d_gather_list	Near: test every stride-th object (after skipping skip objects) of an object list, recursing into visible groups; append visible records to the batch (near pascal list,skip,stride,parent)
+2255:56c4	r3d_camera_matrix	Near: build (cached) the camera matrix F452, its inverse F484 and the pitch/roll-only matrix F464, then apply the pixel-aspect scaling
+2255:5838	r3d_frustum_corners	Near: world-space directions of the 4 frustum corners (F496..F4C6), the 'sky only' flag 54FA and the world cull boxes
+2255:59bc	clip_line_frustum	Near: clip a 3D line segment against the 4 frustum planes by division; returns which endpoints were replaced or -1
+2255:601d	r3d_horizon_rows	Near: fill a per-row x table for the horizon line through (xc,yc) and returns its row range (clipped)
+2255:613f	math_sin	AX = sin(angle AX) in 1.14 (table 5327:000A, 721 entries for 0..90 degrees)
+2255:618c	math_cos	AX = cos(angle AX) in 1.14
+2255:61e7	math_sin_fx	DX:AX = sin(angle AX) as 16.16
+2255:61f6	math_cos_fx	DX:AX = cos(angle AX) as 16.16
+2255:6205	math_angle_wrap	Wrap angle AX into 0..2879
+2255:621e	math_angle_add	[BX] = wrap([BX] + AX)
+2255:623d	world_obj_near_cell	Near: 1 if an object's LOD-0 range reaches grid cell (cx,cz) (Manhattan distance in cell units)
+2255:62d0	math_rotate_2d	Rotate point about centre by angle with rounded 1.14 products (pascal pt*,centre*,angle)
+2255:6368	math_sqrt_long	Square root of a 32-bit value, result 16.16 (pascal value_long)
+2255:63d7	math_heading	Heading (0..2879, 0 = +z, increasing towards -x) from (x0,z0) to (x1,z1), 32-bit coordinates (pascal x0,z0,x1,z1)
+2255:643f	math_heading_pitch	Heading and pitch between two 3D points (32-bit coordinates) (pascal)
+2255:64fd	math_pitch	Pitch angle between two 3D points (32-bit coordinates) (pascal)
+2255:659e	list_push	Push a far record on a list (head in far memory, link at rec+4) (pascal rec far*,head far*)
+2255:65b9	math_fmul	Signed 16.16 x 16.16 multiply (pascal a_long,b_long)
+2255:661b	math_fdiv	Signed 16.16 division (pascal a_long,b_long)
+2255:6699	sys_cpu_detect	Measure loop speed over 6 BIOS ticks (*speed = count/6519, *frac) and return the CPU class 86/186/286/386 (cdecl speed*,frac*)
+2255:671c	r3d_draw_sky_ground	Near: fill the viewport with the ground/sky colours (world+0/+1) split by the projected, rolled horizon line (pascal ground,sky)
+2255:6b74	sys_div0_handler	(not in Ghidra function list) INT 0 handler: set overflow flag DS:55B4, skip the faulting DIV (286+), apply fix-ups inside the projection code
+2255:6c26	sys_div0_install	Install the divide-overflow handler (INT 0 vector)
+2255:6c5c	sys_div0_remove	Restore the original INT 0 vector
+2255:6c7d	r3d_proj_fix_x	(not in Ghidra function list) Divide-overflow fix-up for the projected x (and both coordinates when z == 0)
+2255:6cd3	r3d_proj_fix_y	(not in Ghidra function list) Divide-overflow fix-up for the projected y
+2255:6cf3	r3d_project_to	Near: project a vertex (r3d_project_vert) and store x/y through two pointers
+2255:6d0a	r3d_project_vert	Near, self-generated code: AX = vertex record -> AX = screen x, CX = screen y (x = cx + (x<<zoom)/z, y = cy - (y<<zoom)/z)
+2255:6e78	r3d_emit_zoom_shift	Near: append the instruction sequence shifting DX:AX left by the zoom to the projection code
+2255:6ec6	r3d_gen_projection	Regenerate the projection code at 2255:6D0A for zoom F446 (only when it changed)
+2255:6f24	r3d_div_precise	Near: 32-bit (numerator<<zoom)/denominator with normalisation, clamped to +-0x7F00
+2255:7032	r3d_project_precise_to	Near: precise projection of a vertex, results through two pointers
+2255:7047	r3d_project_precise	Near: precise projection (32-bit coordinates) used for large nearby objects
+2255:7084	xf_transform_table	Near: transform all vertices of a non-compiled model with the transform tables (not used: all models are compiled)
+2255:70ef	xf_transform_vertex	Near: one vertex = centre + sum over set bits of |x|,|y|,|z| of the transform table rows
+2255:748a	xf_table_halves	(not in Ghidra function list) Fill rows 13..0 of one transform table column by successive arithmetic halving of row 14
+2255:74d8	xf_build_tables	Build the 3 transform tables (rotated unit axes for rows 14..0) for object rotation F62C and camera F452; remember the angles
+2255:75b6	clip_line_bisect	(not in Ghidra function list) Precise-mode 3D line clipping using bisection
+2255:7854	rng_seed	Reset the random generator: state = 32-word table 5382:0000 + seed, indices (seed&0xF80)>>7 and +15 (unused)
+2255:789a	rng_next	Additive lagged-Fibonacci step: s[i] += s[j]; i,j = (i+1)&31,(j+1)&31; return new s[i]
+2255:78d6	rng_range	AX = (rng_next & 0x7FFF) % AX
+2255:78e8	r3d_prim_visible	Near: CF=1 if a primitive/BSP node is visible: type bits 0x18 = 0 always, 8 never, 0x10/0x18 front/back face of its shared record (computed once)
+2255:790c	xf_tables_current	Rebuild the transform tables if the camera or object angles changed; BX = scale shift*12 (row offset)
+2255:7954	clip_top_div	Clip-edge callback: intersection with the plane y=z by division (2.30 fraction)
+2255:7b59	clip_bottom_div	Clip-edge callback: intersection with the plane y=-z by division
+2255:7d60	clip_left_div	Clip-edge callback: intersection with the plane x=-z by division
+2255:7f18	clip_right_div	Clip-edge callback: intersection with the plane x=z by division (never referenced)
+2255:80c0	xf_invalidate_proj	Near: mark the projected position of every vertex slot of the model as unknown (0x7FFE)
+2255:8131	mdl_reset_facing	Near: clear the cached facing byte (+5) of the leading type-0 primitives
+2255:814b	r3d_cache_store	Near: fill a projection cache (frame, angles, zoom, aspect, model, scale, per-vertex screen offsets from the projected centre)
+2255:81d0	r3d_cache_draw	Near: redraw a far static object from its projection cache, translated to the newly projected centre
+2255:824b	r3d_draw_bsp	Near: back-to-front BSP walk (node facing selects child order); leaves draw their visible primitives
+2255:82ac	r3d_cull_world_box	Near: CF=1 if the object's bounding box overlaps the world-space box of the view pyramid for its size class
+2255:8332	r3d_build_world_boxes	Near: min/max world x and z of the view pyramid for size classes 10..19 (tables F4F2/F544/F596/F5E8)
+2255:8599	r3d_update_world_boxes	Near: rebuild the world boxes every 20 calls or on large rotation/zoom change, else translate them by the camera movement
+2255:86f8	r3d_draw_polygon	(not in Ghidra function list) Primitive type 0: project (or clip then project) the vertices and fill the polygon
+2255:8cb9	r3d_draw_line	(not in Ghidra function list) Primitive type 1: clip and draw a 3D line
+2255:8e08	r3d_draw_point	(not in Ghidra function list) Primitive type 2: plot a single projected vertex
+2255:8e67	r3d_draw_disc	(not in Ghidra function list) Primitive type 3: filled circle with projected radius
+2255:8ef6	r3d_draw_callback	(not in Ghidra function list) Primitive type 4: call a far routine with the projected vertex (sprites)
+2255:8f44	clip_top_bisect	Near: intersection with y=z by 32 halvings of the segment
+2255:9097	clip_bottom_bisect	Near: intersection with y=-z by bisection
+2255:91ff	clip_left_bisect	Near: intersection with x=-z by bisection
+2255:9366	clip_right_bisect	Near: intersection with x=z by bisection
+2255:9596	r3d_face_normal_half	Face normal from halved coordinates (overflow fallback entry of r3d_face_side)
+2255:959a	r3d_face_side	Near: normal of the first three vertices of a primitive and the sign of its dot product with vertex 2; sets shared record +5 to 0x10 (front) or 0x18 (back)
+2255:9662	r3d_face_dot	Near: normalise the normal to 16 bits and store 0x10/0x18 from the sign of normal . vertex
+2255:9704	math_mat_mul	b = a x b for 3x3 1.14 matrices (pascal b*,a*)
+2255:9897	math_mat_vec	Far wrapper of math_mat_vec_near: vec = mat x vec (1.14 matrix, 32-bit vector hi words) (pascal vec*,mat*)
+2255:98a7	math_mat_vec_near	Near: AX=vector (3 longs, hi words used), BX=matrix; vector = M x v, stored as longs (<<2)
+2255:993d	r3d_view_matrices	Near: camera matrix A = f(heading,pitch,roll) (negated angles) and the pitch/roll-only matrix B (near pascal A*,B*,heading,pitch,roll)
+2255:9aba	math_compose_angles	Combine a heading/pitch/roll with an extra rotation and extract the resulting angles (unused)
+2255:9c14	clip_poly_top	Near: Sutherland-Hodgman clip of the clip-vertex ring against y<=z with an edge callback; returns new count
+2255:9d2e	clip_poly_bottom	Near: Sutherland-Hodgman clip against y>=-z
+2255:9e5d	clip_poly_left	Near: Sutherland-Hodgman clip against x>=-z (also used, in error, for the right plane)
+2255:9f89	clip_poly_right	Near: Sutherland-Hodgman clip against x<=z (never called)
+2255:a0a0	world_build_grid	Build the world grid (cells of 65536 game units) and distribute the static objects; per-cell lists of cells whose objects can be seen from it (cdecl world*,list far*,ext_x,ext_z)
+2255:a5ea	world_free_grid	Free the grid and object arena of world BX and clear it
+2255:a60d	world_clear	Clear world BX (+8..+0xF)
+2255:a61c	mdl_code_templates	(not in Ghidra function list) Code templates copied by mdl_compile (prologue, per-part header, epilogue, part-rotation begin/end)
+2255:a6c8	mdl_digits_optimize	Near: rewrite runs of >=3 equal signed digits as -s,0..0,+s carried (canonical recoding); returns cost
+2255:a744	mdl_signed_digits	Near: 16 signed binary digits of a value, bits above the window folded into the top digit
+2255:a79c	mdl_emit_axis	Near: emit the instructions for all non-zero digits of one axis
+2255:a7c1	mdl_emit_word	Near: append a word to the code buffer (sets the ok flag to 0 on overflow)
+2255:a7e9	bmp_blit	Copy a w x h block between bitmaps (mode 6: latched, x multiple of 4) (pascal src*,sx,sy,dst*,dx,dy,w,h)
+2255:aa26	bmp_blit_masked	Copy a block through a 1-bit mask bitmap (mode 6: plane masks from the mask nibbles) (cdecl src*,sx,sy,dst*,dx,dy,w,h,mask_seg)
+2255:ad4b	gfx_copy_page	Copy page AX to page DX (whole 16000-byte page, latched in mode 6); clip reset to full screen
+2255:adfa	r3d_sort_batch	Sort a batch of render record pointers into draw order unless already ordered (cdecl array*,n)
+2255:ae48	r3d_quicksort	Near: recursive quicksort (Hoare partition, first element pivot, recurse on the smaller part) using r3d_draw_order_cmp
+2255:af0c	gfx_mode_dispatch_5c35	Jump through mode table DS:5C35 (unused)
+2255:b0d6	gfx_sprite_scaled	Draw an RLE sprite scaled to w x h at (x,y) with clipping (DDA both axes, transparent colour, optional palette remap) (cdecl x,y,w,h,sprite far*)
+2255:b1eb	gfx_sprite_scaled_x	(not in Ghidra function list) Mode 6 inner loop of gfx_sprite_scaled
+2255:b37e	r3d_draw_object	Near: draw one visible object (near pascal obj far*,rec): pre-draw hook, rotation, vertex transform (compiled code), projection cache use/record, BSP drawing
