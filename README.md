@@ -145,3 +145,6 @@ Conventions for addresses, names and notes are in `docs/re/CONVENTIONS.md`.
 SEAL Team is © 1993 Andre Gagnon and Electronic Arts. This project is an
 independent, non-commercial reimplementation and is not affiliated with or
 endorsed by the rights holders. It contains no original game code or assets.
+
+The port's own code is released under the MIT License (see `LICENSE`).
+Third-party components and their licenses are listed in `THIRD_PARTY.md`.

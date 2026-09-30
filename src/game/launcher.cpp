@@ -67,7 +67,11 @@ Result runScreen(ButtonList& list, Draw draw, Handle handle) {
         int key = in.getKey();
         int dx = 0, dy = 0;
         in.getMotion(dx, dy);
+        // Redraw when the pointer leaves a pressed button (as the game does) and
+        // also whenever the focus changes, so the help line follows the pointer.
+        const int focusBefore = s.focus;
         if ((dx || dy) && uiPointerUpdate(dx, dy, list)) s.redrawFrames = 2;
+        if (s.focus != focusBefore) s.redrawFrames = 2;
         uiButtonRelease(key);
         if (s.releaseCount != 0 && --s.releaseCount == 0 && s.focus != -1) {
             key = list[size_t(s.focus)].key;
