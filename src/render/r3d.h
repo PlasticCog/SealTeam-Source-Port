@@ -35,6 +35,11 @@ struct RenderContext {
     s16 reticleX = 0, reticleY = 0; // DS:0534 / DS:0536 (kept when not found)
     // Camera position used by the billboard code for view bearings (g_cur_camera DS:D8AE).
     game::Vec3 cameraPos{};
+    // Enhanced "Full-screen 3D" (Settings::fullScreen3d): the mission loop
+    // sets it for the field views, whose viewport then fills the page height
+    // (the HUD bands included) in the high-resolution layer; the map, the
+    // briefing and the cut-scenes leave it clear. Never set in Original.
+    bool fullScreen3d = false;
 };
 RenderContext& renderContext();
 

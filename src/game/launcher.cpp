@@ -127,6 +127,7 @@ Result runOptions() {
         list.push_back(makeButton(6, 72, 150, 'c', std::string("Aspect: ") + (st.aspectCorrect ? "4:3 (CRT)" : "Square pixels"), false));
         list.push_back(makeButton(6, 92, 150, 'd', "Smooth scaling: " + onOff(st.smoothScaling), false));
         list.push_back(makeButton(6, 112, 150, 'e', std::string("Show this menu: ") + (st.skipLauncher ? "No" : "Yes"), false));
+        list.push_back(makeButton(6, 132, 150, 'l', "Full-screen 3D: " + onOff(st.fullScreen3d), false));
         std::snprintf(buf, sizeof buf, "3D resolution: %s", renderScaleName(st.renderScale));
         list.push_back(makeButton(164, 32, 150, 'f', buf, false));
         list.push_back(makeButton(164, 52, 150, 'k', std::string("Wide view: ") + (st.wideView ? "Fill" : "4:3"), false));
@@ -155,6 +156,7 @@ Result runOptions() {
             case 'e': st.skipLauncher = !st.skipLauncher; help = "Start with --launcher to see this menu again."; break;
             case 'f': st.renderScale = cycle(st.renderScale, kRenderScales); help = "Enhanced game only: 3D view at the window's pixels or a fixed size."; break;
             case 'k': st.wideView = !st.wideView; help = "Native 3D resolution: fill a wide window or keep the 4:3 view."; break;
+            case 'l': st.fullScreen3d = !st.fullScreen3d; help = "Native 3D resolution: the mission view fills the screen, HUD over it."; break;
             case 'g': st.drawDistancePct = cycle(st.drawDistancePct, kDrawDistances); help = "Enhanced game only: how far you can see (Max: the whole world)."; break;
             case 'h':
                 st.musicDevice = st.musicDevice == MusicDevice::AdLib ? MusicDevice::SoundBlasterPro2 : MusicDevice::AdLib;

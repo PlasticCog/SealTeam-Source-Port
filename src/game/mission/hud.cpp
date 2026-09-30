@@ -4,6 +4,7 @@
 // msg_draw, 8339 msg_draw_queue). docs/re/seg_1000.md 9-10.
 #include "game/mission/loop.h"
 
+#include "core/settings.h"
 #include "data/exeimage.h"
 #include "game/front/common.h"
 #include "game/globals.h"
@@ -20,6 +21,7 @@
 #include "gfx/font.h"
 #include "gfx/gfx.h"
 #include "render/r3d.h"
+#include "render/r3dhires.h"
 #include "render/sprites.h"
 
 #include <cstdlib>
@@ -68,8 +70,53 @@ std::string itoaPad(int v, int width, char pad) {
 
 std::string utoa(int v) { return std::to_string(unsigned(u16(v))); }
 
-// 4x6 text in colour 15 (colour word DS:5074 = 0xFF0F, DS:F424 = 0).
-void text(int y, int x, const std::string& s) { front::text4x6(y, x, s, 0x0F); }
+// Enhanced full-screen 3D: the HUD is drawn over the scene. Every element
+// gets a dark backing strip in the high-resolution layer (render::
+// hudBackingRect: the glyph rows plus the shadow row, one page pixel to
+// either side, so the strips of consecutive text rows join without
+// overlapping) and 4x6 text a 1-pixel black drop shadow; the positions are
+// the original's.
+void backing(int x, int y, int w, int h, u8 once = 0) {
+    if (hudOverScene()) render::hudBackingRect(x, y, w, h, once);
+}
+
+// The shadow is drawn without the 4-pixel alignment of text4x6 (x is aligned already).
+void shadow4x6(int y, int x, const std::string& s) {
+    Gfx& gx = gfx();
+    gx.setTextColors(0x00, 0);
+    gx.setTextOpaque(false);
+    gx.draw4x6String(font4x6(), s, x + 1, y + 1);
+}
+
+// 4x6 text in colour 15 (colour word DS:5074 = 0xFF0F, DS:F424 = 0);
+// backed and shadowed over the scene.
+void text(int y, int x, const std::string& s) {
+    x &= ~3;
+    if (hudOverScene()) {
+        backing(x - 1, y, 4 * int(s.size()) + 3, 7);
+        shadow4x6(y, x, s);
+    }
+    front::text4x6(y, x, s, 0x0F);
+}
+
+// 4x6 text inside an element that has its own backing (the compass tape).
+void textOnBacking(int y, int x, const std::string& s) {
+    x &= ~3;
+    if (hudOverScene()) shadow4x6(y, x, s);
+    front::text4x6(y, x, s, 0x0F);
+}
+
+// Proportional-font text of the message queue, likewise.
+void textProp(int x, int y, const std::string& s) {
+    if (hudOverScene()) {
+        const Font* f = gfx().font();
+        backing(x - 1, y, textWidth(s) + 3, (f ? f->height() : 0) + 1);
+        drawTextShadow(x, y, s, 0x00, 0x0F);
+    } else {
+        drawText(x, y, s, 0x0F);
+    }
+}
+void textPropCentered(int y, const std::string& s) { textProp(gfx().clipCx() - textWidth(s) / 2, y, s); }
 
 // gfx_line(colour, y1, x1, y2, x2) of the original (2255:1962).
 void line(u8 c, int y1, int x1, int y2, int x2) { gfx().line(x1, y1, x2, y2, u16(Gfx::kSolid | c)); }
@@ -97,9 +144,26 @@ int compassOrigin(int headingDeg) {
 
 } // namespace
 
+bool hudOverScene() {
+    if (!settings().effectiveFullScreen3d()) return false;
+    const int m = ms().viewMode;
+    return m != 1 && m != 0x0C;
+}
+
+// text4x6_draw_centered (365e:94DE): x = (clip_cx - 2*len + 1) & ~3.
+void hudText4x6Centered(int y, const std::string& s) {
+    text(y, (gfx().clipCx() - 2 * int(s.size()) + 1) & ~3, s);
+}
+
 // ---------------------------------------------------------------------------
 // Compass tape (1000:0900)
 // ---------------------------------------------------------------------------
+
+// The compass tape (labels row rect_y + 6, tape line rect_y + 0x10, heading
+// mark rect_y + 0x11) and the objective marker below it (rect_y + 0x12 ..
+// 0x17) share one backing strip over the scene: x 0x40..0xFF, the tape's
+// rows and the marker's rows are drawn adjacent to each other.
+constexpr int kCompassStripX = 0x40, kCompassStripW = 0xC0;
 
 void hudDrawCompass() {
     const LoopState& L = ls();
@@ -109,6 +173,7 @@ void hudDrawCompass() {
     const Camera& v = cam();
     const int c = compassOrigin(pm->body->heading >> 3);
     const int y0 = v.rect_y + 0x10;
+    backing(kCompassStripX, v.rect_y + 5, kCompassStripW, 0x11 - 5 + 1);
     line(0x0F, y0, 0xF9, y0, 0x45);
     int a = c - 0x2D;
     if (a < 0) a = c + 0x13B;
@@ -117,7 +182,7 @@ void hudDrawCompass() {
         if (a % 15 == 0) line(0x0F, v.rect_y + 0x0F - 1, x, y0, x);
         else if (a % 5 == 0) line(0x0F, y0 - 1, x, y0, x);
         if (a == c) line(0x0F, v.rect_y + 0x11, x, y0, x);
-        if (a % 30 == 0) text(v.rect_y + 6, 0x41 + k, exe().dgStringPtr(u16(kCompassLabels + 2 * (a / 30))));
+        if (a % 30 == 0) textOnBacking(v.rect_y + 6, 0x41 + k, exe().dgStringPtr(u16(kCompassLabels + 2 * (a / 30))));
         if (++a == 360) a = 0;
     }
 }
@@ -135,11 +200,16 @@ void hudDrawObjectiveMarker() {
     int o = -1;
     if (geoDistance(pm->body->pos, S.wpSeal) >= 15) o = compassOrigin(geoBearing(pm->body->pos, S.wpSeal));
     const int y = v.rect_y;
+    // Under the compass tape the marker's rows continue the tape's strip;
+    // without a tape (the chase view) only the arrow itself is backed.
+    const bool underTape = S.viewMode == 0 && ls().compassEnabled;
+    if (o != -1 && underTape) backing(kCompassStripX, y + 0x12, kCompassStripW, 0x18 - 0x12 + 1);
     int a = c - 0x2D;
     if (a < 0) a = c + 0x13B;
     for (int k = 0; k < 0xB5; k += 2) {
         const int x = 0x45 + k;
         if (o == a) {
+            if (!underTape) backing(x - 4, y + 0x11, 9, 6);
             line(0x0F, y + 0x12, x, y + 0x15, x - 3);
             line(0x0F, y + 0x15, x + 3, y + 0x12, x);
             o = -1;
@@ -150,10 +220,12 @@ void hudDrawObjectiveMarker() {
     if (c + 0xB4 > 0x167 && o < c - 0xB4) o += 0x168;
     int x1, x2;
     if (c < o && o < c + 0xB4) {
+        if (!underTape) backing(0xF6, y + 0x10, 6, 9);
         line(0x0F, y + 0x14, 0xFA, y + 0x11, 0xF7);
         x1 = 0xF7;
         x2 = 0xFA;
     } else {
+        if (!underTape) backing(0x44, y + 0x10, 6, 9);
         line(0x0F, y + 0x14, 0x45, y + 0x11, 0x48);
         x1 = 0x48;
         x2 = 0x45;
@@ -283,9 +355,14 @@ void hudDrawClockBox() {
     } else {
         const Camera& v = cam();
         const int yb = v.rect_y + v.rect_h;
-        gx.fillRect(0x92, yb + 1, 0x22, 8, u16(Gfx::kSolid | 0x00));
+        const bool over = hudOverScene();
+        // Over the scene the black box becomes a backing strip, darkened once
+        // per rendered frame (time compression redraws the clock without
+        // rendering), and the digits get the drop shadow.
+        if (over) backing(0x92, yb + 1, 0x22, 8, 1);
+        else gx.fillRect(0x92, yb + 1, 0x22, 8, u16(Gfx::kSolid | 0x00));
         gx.setTextColors(0x0F, 0);
-        mapDrawClock(0x94, yb + 2);
+        mapDrawClock(0x94, yb + 2, over);
     }
 }
 
@@ -347,21 +424,21 @@ void msgDraw() {
             drawSignalIcon(0x22, y - 0x14, e.icon, e.expiry, e.duration);
             text(y - 0x3C, 0x22 - 2 * int(e.text.size()), e.text);
         } else {
-            front::text4x6Centered(y, e.text, 0x0F);
+            hudText4x6Centered(y, e.text);
         }
         if (q.count <= 1 || e.style != 3 || n.style == -1) return;
         if (n.style == 3) text(y - 0x11, (0x11 - int(n.text.size())) * 2, n.text);
-        else front::text4x6Centered(y + 7, n.text, 0x0F);
+        else hudText4x6Centered(y + 7, n.text);
         return;
     }
     if (e.kind == 4) return;  // medal pictures (msg_draw_signal_picture) are never queued in a mission
     fontSelect(kindFont(e.kind));
     const int y = e.style == 6 ? 0x11 : (0x62 - fontHeight()) * 2;
-    if (e.style == 6) drawText(0xDC, y, e.text, 0x0F);
-    else front::drawTextCentered(y, e.text, 0x0F);
+    if (e.style == 6) textProp(0xDC, y, e.text);
+    else textPropCentered(y, e.text);
     if (q.count <= 1 || n.kind == 4) return;
-    if (n.style == 6) drawText(0xDC, y + fontHeight() + 1, n.text, 0x0F);
-    else if (n.style != -1) front::drawTextCentered(y + fontHeight() + 1, n.text, 0x0F);
+    if (n.style == 6) textProp(0xDC, y + fontHeight() + 1, n.text);
+    else if (n.style != -1) textPropCentered(y + fontHeight() + 1, n.text);
 }
 
 void msgDrawQueue() {

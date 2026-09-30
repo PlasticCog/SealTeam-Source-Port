@@ -426,14 +426,28 @@ void mapDrawOrdersMenu() {
 // Clock and info panel (19ac:417F, 421E)
 // ---------------------------------------------------------------------------
 
-void mapDrawClock(int x, int y) {
+void mapDrawClock(int x, int y, bool shadow) {
     const MissionState& S = ms();
     const u8 c = gfx().textFg();
+    const std::string tmpl = dsText(kStrClockTmpl), hh = front::padNumber(S.todHour, 2),
+                      mm = front::padNumber(S.todMinute, 2), ss = front::padNumber(S.todSecond, 2);
+    if (shadow) {
+        // Full-screen 3D HUD (hud.cpp): a black copy one pixel down and right,
+        // drawn without the 4-pixel alignment of text4x6.
+        Gfx& gx = gfx();
+        gx.setTextColors(0x00, 0);
+        gx.setTextOpaque(false);
+        const int ax = x & ~3;
+        gx.draw4x6String(font4x6(), tmpl, ax + 1, y + 1);
+        gx.draw4x6String(font4x6(), hh, ax + 1, y + 1);
+        gx.draw4x6String(font4x6(), mm, ax + 0x0C + 1, y + 1);
+        gx.draw4x6String(font4x6(), ss, ax + 0x18 + 1, y + 1);
+    }
     setColour(c);
-    text(y, x, dsText(kStrClockTmpl));
-    text(y, x, front::padNumber(S.todHour, 2));
-    text(y, x + 0x0C, front::padNumber(S.todMinute, 2));
-    text(y, x + 0x18, front::padNumber(S.todSecond, 2));
+    text(y, x, tmpl);
+    text(y, x, hh);
+    text(y, x + 0x0C, mm);
+    text(y, x + 0x18, ss);
 }
 
 namespace {

@@ -19,6 +19,8 @@
 
 #include "game/types.h"
 
+#include <string>
+
 namespace st::game::mission {
 namespace loop {
 
@@ -106,6 +108,13 @@ void hudDrawTextLines();                // 1000:10C2
 void hudDrawClockBox();                 // 1000:18EB
 void msgDrawQueue();                    // 1000:8339 (mission message queue)
 void msgDraw();                         // 1000:80F1
+// Enhanced "Full-screen 3D" (settings().effectiveFullScreen3d()) in a field
+// view: the HUD is drawn over the scene instead of the black bands, every
+// element backed by a dark strip in the high-resolution layer and 4x6 text
+// with a black drop shadow. False in the map views and in Original.
+bool hudOverScene();
+// text4x6_draw_centered with the backing / shadow of hudOverScene().
+void hudText4x6Centered(int y, const std::string& s);
 
 // ---- map.cpp -------------------------------------------------------------------
 void mapInit();                                       // 19ac:2E69
@@ -116,7 +125,7 @@ void mapDrawRoutes();                                 // 19ac:30BA
 void mapDrawMarkers();                                // 19ac:3300
 void mapDrawTeamList();                               // 19ac:39B7
 void mapDrawOrdersMenu();                             // 19ac:3E76
-void mapDrawClock(int x, int y);                      // 19ac:417F
+void mapDrawClock(int x, int y, bool shadow = false); // 19ac:417F (shadow: full-screen 3D HUD)
 void mapDrawInfoPanel();                              // 19ac:421E
 void mapScreenKeys(int key, int dx, int dy);          // 19ac:52A1
 void insertKeys(int key, int dx, int dy);             // 19ac:5C8E

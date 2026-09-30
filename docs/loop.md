@@ -217,6 +217,11 @@ reference only afterwards).
 * Enhanced: `view_clear_map_ground` also fills the high-resolution layer so
   the map view starts from the ground colour; the map markers project with
   the normal page projection (`render::projectPage`).
+* Enhanced "Full-screen 3D" (`hudOverScene()`, docs/render.md): the field
+  views fill the window height, the insertion / extraction banners are
+  redrawn after every render, and the HUD elements of `hud.cpp` get a dark
+  backing strip in the layer and a drop shadow at their original positions;
+  `hudDrawClockBox` draws the strip instead of its black box.
 
 ## Open issues
 

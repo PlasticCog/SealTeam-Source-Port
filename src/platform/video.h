@@ -56,6 +56,10 @@ struct HiResLayer {
     std::vector<u8> coverage;      // 320*200, 1 = use the layer
     int extX0 = 0, extY0 = 0, extX1 = -1, extY1 = -1;  // inclusive, empty if x1 < x0
     std::vector<u8> extRows;       // 200
+    // Full-screen 3D: HUD backings already darkened into this frame of the
+    // layer (bit 0: the clock box), cleared by every 3D render. Elements that
+    // are redrawn without a new frame (time compression) darken only once.
+    u8 hudOnce = 0;
 
     double scaleX() const { return pw / double(kScreenW); }  // layer pixels per page pixel
     double scaleY() const { return ph / double(kScreenH); }

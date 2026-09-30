@@ -7,6 +7,7 @@
 #include "render/r3d.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 
 namespace st::render {
@@ -76,9 +77,10 @@ void layerTargetEnd() {
 }
 
 void HiFrame::begin(int rx, int ry, int rw, int rh, int ccx, int ccy, int zoomShift, s32 cx32, s32 cy32,
-                    s32 cz32) {
+                    s32 cz32, bool fullScreen) {
     const Settings& s = settings();
     on = !s.original();
+    fullHeight = on && fullScreen && s.effectiveFullScreen3d();
     vx = rx;
     vy = ry;
     vw = rw;
@@ -99,7 +101,14 @@ void HiFrame::begin(int rx, int ry, int rw, int rh, int ccx, int ccy, int zoomSh
     ky = layer->scaleY();
     ox = layer->ox;
     oy = layer->oy;
-    layer->rectOf(rx, ry, rx + rw - 1, ry + rh - 1, true, X0, Y0, X1, Y1);
+    // Full-screen 3D: the view covers the page's whole height (the HUD bands
+    // included; the sides as in wide view), the camera rect only fixes the
+    // projection centre.
+    if (fullHeight) {
+        vy = 0;
+        vh = 200;
+    }
+    layer->rectOf(vx, vy, vx + vw - 1, vy + vh - 1, true, X0, Y0, X1, Y1);
     // Original pixel p covers layer pixels ox + p*kx ..; its centre is the
     // projection of original coordinate p.
     cxd = toLayerX(clipCx);
@@ -115,6 +124,15 @@ void HiFrame::begin(int rx, int ry, int rw, int rh, int ccx, int ccy, int zoomSh
     int cvx1 = layer->pageX(X1), cvy1 = layer->pageY(Y1);
     if (X1 >= layer->ox + layer->pw) cvx1 = 319 + int(std::ceil((X1 + 1 - (layer->ox + layer->pw)) / kx));
     if (Y1 >= layer->oy + layer->ph) cvy1 = 199 + int(std::ceil((Y1 + 1 - (layer->oy + layer->ph)) / ky));
+    if (fullHeight) {
+        // The frustum and the clip shifts are symmetric around the projection
+        // centre (half width / height): make the virtual clip symmetric around
+        // the camera rect's centre, which the page rows are not (8 rows above
+        // the main view, 21 below), so the larger side is never culled.
+        const int half = std::max(clipCy - cvy, cvy1 - clipCy);
+        cvy = clipCy - half;
+        cvy1 = clipCy + half;
+    }
     cvw = cvx1 - cvx + 1;
     cvh = cvy1 - cvy + 1;
     thick = std::max(1, int(std::lround(std::min(kx, ky))));
@@ -150,6 +168,75 @@ void HiFrame::end() {
     l.extY0 = Y0;
     l.extX1 = X1;
     l.extY1 = Y1;
+    l.hudOnce = 0;
+    sys().video().markDirty();
+}
+
+namespace {
+
+// Darkening table of the current DAC palette: index -> the palette entry
+// nearest to 45 % of its colour.
+struct DarkTable {
+    std::array<u8, 768> pal{};
+    bool valid = false;
+    u8 lut[256];
+
+    const u8* get() {
+        const u8* dac = sys().video().palette();
+        if (valid && std::equal(pal.begin(), pal.end(), dac)) return lut;
+        std::copy_n(dac, 768, pal.begin());
+        valid = true;
+        for (int i = 0; i < 256; ++i) {
+            const int tr = pal[size_t(i * 3)] * 45 / 100, tg = pal[size_t(i * 3 + 1)] * 45 / 100,
+                      tb = pal[size_t(i * 3 + 2)] * 45 / 100;
+            int best = 0, bestD = 1 << 30;
+            for (int j = 0; j < 256; ++j) {
+                const int dr = pal[size_t(j * 3)] - tr, dg = pal[size_t(j * 3 + 1)] - tg, db = pal[size_t(j * 3 + 2)] - tb;
+                const int d = 2 * dr * dr + 3 * dg * dg + db * db;
+                if (d < bestD) {
+                    bestD = d;
+                    best = j;
+                }
+            }
+            lut[i] = u8(best);
+        }
+        return lut;
+    }
+};
+
+DarkTable g_dark;
+
+}  // namespace
+
+void hudBackingRect(int x, int y, int w, int h, u8 once) {
+    if (w <= 0 || h <= 0) return;
+    HiResLayer* l = sys().video().hiResLayer(gfx().drawPage());
+    if (!l) return;
+    // The page pixels under the strip show the layer again: what was drawn
+    // there before (the previous digits of the time-compression clock, which
+    // the original wipes with its black box) disappears, the element drawn
+    // next uncovers its own pixels.
+    for (int py = std::max(y, 0); py < std::min(y + h, kScreenH); ++py)
+        for (int px = std::max(x, 0); px < std::min(x + w, kScreenW); ++px) l->coverage[size_t(py * kScreenW + px)] = 1;
+    if (once) {
+        if (l->hudOnce & once) {
+            sys().video().markDirty();
+            return;
+        }
+        l->hudOnce |= once;
+    }
+    int X0, Y0, X1, Y1;
+    l->rectOf(x, y, x + w - 1, y + h - 1, false, X0, Y0, X1, Y1);
+    X0 = std::max(X0, 0);
+    Y0 = std::max(Y0, 0);
+    X1 = std::min(X1, l->w - 1);
+    Y1 = std::min(Y1, l->h - 1);
+    if (X1 < X0 || Y1 < Y0) return;
+    const u8* lut = g_dark.get();
+    for (int Y = Y0; Y <= Y1; ++Y) {
+        u8* row = &l->pixels[size_t(Y) * size_t(l->w)];
+        for (int X = X0; X <= X1; ++X) row[X] = lut[row[X]];
+    }
     sys().video().markDirty();
 }
 

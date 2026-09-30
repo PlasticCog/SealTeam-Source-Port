@@ -26,6 +26,7 @@ struct LodModel;
 
 struct HiFrame {
     bool on = false;
+    bool fullHeight = false;                 // full-screen 3D: the view covers page rows 0..199
     int vx = 0, vy = 0, vw = 320, vh = 200;  // viewport in page pixels (the camera rect)
     int X0 = 0, Y0 = 0, X1 = 319, Y1 = 199;  // viewport in layer pixels (inclusive, extended)
     int cvx = 0, cvy = 0, cvw = 320, cvh = 200;  // virtual page clip covering the layer viewport
@@ -43,8 +44,12 @@ struct HiFrame {
 
     // Prepare a frame (Enhanced preset; clipCx/Cy: the original projection
     // centre of the viewport). `on` stays false in the Original preset.
+    // With `fullScreen` (RenderContext::fullScreen3d) the layer viewport is
+    // that of the whole page (rows 0..199, the sides as in wide view) and
+    // the virtual page clip is extended symmetrically around the projection
+    // centre, so the vertical field of view grows and nothing moves.
     void begin(int rx, int ry, int rw, int rh, int clipCx, int clipCy, int zoomShift, s32 cx32, s32 cy32,
-               s32 cz32);
+               s32 cz32, bool fullScreen);
     void beginDraw();  // gfx draws into the layer from here
     void end();        // back to the page; the viewport shows the layer
     void project(s32 x, s32 y, s32 z, s16& sx, s16& sy) const;
@@ -69,5 +74,14 @@ HiResLayer* hiResLayerForDrawPage();
 // false (nothing changed) without a layer. Undo with layerTargetEnd().
 bool layerTargetBegin(HiResLayer& l, Bitmap& bmp);
 void layerTargetEnd();
+
+// Full-screen 3D HUD backing: darken the draw page's layer under the page
+// rectangle (x, y, w, h) so a HUD element drawn on top of it reads over the
+// scene (the nearest palette colour of about 45 % brightness; the table is
+// rebuilt when the DAC palette changes). Nothing happens without a layer.
+// `once` (a HiResLayer::hudOnce bit, 0 = every call) darkens only the first
+// time since the layer's last 3D render: for elements that are redrawn
+// while no new frame is rendered (the time-compression clock box).
+void hudBackingRect(int x, int y, int w, int h, u8 once = 0);
 
 }  // namespace st::render

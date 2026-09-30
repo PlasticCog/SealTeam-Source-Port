@@ -47,8 +47,9 @@ The start menu offers:
                    (4K, 1080p, ...) filling the window, draw distance up to
                    the whole world
   Setup          - window size, fullscreen, aspect, 3D resolution, wide
-                   view, draw distance, music device (AdLib / Sound Blaster
-                   Pro 2), digital or FM effects, volumes
+                   view, full-screen 3D (the mission view fills the whole
+                   screen, HUD over it), draw distance, music device (AdLib
+                   / Sound Blaster Pro 2), digital or FM effects, volumes
   Controller     - game controller layout (Xbox-style default) and
                    remapping; controllers are detected when plugged in
 

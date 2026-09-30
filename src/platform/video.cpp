@@ -186,6 +186,7 @@ HiResLayer& Video::activateHiResLayer(int page, int scale, bool fill) {
         l.extRows.assign(size_t(kScreenH), 0);
         l.extX0 = l.extY0 = 0;
         l.extX1 = l.extY1 = -1;
+        l.hudOnce = 0;
     }
     l.fill = fill;
     dirty_ = true;

@@ -522,6 +522,7 @@ void viewUpdateRenderContext() {
     ctx.reinsertPoint = S.wpSupport;
     ctx.viewMode = S.viewMode;
     ctx.detail = g().detailLevel;
+    ctx.fullScreen3d = false;  // viewRenderFrame sets it for the field views
     const TargetRec& tr = S.playerTarget;
     ctx.reticleTarget = nullptr;
     if (tr.kind == TargetKind::Unit && tr.target.unit) ctx.reticleTarget = tr.target.unit->body;
@@ -557,6 +558,21 @@ void viewRenderFrame() {
     const int mode = S.viewMode;
     const bool mapMode = mode == 1 || mode == 0x0C;
     viewUpdateRenderContext();
+    // Enhanced "Full-screen 3D": the field views fill the window height and
+    // the HUD (bands included) is drawn over the scene (hud.cpp backs every
+    // element with a dark strip and a shadow).
+    const bool fullScreen = hudOverScene();
+    render::renderContext().fullScreen3d = fullScreen;
+    // The insertion / extraction banners of the full-redraw branch below are
+    // overdrawn by the full-height view; they are redrawn after every render.
+    auto drawBanners = [&] {
+        if (mode == 7) {
+            uiDrawTitleTab(dsText(kBannerInsertion), 0x80, 4);
+            hudText4x6Centered(cam.rect_y + cam.rect_h + 7, dsText(kBannerReinsert));
+        } else if (mode == 8) {
+            uiDrawTitleTab(dsText(kBannerExtraction), 0x7C, 4);
+        }
+    };
     if (L.fullRedraw == 0) {
         if (mapMode) cursorErase();
     } else {
@@ -570,12 +586,7 @@ void viewRenderFrame() {
         } else {
             gx.clipFull();
             gx.clear(0);
-            if (mode == 7) {
-                uiDrawTitleTab(dsText(kBannerInsertion), 0x80, 4);
-                front::text4x6Centered(cam.rect_y + cam.rect_h + 7, dsText(kBannerReinsert), 0x0F);
-            } else if (mode == 8) {
-                uiDrawTitleTab(dsText(kBannerExtraction), 0x7C, 4);
-            }
+            if (!fullScreen) drawBanners();
         }
     }
     if (mapMode) {
@@ -602,6 +613,11 @@ void viewRenderFrame() {
         if (S.opt.map == 0) engine::ticker().frameLimitWait();
         cursorDraw();
     } else {
+        if (fullScreen) {
+            gx.clipFull();
+            drawBanners();
+            gx.setClip(cam.rect_x, cam.rect_y, cam.rect_w, cam.rect_h);
+        }
         hudDrawTextLines();
         msgDrawQueue();
         if (const Vec3* l = leaderPos(L.viewTeam)) engine::sound().setListener(&l->x);

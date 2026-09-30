@@ -124,9 +124,10 @@ differences (palm trunks crossing the top of the viewport).
 ## Enhanced preset
 
 `settings().effectiveRenderScale()` (0 = native, N = a fixed multiple of
-320x200), `effectiveWideView()` and `effectiveDrawDistancePct()` P
-(`kDrawDistanceMax` = the whole world). The Enhanced preset always renders
-through the high-resolution frame of `r3dhires`, also at 320x200.
+320x200), `effectiveWideView()`, `effectiveFullScreen3d()` and
+`effectiveDrawDistancePct()` P (`kDrawDistanceMax` = the whole world). The
+Enhanced preset always renders through the high-resolution frame of
+`r3dhires`, also at 320x200.
 
 **The layer** — `platform/video` keeps a high-resolution layer per VGA page
 (`HiResLayer`): `w x h` palette indices, a 320x200 coverage mask and the
@@ -170,6 +171,69 @@ while the projection centre stays the camera rect's, so the field of view
 widens horizontally (Hor+) and nothing moves. The 2D page (HUD, text,
 cursor, map, menus) is always shown in its 4:3 rectangle, so HUD overlays
 land where they do in the original. With `4:3` the sides stay black.
+
+**Full-screen 3D** (`fullScreen3d`, cfg `full_screen_3d`, Setup "Full-screen
+3D", native resolution only, default off) — the original's field cameras
+leave black bands for the HUD: the main camera rect is (0, 8, 320, 171), the
+chase / support / insertion camera rect (0, 24, 320, 139) (seg_1000.md 7.1),
+and the HUD text lines, the message line, the banners and the clock box are
+drawn at fixed rows in the bands. With the option on, the mission loop sets
+`RenderContext::fullScreen3d` for the field views (point man, chase, support
+and target views, insertion / extraction; never for the map, the briefing /
+debriefing fly-overs, the cut-scenes or any 2D screen) and `HiFrame::begin`
+makes the layer viewport that of the whole page, rows 0..199, with the
+sides as in wide view (`rectOf(0, 0, 319, 199)`: the whole window with
+`Fill`, the 4:3 page area with `4:3`). The camera rect keeps the projection
+centre (row 93 for both cameras) and the zoom, so the world is not stretched
+and nothing moves; the virtual page clip `cv*` is made symmetric around the
+centre (the frustum, the world boxes and the clip shifts work with half
+widths / heights: 213 rows for the main camera, 8 above and 21 below it
+being the bands) and the vertical field of view grows like the horizontal
+one does in wide view. `todDrawSkyGround` draws its gradient rows across
+the whole layer height (200 rows either side of the horizon; the tables
+saturate) while the page keeps the clipped rows of the original; the
+point-sampled page copy and the coverage of `HiFrame::end` then cover the
+whole page, which hides the black band fills (`gx.clear(0)` at a full
+redraw) without touching them (`todDrawSkyGround` widens the page clip to
+the page height around its `layerTargetBegin`, whose layer clip is derived
+from the page clip, i.e. the camera rect).
+
+The HUD stays where it is and is drawn on top: every 2D write uncovers the
+page pixels it touches (transparent text now uncovers only the set pixels
+of a glyph, not its box), so what the original drew on black now lies on
+the scene. To keep it readable, `hud.cpp` gives every element one
+treatment: a dark backing strip (the glyph rows plus the shadow row, one
+page pixel to either side, so the strips of consecutive rows join without
+overlapping), darkened into the layer by `render::hudBackingRect` (the nearest palette colour of 45 % of
+each pixel's colour, the table rebuilt when the DAC changes; the page
+pixels under the strip are re-covered first), and 4x6 text a 1-pixel black
+drop shadow (the shadow is drawn through `Gfx::draw4x6String` because
+`text4x6` aligns x to 4). This covers the text lines (weapon, grenade,
+item, reloading, DEMO, detail level), the message line and the hand-signal
+lines (the icon has its own opaque frame), the compass tape (one strip x
+0x40..0xFF over the label row, the tape and the heading mark, the
+objective marker's rows adjacent below it; in the chase view, without a
+tape, only the marker arrow itself is backed), the target diamond's range and
+name labels, the "Esc to skip - R to Reinsert" line and the clock box of
+the time compression (`hudDrawClockBox` replaces its black box by the strip;
+since time compression redraws the clock without rendering, the strip is
+darkened once per rendered frame, `HiResLayer::hudOnce`, and re-covering
+the box wipes the previous digits; `mapDrawClock` gets the shadow through
+its `shadow` argument). Proportional-font messages use `drawTextShadow`.
+The "Insertion" / "Extraction" title tabs are opaque and only need to be
+redrawn after every render (the original draws them once at a full redraw
+into the band, which the full-height view now overdraws). Screenshots
+(`--shot`, F12) save the full-height frame like any composed frame. In the
+Original preset and at a fixed render scale nothing changes
+(`effectiveFullScreen3d()` is false).
+
+Verified with `--enhanced --window 1920x1080 / 3840x2160 --play-mission 1`
+in the insertion view, the chase view, the first-person view with the
+weapon lines and with a hand signal plus message (`--keys
+Enter@mission+1,F1@mission+2,d@mission+3.5`), against the same frames with
+the option off (`re/scratch_full/`), and the Original preset's
+`--view-world 3` and `--play-mission 1` frames bit-identical to the
+previous build's.
 
 After the 3D view the viewport's coverage is set, the rows' extension flags
 (`extRows`) and the extended rectangle (`ext*`) are recorded, and a

@@ -89,10 +89,11 @@ When the port starts it shows a start menu:
 * **Enhanced Game** keeps the same game but renders the 3D view at the
   window's own resolution (any size up to 4K and beyond, or a fixed multiple
   of 320x200 for weaker machines), fills a wide screen with a wider field of
-  view (or keeps 4:3), and draws much farther, up to the whole world; the 2D
-  screens, HUD and fonts stay pixel-art on top.
+  view (or keeps 4:3), can let the mission view fill the whole screen with
+  the HUD drawn over it (Full-screen 3D), and draws much farther, up to the
+  whole world; the 2D screens, HUD and fonts stay pixel-art on top.
 * **Setup** changes window size, fullscreen, 4:3 aspect, smooth scaling, the
-  Enhanced options (3D resolution, wide view, draw distance) and sound (AdLib
+  Enhanced options (3D resolution, wide view, full-screen 3D, draw distance) and sound (AdLib
   or Sound Blaster Pro 2 music, digital or FM effects, volumes).
 * **Controller** shows the game controller layout (Xbox-style default: left
   stick moves and turns, right stick is the camera, A fires / selects, B

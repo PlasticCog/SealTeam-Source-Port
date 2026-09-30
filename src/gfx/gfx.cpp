@@ -985,11 +985,16 @@ int Gfx::drawChar(u8 c, int x, int y) {
     if (w <= 0) return 0;
     // No partial clipping: the whole glyph box must be inside the clip.
     if (x < x0_ || x + w - 1 > x1_ || y < y0_ || y + h - 1 > y1_) return w;
+    // Only the glyph's set pixels are written (and uncovered in the
+    // high-resolution layer): transparent text over a 3D view keeps the
+    // view around the letters.
     for (int r = 0; r < h; ++r) {
         u8* row = surf().row(y + r);
         for (int i = 0; i < w; ++i)
-            if (font_->pixel(c, i, r)) row[x + i] = textFg_;
-        touch(x, x + w - 1, y + r);
+            if (font_->pixel(c, i, r)) {
+                row[x + i] = textFg_;
+                touch(x + i, x + i, y + r);
+            }
     }
     return w;
 }
@@ -1008,9 +1013,11 @@ void Gfx::draw4x6String(const Font& f, std::string_view s, int x, int y) {
             u8* row = surf().row(yy);
             for (int i = 0; i < 4; ++i) {
                 const int xx = x + i;
-                if (xx >= 0 && xx < surfW() && f.pixel(u8(ch), i, r)) row[xx] = textFg_;
+                if (xx >= 0 && xx < surfW() && f.pixel(u8(ch), i, r)) {
+                    row[xx] = textFg_;
+                    touch(xx, xx, yy);  // set pixels only (see drawChar)
+                }
             }
-            touch(x, x + 3, yy);
         }
         x += 4;
     }

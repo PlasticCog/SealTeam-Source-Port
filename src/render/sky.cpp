@@ -2,8 +2,10 @@
 
 #include "data/ealib.h"
 #include "data/exeimage.h"
+#include "core/settings.h"
 #include "engine/ticker.h"
 #include "gfx/gfx.h"
+#include "render/r3d.h"
 #include "render/r3dhires.h"
 #include "render/world.h"
 
@@ -79,6 +81,10 @@ void todDrawSkyGround(const game::Camera& cam, int detail, s32 time, int hour) {
     engine::ticker().frameLimitWait();
     Gfx& gx = gfx();
     HiResLayer* layer = detail >= 2 ? hiResLayerForDrawPage() : nullptr;
+    // Full-screen 3D (Enhanced): the layer's gradient covers the page's whole
+    // height (the rows of the HUD bands and, in a tall window, the layer rows
+    // beyond the page), the page keeps the clipped rows of the original.
+    const bool full = layer && renderContext().fullScreen3d && settings().effectiveFullScreen3d();
     Bitmap hb;
     auto row = [&](int y, u8 c) {
         gx.hline(0, 0x13F, y, u16(Gfx::kSolid | c));
@@ -86,17 +92,29 @@ void todDrawSkyGround(const game::Camera& cam, int detail, s32 time, int hour) {
             // Same rows in the high-resolution layer (the viewport shows the
             // layer once the 3D view has been rendered on top), across the
             // whole width of the (possibly widened) view.
-            const int x0 = gx.clipX0(), y0 = gx.clipY0(), x1 = gx.clipX1(), y1 = gx.clipY1();
+            const int x0 = gx.clipX0(), x1 = gx.clipX1();
+            const int y0 = full ? 0 : gx.clipY0(), y1 = full ? 199 : gx.clipY1();
             if (y < y0 || y > y1) return;
             int X0, Y0, X1, Y1;
             layer->rectOf(x0, y, x1, y, true, X0, Y0, X1, Y1);
+            if (full && y == 0) Y0 = 0;
+            if (full && y == 199) Y1 = layer->h - 1;
+            // layerTargetBegin clips to the page clip's layer rectangle (the
+            // camera rect): in full-screen 3D the rows of the bands need the
+            // page's whole height.
+            const int cy0 = gx.clipY0(), ch = gx.clipY1() - cy0 + 1;
+            if (full) gx.setClip(x0, 0, x1 - x0 + 1, 200);
             if (layerTargetBegin(*layer, hb)) {
                 for (int Y = Y0; Y <= Y1; ++Y) gx.hline(X0, X1, Y, u16(Gfx::kSolid | c));
                 layerTargetEnd();
             }
+            if (full) gx.setClip(x0, cy0, x1 - x0 + 1, ch);
         }
     };
-    for (int i = 0; i < 100; ++i) {
+    // 100 rows above and below the horizon reach the bands only in full-screen
+    // 3D (the horizon is row 93; the gradient saturates beyond its tables).
+    const int rows = full ? 200 : 100;
+    for (int i = 0; i < rows; ++i) {
         const int d = detail >= 3 ? i : 0;
         const int ys = horizon - i - 1;
         if (ys >= 0) {

@@ -26,6 +26,7 @@ struct Settings {
     // Enhancements (only used with the Enhanced preset).
     int renderScale = 0;          // 3D view resolution: 0 = native (the window's pixels), N = 320N x 200N
     bool wideView = true;         // native only: widen the field of view to fill a wide window (else 4:3)
+    bool fullScreen3d = false;    // native only: the field views fill the window height, the HUD drawn over the scene
     int drawDistancePct = 400;    // view distance in percent of the original; kDrawDistanceMax = whole world
 
     // Audio.
@@ -54,6 +55,9 @@ struct Settings {
     // 0 = native resolution (Enhanced only), else the fixed multiple of 320x200.
     int effectiveRenderScale() const { return original() ? 1 : renderScale; }
     bool effectiveWideView() const { return !original() && renderScale == 0 && wideView; }
+    // The mission's field views (not the map, briefing or cut-scenes) fill
+    // the window height; the HUD bands are drawn over the scene.
+    bool effectiveFullScreen3d() const { return !original() && renderScale == 0 && fullScreen3d; }
     // Percent of the original view distance; kDrawDistanceMax = the whole world.
     int effectiveDrawDistancePct() const { return original() ? 100 : drawDistancePct; }
 };

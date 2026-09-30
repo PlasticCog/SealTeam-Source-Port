@@ -1994,11 +1994,12 @@ int renderView(s32 x, s32 y, s32 z, int heading, int pitch, int roll, int rx, in
     const bool enh = enhanced();
     g_workSize = enh ? 5000 * 64 : 5000;
     g_view.capacity = enh ? 200 * 64 : 200;
-    g_hi.begin(rx, ry, rw, rh, g_clipCx, g_clipCy, zoom, x, y, z);
+    g_hi.begin(rx, ry, rw, rh, g_clipCx, g_clipCy, zoom, x, y, z, g_ctx.fullScreen3d);
     if (g_hi.on) {
-        // A wide window widens the viewport: the frustum, the culling and
-        // the clip planes use the page rectangle that covers it (the
-        // projection centre stays the camera rect's).
+        // A wide window widens the viewport (full-screen 3D also the page's
+        // height): the frustum, the culling and the clip planes use the page
+        // rectangle that covers it (the projection centre stays the camera
+        // rect's).
         g_clipX0 = g_hi.cvx;
         g_clipY0 = g_hi.cvy;
         g_clipW = g_hi.cvw;

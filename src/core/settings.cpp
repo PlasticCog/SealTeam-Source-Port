@@ -77,6 +77,7 @@ bool loadSettings() {
         else if (k == "smooth_scaling") s.smoothScaling = parseBool(v);
         else if (k == "render_scale") s.renderScale = (v == "native") ? kRenderScaleNative : nearestAllowed(std::max(n, 1), kRenderScales);
         else if (k == "wide_view") s.wideView = parseBool(v) || v == "fill";
+        else if (k == "full_screen_3d") s.fullScreen3d = parseBool(v);
         else if (k == "draw_distance") s.drawDistancePct = (v == "max") ? kDrawDistanceMax : nearestAllowed(std::max(n, 100), kDrawDistances);
         else if (k == "music_device") s.musicDevice = (v == "opl3") ? MusicDevice::SoundBlasterPro2 : MusicDevice::AdLib;
         else if (k == "digital_sfx") s.digitalSfx = parseBool(v);
@@ -105,6 +106,7 @@ bool saveSettings() {
       << "smooth_scaling = " << s.smoothScaling << "\n"
       << "render_scale = " << (s.renderScale == kRenderScaleNative ? std::string("native") : std::to_string(s.renderScale)) << "\n"
       << "wide_view = " << (s.wideView ? "fill" : "4:3") << "\n"
+      << "full_screen_3d = " << s.fullScreen3d << "\n"
       << "draw_distance = " << (s.drawDistancePct == kDrawDistanceMax ? std::string("max") : std::to_string(s.drawDistancePct)) << "\n"
       << "music_device = " << (s.musicDevice == MusicDevice::SoundBlasterPro2 ? "opl3" : "opl2") << "\n"
       << "digital_sfx = " << s.digitalSfx << "\n"
