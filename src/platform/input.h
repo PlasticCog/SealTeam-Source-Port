@@ -49,6 +49,8 @@ public:
     // Mouse movement since the last call, in 320x200 screen pixels (the
     // fractional remainder is kept for the next call).
     void takeMotion(int& dx, int& dy);
+    // Inject relative motion (scripted tests).
+    void addMotion(int dx, int dy) { relX_ += float(dx); relY_ += float(dy); }
 
     // Last raw scancode seen (make or break with bit 7), like port 0x60.
     u8 lastScancode() const { return lastScancode_; }

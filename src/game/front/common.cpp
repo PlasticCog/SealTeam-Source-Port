@@ -503,6 +503,13 @@ int parseKey(const std::string& name) {
     };
     for (const Named& n : kNamed)
         if (name == n.name) return n.code;
+    if (name.rfind("Move", 0) == 0) {  // MoveDX_DY: relative pointer motion in pixels
+        const size_t us = name.find('_');
+        if (us != std::string::npos) {
+            const int dx = std::atoi(name.c_str() + 4), dy = std::atoi(name.c_str() + us + 1);
+            return 0x10000 | (u8(s8(dx)) << 8) | u8(s8(dy));
+        }
+    }
     if (name.size() == 1) return u8(name[0]);
     return 0;
 }
@@ -519,7 +526,12 @@ int dueKey() {
     }
     const double t = std::chrono::duration<double>(std::chrono::steady_clock::now() - base).count();
     if (k.at > t) return 0;
-    return g_script[g_scriptPos++].code;
+    const int code = g_script[g_scriptPos++].code;
+    if (code & 0x10000) {  // scripted pointer motion, not a key
+        sys().input().addMotion(s8(u8(code >> 8)), s8(u8(code)));
+        return 0;
+    }
+    return code;
 }
 
 } // namespace

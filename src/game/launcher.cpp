@@ -11,6 +11,7 @@
 #include "platform/system.h"
 
 #include <cstdio>
+#include <cstdlib>
 #include <string>
 
 namespace st::game {
@@ -42,22 +43,20 @@ Result runScreen(ButtonList& list, Draw draw, Handle handle) {
     auto& clock = engine::ticker();
     auto& in = engine::input();
     UiState& s = ui();
-    s.redrawFrames = 2;
     in.resetRepeatTimers();
     in.flushKeyboard();
     in.setMode(engine::InputMode::Menu);
     Result result = Result::None;
     while (result == Result::None) {
         engine::paletteFade().request(0, clock.frameDt());
-        if (s.redrawFrames == 0) {
-            clock.frameLimitWait();
-            cursorErase();
-        } else {
-            --s.redrawFrames;
-            picBlitToScreen();
-            draw();
-            uiDrawButtons(list);
-        }
+        // Redraw every frame: the game's two-frame redraw leaves the two video
+        // pages with different help text when the focus changes between them
+        // (the cursor then sits on one button while the page shows another's
+        // text). This screen is cheap enough to draw fully each frame.
+        clock.frameLimitWait();
+        picBlitToScreen();
+        draw();
+        uiDrawButtons(list);
         gfx().clipFull();
         clock.frameLimitWait();
         cursorDraw();
@@ -67,15 +66,10 @@ Result runScreen(ButtonList& list, Draw draw, Handle handle) {
         int key = in.getKey();
         int dx = 0, dy = 0;
         in.getMotion(dx, dy);
-        // Redraw when the pointer leaves a pressed button (as the game does) and
-        // also whenever the focus changes, so the help line follows the pointer.
-        const int focusBefore = s.focus;
-        if ((dx || dy) && uiPointerUpdate(dx, dy, list)) s.redrawFrames = 2;
-        if (s.focus != focusBefore) s.redrawFrames = 2;
+        if (dx || dy) uiPointerUpdate(dx, dy, list);
         uiButtonRelease(key);
         if (s.releaseCount != 0 && --s.releaseCount == 0 && s.focus != -1) {
             key = list[size_t(s.focus)].key;
-            s.redrawFrames = 2;
         }
         switch (key) {
         case 0: break;
@@ -84,11 +78,10 @@ Result runScreen(ButtonList& list, Draw draw, Handle handle) {
         case engine::key::Left: uiPointerUpdate(-8, 0, list); break;
         case engine::key::Right: uiPointerUpdate(8, 0, list); break;
         case engine::key::Enter:
-            if (s.focus != -1 && uiButtonPress(list[size_t(s.focus)].key)) s.redrawFrames = 2;
+            if (s.focus != -1) uiButtonPress(list[size_t(s.focus)].key);
             break;
         default:
             result = handle(key);
-            s.redrawFrames = 2;
             break;
         }
     }
