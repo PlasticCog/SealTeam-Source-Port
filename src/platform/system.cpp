@@ -16,7 +16,9 @@ bool System::init(const VideoConfig& vcfg) {
     }
     logicalH_ = vcfg.aspectCorrect ? 240 : kScreenH;
     timer_.init();
-    return video_.init(vcfg);
+    if (!video_.init(vcfg)) return false;
+    if (!scripted_) video_.captureMouse(true);
+    return true;
 }
 
 void System::shutdown() {
@@ -29,8 +31,15 @@ void System::pump() {
     while (SDL_PollEvent(&ev)) {
         if (ev.type == SDL_EVENT_QUIT) throw QuitRequested{};
         if (ev.type >= SDL_EVENT_WINDOW_FIRST && ev.type <= SDL_EVENT_WINDOW_LAST) {
+            // Let go of the mouse when the player switches away; take it back
+            // with the next click inside the window.
+            if (ev.type == SDL_EVENT_WINDOW_FOCUS_LOST) video_.captureMouse(false);
             video_.markDirty();
             continue;
+        }
+        if (ev.type == SDL_EVENT_MOUSE_BUTTON_DOWN && !video_.mouseCaptured() && !scripted_) {
+            video_.captureMouse(true);
+            continue;  // the re-capturing click is not a game click
         }
         if (ev.type == SDL_EVENT_KEY_DOWN && ev.key.key == SDLK_RETURN && (ev.key.mod & SDL_KMOD_ALT)) {
             video_.toggleFullscreen();
@@ -38,7 +47,15 @@ void System::pump() {
         }
         // Mouse positions arrive in window pixels; map them to the logical
         // 320 x logicalH area (letterboxing and scaling removed).
+        // Keep the raw motion deltas: the position is converted to render
+        // coordinates, the deltas feed the game's virtual stick 1:1.
+        const bool motion = ev.type == SDL_EVENT_MOUSE_MOTION;
+        const float xrel = motion ? ev.motion.xrel : 0.0f, yrel = motion ? ev.motion.yrel : 0.0f;
         SDL_ConvertEventToRenderCoordinates(video_.renderer(), &ev);
+        if (motion) {
+            ev.motion.xrel = xrel;
+            ev.motion.yrel = yrel;
+        }
         input_.handleEvent(ev, kScreenW, logicalH_);
     }
     runTicks();
@@ -52,6 +69,8 @@ void System::pump() {
 
 void System::scheduleScreenshot(const std::string& path, double afterSeconds) {
     shotPath_ = path;
+    scripted_ = true;
+    video_.captureMouse(false);
     shotAt_ = afterSeconds;
 }
 

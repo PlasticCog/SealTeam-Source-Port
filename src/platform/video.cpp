@@ -232,6 +232,12 @@ bool Video::saveScreenshot(const std::string& path) {
     return ok;
 }
 
+void Video::captureMouse(bool on) {
+    if (!window_) return;
+    SDL_SetWindowRelativeMouseMode(window_, on);
+    mouseCaptured_ = on;
+}
+
 void Video::toggleFullscreen() {
     fullscreen_ = !fullscreen_;
     SDL_SetWindowFullscreen(window_, fullscreen_);

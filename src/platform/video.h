@@ -72,6 +72,12 @@ public:
 
     void toggleFullscreen();
 
+    // Confine the (hidden) OS cursor to the window and deliver raw motion,
+    // like the DOS mouse driver the game re-centres every frame. Released
+    // when the window loses focus, re-acquired on the next click.
+    void captureMouse(bool on);
+    bool mouseCaptured() const { return mouseCaptured_; }
+
     // --- high-resolution layers (Enhanced preset), one per page (0 = linear
     // 0x00000, 1 = linear 0x10000). No layer = zero overhead, the output is
     // exactly the 320x200 page.
@@ -98,6 +104,7 @@ private:
     u32 displayOffset_ = 0;
     bool dirty_ = true;
     bool fullscreen_ = false;
+    bool mouseCaptured_ = false;
 
     SDL_Window* window_ = nullptr;
     SDL_Renderer* renderer_ = nullptr;

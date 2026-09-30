@@ -50,6 +50,7 @@ private:
     double tickEpoch_ = 0.0;
     u64 ticksDelivered_ = 0;
     std::string shotPath_;
+    bool scripted_ = false;  // automated --shot run: never grab the mouse
     double shotAt_ = 0.0;
     Video video_;
     Input input_;
