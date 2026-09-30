@@ -418,13 +418,16 @@ void sprDrawBottomCentered(int x, int y, int scale, const u8* rle) {
 }
 
 // 1000:6D56: never larger than the image itself, x snapped to 8 pixels.
+// Enhanced snaps to 8 pixels of the layer, not of the page: on the page grid
+// the horizon treeline could only move in 8 * scale pixel jumps (96 at 4K),
+// which made it lurch sideways whenever the camera panned.
 void sprDrawClippedBottom(int x, int y, int scale, const u8* rle) {
     if (renderContext().detail < 4) return;
     const double kx = frameScaleX(), ky = frameScaleY();
     int w = mul88(sprW(rle), scale), h = mul88(sprH(rle), scale);
     if (int(sprW(rle) * kx) < w) w = int(sprW(rle) * kx);
     if (int(sprH(rle) * ky) < h) h = int(sprH(rle) * ky);
-    const int xs = kx != 1.0 ? int(std::floor(x / (8 * kx)) * (8 * kx)) : (x & ~7);
+    const int xs = x & ~7;
     gfx().spriteScaled(xs - (s16(w) >> 1), y - h, w, h, rle);
 }
 
