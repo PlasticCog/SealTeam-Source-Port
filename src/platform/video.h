@@ -67,6 +67,10 @@ public:
     const u8* palette() const { return dac_.data(); }
 
     void markDirty() { dirty_ = true; }
+    // While set, pump() does not present on its own: the game shows a new
+    // frame exactly once per page flip (setDisplayStart), like the CRTC.
+    void setExplicitPresent(bool on) { explicitPresent_ = on; }
+    bool explicitPresent() const { return explicitPresent_; }
     // Copy the displayed page to the window if anything changed.
     void present(bool force = false);
 
@@ -105,6 +109,7 @@ private:
     bool dirty_ = true;
     bool fullscreen_ = false;
     bool mouseCaptured_ = false;
+    bool explicitPresent_ = false;
 
     SDL_Window* window_ = nullptr;
     SDL_Renderer* renderer_ = nullptr;

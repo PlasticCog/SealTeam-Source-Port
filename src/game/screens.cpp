@@ -72,7 +72,8 @@ void picGrabScreen() {
 void present() {
     Gfx& gx = gfx();
     gx.clipFull();
-    gx.flip(true, true);
+    gx.flip(true, false);  // gfx_present (1000:1E87): gfx_flip with DL = 0, no wait; the
+                           // frame's single 5-tick wait is in tod_draw_sky_ground
     engine::ticker().frameLimitReset();
 }
 

@@ -223,6 +223,7 @@ int run() {
     while (!S.misDone && !S.quitGame) frame();
     logInfo("mission loop: exit at %d ticks (t=%.1fs), done %d quit %d view %d", S.time, sys().timer().seconds(), S.misDone ? 1 : 0, S.quitGame ? 1 : 0, S.viewMode);
     // mis_run exit (1000:06F9): page copy, shake off, menu input mode, sprites, ai_shutdown.
+    sys().video().setExplicitPresent(false);
     pageCopyFull();
     engine::ticker().shakeStop();
     engine::input().setMode(engine::InputMode::Menu);

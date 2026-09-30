@@ -59,7 +59,7 @@ void System::pump() {
         input_.handleEvent(ev, kScreenW, logicalH_);
     }
     runTicks();
-    video_.present();
+    if (!video_.explicitPresent()) video_.present();
     if (!shotPath_.empty() && timer_.seconds() >= shotAt_) {
         saveScreenshot(shotPath_);
         shotPath_.clear();

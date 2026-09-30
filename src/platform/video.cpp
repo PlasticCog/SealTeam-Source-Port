@@ -26,7 +26,9 @@ bool Video::init(const VideoConfig& cfg) {
         logError("SDL_CreateWindowAndRenderer: %s", SDL_GetError());
         return false;
     }
-    SDL_SetRenderVSync(renderer_, 1);
+    // No vsync: a blocking present would quantise the game's own 51 fps
+    // frame pacing (5-tick page-flip wait) to whole monitor refreshes.
+    SDL_SetRenderVSync(renderer_, 0);
     // The 320x200 frame is stretched over a 320x240 logical area when
     // aspect correction is on, reproducing the non-square pixels of a CRT.
     SDL_SetRenderLogicalPresentation(renderer_, kScreenW, logicalH, SDL_LOGICAL_PRESENTATION_LETTERBOX);

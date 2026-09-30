@@ -9,6 +9,7 @@
 #include "engine/sound.h"
 #include "engine/ticker.h"
 #include "game/front/common.h"
+#include "platform/system.h"
 #include "game/globals.h"
 #include "game/mission/build.h"
 #include "game/mission/craft.h"

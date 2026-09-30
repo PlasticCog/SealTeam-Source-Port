@@ -92,6 +92,7 @@ void Gfx::flip(bool flipPages, bool wait) {
     if (!flipPages) return;
     setDrawPage(displayPage_);
     setDisplayPage(1 - drawPage_);
+    sys().video().present(true);  // the flip is the moment the new frame becomes visible
     if (wait) {
         // Give the CRTC time to latch the new start address before the old
         // page is drawn over: a fixed 5-tick pause after every flip.
