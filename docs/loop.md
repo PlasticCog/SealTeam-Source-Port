@@ -217,6 +217,14 @@ reference only afterwards).
 * Enhanced: `view_clear_map_ground` also fills the high-resolution layer so
   the map view starts from the ground colour; the map markers project with
   the normal page projection (`render::projectPage`).
+* Port keys: Shift+H (`InputLayer::getKey`, with the shift key held so Caps
+  Lock does not count) runs `uiShowKeyReference` (ui.cpp) in place of the
+  key: a modal card like the pause dialog, page copy before, both pages
+  restored after. `mission::run` installs `uiSetOverlayHooks` so it behaves
+  as Alt-P (`clkSave` / `clkRestore`, `skipPresent`, `fullRedraw = 2`); the
+  front end gets `cursorReset` + `redrawFrames = 2` instead. Ctrl+Q throws
+  `QuitRequested` from `System::pump` like closing the window. A scripted
+  key "H" (`--keys`) opens the card.
 * Enhanced "Full-screen 3D" (`hudOverScene()`, docs/render.md): the field
   views fill the window height, the insertion / extraction banners are
   redrawn after every render, and the HUD elements of `hud.cpp` get a dark

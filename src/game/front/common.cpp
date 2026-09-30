@@ -635,6 +635,10 @@ void rebaseKeyScript(const std::string& anchor) { g_anchors[anchor] = std::chron
 int getKey() {
     int k = dueKey();
     if (k == 0) return engine::input().getKey();
+    if (k == 'H') {  // a scripted "H" is Shift+H: the key reference
+        engine::input().showHelp();
+        return 0;
+    }
     if (k >= 'A' && k <= 'Z') k |= 0x60;  // input_get_key folds letters to lower case
     return k;
 }

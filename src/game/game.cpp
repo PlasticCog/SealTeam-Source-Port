@@ -201,6 +201,7 @@ int run(const std::vector<std::string>& args) {
     }
     parseCommandLine(original);
     initSystems();
+    engine::input().setHelpHook(uiShowKeyReference);  // Shift+H on any screen
 
     int rc = 0;
     if (devCommand) {

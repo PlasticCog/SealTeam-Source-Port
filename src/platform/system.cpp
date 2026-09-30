@@ -58,6 +58,10 @@ void System::pump() {
             video_.toggleFullscreen();
             continue;
         }
+        if (ev.type == SDL_EVENT_KEY_DOWN && ev.key.key == SDLK_Q && (ev.key.mod & SDL_KMOD_CTRL)) {
+            // Ctrl+Q: quit to the desktop from anywhere, like closing the window.
+            throw QuitRequested{};
+        }
         if (ev.type == SDL_EVENT_KEY_DOWN && ev.key.key == SDLK_F12) {
             // Screenshot for bug reports: sealteam-shot-N.bmp next to the program.
             static int n = 0;

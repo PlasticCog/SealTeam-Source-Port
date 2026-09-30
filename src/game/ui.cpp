@@ -389,6 +389,131 @@ bool uiConfirmReplaceCampaign(int slot) { return confirmCampaign(0x3d0d, 0x3d20,
 bool uiConfirmEndMission() { return confirmPlain(0x3d2b, 160); }
 bool uiConfirmExitDos() { return confirmPlain(0x3d44, 154); }
 
+// ---------------------------------------------------------------- key reference (port)
+
+namespace {
+
+OverlayHooks g_overlayHooks;
+
+// One row of the reference in the 4x6 font: the keys, then the description
+// 17 characters (68 pixels) to the right. A key starting with '*' is a
+// heading; an empty key continues the previous description.
+struct KeyRow {
+    const char* key;
+    const char* desc;
+};
+
+const KeyRow kFieldKeys[] = {
+    {"*IN THE FIELD", ""},
+    {"Mouse, arrows", "turn, faster/slower"},
+    {"Home / PgUp", "faster + turn L / R"},
+    {"End / PgDn", "slower + turn L / R"},
+    {"Keypad 5", "stop"},
+    {"Ctrl+Left/Right", "turn quickly"},
+    {"Enter, mouse 1", "fire"},
+    {"Tab", "next target"},
+    {"n / Alt+N", "next weapon/grenade"},
+    {"r", "rate of fire"},
+    {"g", "throw grenade"},
+    {"1 / 2 / 3", "prone/crouch/stand"},
+    {"+ / -", "stand up / get down"},
+    {"[ / ]", "use tool / next tool"},
+    {"x", "open the hut ahead"},
+    {"q", "dive (in the water)"},
+    {"Space, m, mouse2", "map and orders"},
+    {"F1 / F2", "first person / chase"},
+    {"F3-F8 / F9 / F10", "team, target, enemy"},
+    {"Esc", "end the mission"},
+};
+
+const KeyRow kOrderKeys[] = {
+    {"*TEAM ORDERS (hand signals)", ""},
+    {"h  halt", "s  search area"},
+    {"p  split team", "j  join teams"},
+    {"l  column", "v  vee wedge"},
+    {"d  diamond", "i  in line"},
+    {"c  cease fire", "w  fire at will"},
+    {"f  field of fire", "t  fire at target"},
+    {"*ON THE MAP", ""},
+    {"Arrows, mouse", "move the pointer"},
+    {"Enter", "press / set waypoint"},
+    {"Tab / Shift+Tab", "next / previous team"},
+    {"1..6 / + - x z", "select team / zoom"},
+    {"h p l s j", "halt, ASAP, stealth,"},
+    {"", "search, join"},
+    {"c f t w", "fire: cease, field,"},
+    {"", "at target, at will"},
+    {"d i v", "demolish/snipe/cover"},
+    {"a b u", "air/boat/heli attack"},
+    {"k / o", "cease attack, loiter"},
+    {"e", "extract at pointer"},
+    {"Space, m", "back to the field"},
+};
+
+const char* const kGeneralKeys[] = {
+    "Alt+P pause   Alt+T time compression   Alt+I team names   Alt+X quit game",
+    "Alt+S sound   Alt+M music   Alt+D detail   Alt+Enter fullscreen",
+    "Ctrl+Q quit to desktop   F12 screenshot   Shift+H this screen",
+};
+
+template <size_t N>
+void drawKeyRows(const KeyRow (&rows)[N], int x, int y) {
+    for (const KeyRow& r : rows) {
+        if (r.key[0] == '*') {
+            front::text4x6(y, x, r.key + 1, 0x00);
+        } else {
+            front::text4x6(y, x, r.key, 0x0f);
+            front::text4x6(y, x + 68, r.desc, 0x0f);
+        }
+        y += 7;
+    }
+}
+
+} // namespace
+
+void uiSetOverlayHooks(OverlayHooks hooks) { g_overlayHooks = std::move(hooks); }
+
+void uiShowKeyReference() {
+    Gfx& gx = gfx();
+    auto& clock = engine::ticker();
+    if (g_overlayHooks.before) g_overlayHooks.before();
+    // Pad A / B close it like a key (other buttons are muted).
+    engine::Controller::DialogScope padDialog(engine::Controller::Dialog::Enter);
+    gx.setClip(0, 0, 320, 200);
+    cursorErase();
+    gx.copyPage(gx.displayPage(), gx.drawPage());  // page_copy_full
+    uiDrawTextPanel("", 10, 9, 300, 182);
+    fontSelect(FontId::Dialog);
+    drawTextShadow(14, 11, "SEAL TEAM - KEYS", 0x00, 0x0f);
+    const std::string hint = "any key closes";
+    drawTextShadow(306 - textWidth(hint), 11, hint, 0x00, 0x0f);
+    drawKeyRows(kFieldKeys, 12, 23);
+    drawKeyRows(kOrderKeys, 164, 23);
+    int y = 172;
+    for (const char* line : kGeneralKeys) {
+        front::text4x6(y, 12, line, 0x00);
+        y += 7;
+    }
+    present();
+    for (;;) {
+        clock.frameLimitWait();
+        // Repeats of the H key that opened it do not close it.
+        const int key = pollBiosKey();
+        if (key != 0 && !sys().input().keyDown(sc::H)) break;
+        sys().idle();
+        clock.updateGameTime();
+    }
+    // Both pages back to the frame that was up: the displayed page still
+    // holds it after the flip.
+    gx.copyPage(gx.drawPage(), gx.displayPage());
+    if (g_overlayHooks.after) {
+        g_overlayHooks.after();
+    } else {
+        cursorReset();
+        ui().redrawFrames = 2;
+    }
+}
+
 // ---------------------------------------------------------------- cursor
 
 void cursorLoadAll() {

@@ -106,6 +106,12 @@ int InputLayer::getKey() {
         int k = pollBiosKey();
         flushKeyboard();
         keyPollNow_ = (k == 0);
+        // Port: Shift+H (the shift key itself, so Caps Lock does not count).
+        if ((k == 'H' || k == 'h') && helpHook_ &&
+            (sys().input().keyDown(sc::LShift) || sys().input().keyDown(sc::RShift))) {
+            helpHook_();
+            return 0;
+        }
         if (k >= 'A' && k <= 'Z') k |= 0x60;
         if (mode_ != InputMode::Menu && k == key::Space) k = 'm';
         return k;

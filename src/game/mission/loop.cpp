@@ -24,6 +24,7 @@
 #include "game/mission/sim.h"
 #include "game/mission/state.h"
 #include "game/screens.h"
+#include "game/ui.h"
 #include "gfx/gfx.h"
 #include "render/sky.h"
 
@@ -220,7 +221,14 @@ int run() {
     engine::input().resetRepeatTimers();
     engine::input().flushKeyboard();
     engine::paletteFade().setLevel(0x100);  // pal_set_level(0x100): the frame loop fades in
+    // The key reference (Shift+H) is handled like the pause dialog (Alt-P).
+    uiSetOverlayHooks({clkSave, [] {
+                           clkRestore();
+                           ls().skipPresent = true;
+                           ls().fullRedraw = 2;
+                       }});
     while (!S.misDone && !S.quitGame) frame();
+    uiSetOverlayHooks({});
     logInfo("mission loop: exit at %d ticks (t=%.1fs), done %d quit %d view %d", S.time, sys().timer().seconds(), S.misDone ? 1 : 0, S.quitGame ? 1 : 0, S.viewMode);
     // mis_run exit (1000:06F9): page copy, shake off, menu input mode, sprites, ai_shutdown.
     sys().video().setExplicitPresent(false);

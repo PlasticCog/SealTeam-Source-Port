@@ -53,9 +53,11 @@ The start menu offers:
   Controller     - game controller layout (Xbox-style default) and
                    remapping; controllers are detected when plugged in
 
-Settings are saved in sealteam.cfg next to the program. Alt+Enter toggles
-fullscreen. The mouse is captured by the game window; Alt+Tab releases it
-and the next click takes it back.
+Settings are saved in sealteam.cfg next to the program. On every screen:
+Shift+H shows a reference card of the game's keys (any key closes it),
+Ctrl+Q quits to the desktop at once, Alt+Enter toggles fullscreen. The
+mouse is captured by the game window; Alt+Tab releases it and the next
+click takes it back.
 
 Command line: sealteam [--original | --enhanced | --launcher] [--data DIR]
 Original options still work, e.g. "sealteam 3 t" starts mission 3 without

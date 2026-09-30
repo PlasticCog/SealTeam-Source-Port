@@ -4,6 +4,7 @@
 
 #include "core/common.h"
 
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -71,6 +72,17 @@ bool uiConfirmExitDos();                  // 365e:481F
 
 // INT 16h poll as input_poll_bios_key (19ac:2B3B): 0, ASCII, or scan << 8.
 int pollBiosKey();
+
+// Port: the key reference (Shift+H on any screen). Modal like the dialogs:
+// both pages hold the frame that was up when it returns. The screen that is
+// up can install what to do around it (the mission pauses its clock and asks
+// for a full redraw as after the pause dialog); without hooks the front end's
+// full redraw is requested.
+struct OverlayHooks {
+    std::function<void()> before, after;
+};
+void uiSetOverlayHooks(OverlayHooks hooks);
+void uiShowKeyReference();
 
 // Cursor with save-under per video page.
 void cursorLoadAll();       // 19ac:2D7F

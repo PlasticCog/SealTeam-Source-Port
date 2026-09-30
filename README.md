@@ -104,6 +104,11 @@ Settings are saved in `sealteam.cfg` next to the program. `--original` or
 `--enhanced` skip the menu; the menu can be switched off in Setup and
 brought back with `--launcher`.
 
+Keys the port adds on every screen: **Shift+H** shows a reference card of
+the game's keys (any key closes it; the mission clock stops meanwhile),
+**Ctrl+Q** quits to the desktop at once, **Alt+Enter** toggles fullscreen,
+**F12** saves a screenshot next to the program.
+
 | Option | Effect |
 |--------|--------|
 | `--original` / `--enhanced` | start directly with that preset |

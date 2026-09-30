@@ -32,6 +32,11 @@ public:
     bool joystickPresent() const { return joyPresent_; }
     void setMousePresent(bool on) { mousePresent_ = on; }  // tests: pad only
 
+    // Port: Shift+H on any screen shows the key reference. The game installs
+    // the screen; getKey() runs it in place of the key and returns 0.
+    void setHelpHook(void (*hook)()) { helpHook_ = hook; }
+    void showHelp() { if (helpHook_) helpHook_(); }
+
 private:
     int pollBiosKey();                       // 2B3B
     void pumpMouse();                        // mouse driver emulation
@@ -41,6 +46,7 @@ private:
     bool joyPresent_ = false;
     bool mousePresent_ = true;
     bool keyPollNow_ = false;
+    void (*helpHook_)() = nullptr;
     // Repeat timers (DS:D814..D82E).
     s32 tJoyButton1_ = 0, tJoyButton2_ = 0, tJoyAxis_ = 0;
     s32 tMouseLeft_ = 0, tMouseRight_ = 0, tMouseAxis_ = 0, tKeyboard_ = 0;
