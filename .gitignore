@@ -32,6 +32,9 @@ sealteam.pdf
 
 # --- Build output ---
 /build/
+/build-*/
+/build-deps/
+*.log
 /out/
 cmake-build-*/
 *.o

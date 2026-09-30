@@ -7,6 +7,7 @@
 #include "engine/sound.h"
 #include "engine/ticker.h"
 #include "game/config.h"
+#include "game/devtools.h"
 #include "game/globals.h"
 #include "game/menu.h"
 #include "game/screens.h"
@@ -180,17 +181,20 @@ int mainGameLoop() {
 
 } // namespace
 
+const DevCommand kSelfTestGfx("--selftest-gfx", "draw fonts, primitives and sprites for inspection", [](const DevArgs&) {
+    selfTestGfx();
+    return 0;
+});
+
 int run(const std::vector<std::string>& args) {
-    parseCommandLine(args);
-    if (std::find(args.begin(), args.end(), "--selftest-gfx") != args.end()) {
-        openLibraries();
-        engine::ticker().install();
-        gfx().init();
-        selfTestGfx();
-        return 0;
-    }
+    // Port-only "--" options (developer commands and their arguments) are
+    // not seen by the original single-letter parser.
+    std::vector<std::string> original{args.empty() ? std::string("st") : args[0]};
+    for (size_t i = 1; i < args.size() && args[i].rfind("--", 0) != 0; ++i) original.push_back(args[i]);
+    parseCommandLine(original);
     initSystems();
-    const int rc = mainGameLoop();
+    int rc = 0;
+    if (!runDevCommand(args, rc)) rc = mainGameLoop();
     engine::sound().shutdown();
     return rc;
 }
