@@ -758,7 +758,10 @@ void mergeBatch(const std::vector<RenderRec*>& a) {
 }
 
 RenderRec* newRec() {
-    if (g_recUsed >= int(g_recs.size())) g_recs.resize(g_recs.size() + 256);
+    // The pool is sized once per frame (see the g_recUsed reset): growing it
+    // here would reallocate under the raw RenderRec* pointers held by the
+    // batch and the view list and crash the sort (seen on turns and bursts).
+    if (g_recUsed >= int(g_recs.size())) fatal("renderer: record pool exhausted (%d)", g_recUsed);
     RenderRec* r = &g_recs[size_t(g_recUsed)];
     *r = RenderRec{};
     return r;
@@ -1929,6 +1932,10 @@ int renderView(s32 x, s32 y, s32 z, int heading, int pitch, int roll, int rx, in
     const GridCell* cell = worldCellAt(g_camX, g_camZ);
     g_drawList = nullptr;
     g_recUsed = 0;
+    // Room for every record the work buffer can hold (26 bytes each in the
+    // original accounting) plus the persistent view list; never resized mid-frame.
+    const size_t recCap = size_t(g_workSize / 26) + size_t(g_view.capacity) + 64;
+    if (g_recs.size() < recCap) g_recs.resize(recCap);
     g_batch.clear();
     g_batchOff = 0;
     g_recOff = g_workSize - 0x16;

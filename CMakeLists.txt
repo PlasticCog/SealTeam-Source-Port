@@ -62,6 +62,9 @@ endif()
 target_include_directories(sealteam PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_link_libraries(sealteam PRIVATE SDL3::SDL3)
 target_link_libraries(sealteam PRIVATE ymfm)
+if(WIN32)
+    target_link_libraries(sealteam PRIVATE dbghelp)  # crash reports with symbols
+endif()
 
 if(MSVC)
     target_compile_options(sealteam PRIVATE /W4 /permissive-)

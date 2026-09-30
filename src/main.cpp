@@ -9,6 +9,7 @@
 
 #include "core/common.h"
 #include "core/settings.h"
+#include "platform/crash.h"
 #include "data/ealib.h"
 #include "data/exeimage.h"
 #include "data/gamefs.h"
@@ -58,6 +59,7 @@ int main(int argc, char** argv) {
     std::string exeDir;
     if (const char* base = SDL_GetBasePath()) exeDir = base;  // owned by SDL
     setSettingsDir(exeDir);
+    installCrashHandler(exeDir);
     loadSettings();
     Settings& st = settings();
 
