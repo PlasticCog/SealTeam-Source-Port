@@ -19,5 +19,6 @@ void addCampaignHooks(SimHooks& hooks);
 // The mission's contribution to msn_tally_casualties (365e:1D1F) and the
 // scoring input of score_mission, published to campaign::stats()/result().
 void publishMissionResults();
+void copyMissionStats();  // mission counters -> campaign::stats(), at every mission exit
 
 } // namespace st::game::mission

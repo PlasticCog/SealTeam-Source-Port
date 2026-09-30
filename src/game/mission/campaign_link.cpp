@@ -27,7 +27,8 @@ bool scoreEvalObjective(int i) {
         for (int m = 0; m < 8 && t->members[m]; ++m) {
             ++total;
             const Unit* u = t->members[m];
-            if (unitDead(u) || (u->mover->flags & mover_flag::kSearched)) ++n;
+            // 365e:DC98: dead (hit_mask 0x4000) or mover flag 0x20 (secured).
+            if (unitDead(u) || (u->mover->flags & mover_flag::kSecured)) ++n;
         }
         return total > 0 && 100 * n / total > 65;
     }
@@ -57,6 +58,19 @@ MissionSetup missionSetupFromCampaign() {
     return s;
 }
 
+// The original counts into the far 53BA statistics block in place; the
+// debriefing reads it whether the mission ended by extraction or by an
+// Esc+Y abort. Mirror the mission counters into it at every exit.
+void copyMissionStats() {
+    const MissionState& S = ms();
+    campaign::MissionStats& st = campaign::stats();
+    st.roundsFired = u16(S.stats.roundsFired);
+    st.roundsHit = u16(S.stats.roundsHit);
+    st.grenadesThrown = u16(S.stats.grenadesThrown);
+    st.grenadesHit = u16(S.stats.grenadeHits);
+    st.bonus = u16(S.stats.bonusCounter);
+}
+
 void publishMissionResults() {
     MissionState& S = ms();
     // msn_tally_casualties: roster part (roster_clear_wounded, roster_record_casualty).
@@ -66,12 +80,7 @@ void publishMissionResults() {
         Unit* u = t0->members[m];
         if (u->roster) campaign::rosterRecordCasualty(*u->roster, m == 0, u->status->hit_mask);
     }
-    campaign::MissionStats& st = campaign::stats();
-    st.roundsFired = u16(S.stats.roundsFired);
-    st.roundsHit = u16(S.stats.roundsHit);
-    st.grenadesThrown = u16(S.stats.grenadesThrown);
-    st.grenadesHit = u16(S.stats.grenadeHits);
-    st.bonus = u16(S.stats.bonusCounter);
+    copyMissionStats();
     campaign::MissionResult& r = campaign::result();
     r.enemyKia = S.enemyKia;
     r.sealKia = S.sealKia;

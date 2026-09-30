@@ -2,6 +2,8 @@
 // (1000:01DE), the mission event tick (2dbd:3F4C), insertion/extraction
 // (1000:0028..00B0), music mood and alerts (1000:07A1..0842), time of day
 // (1000:1964..19EE) and the order keys of cmd_order_keys (19ac:0CC3).
+#include "game/campaign.h"
+#include "game/mission/campaign_link.h"
 #include "game/mission/sim.h"
 
 #include "engine/palette_fade.h"
@@ -292,6 +294,7 @@ bool simInit(const MissionSetup& setup) {
     S.aiEnabled = true;
     aiInit();
     S.stats = MissionStats{};  // 365e:DBE6 score_reset_stats (team size is kept by the front end)
+    campaign::scoreResetStats();  // the campaign-side copy the debriefing reads
     // hud_reset_mission (1000:1EB0) -> view_set_first_person (1000:1ED2): veg_update(1), mode 0.
     setViewMode(0);
     hudShowWeaponLines();
@@ -327,6 +330,7 @@ bool simInit(const MissionSetup& setup) {
 }
 
 void simShutdown() {
+    copyMissionStats();  // also after an aborted mission
     aiShutdown();
     engine::sound().unloadSfxBank();
     worldFree();
