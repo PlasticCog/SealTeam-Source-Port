@@ -236,8 +236,12 @@ bool Video::saveScreenshot(const std::string& path) {
 
 void Video::captureMouse(bool on) {
     if (!window_) return;
-    SDL_SetWindowRelativeMouseMode(window_, on);
-    mouseCaptured_ = on;
+    // Relative mode can be refused while the window is not yet shown or
+    // focused; record what actually happened so the pump can retry on the
+    // next focus gain or click instead of believing the mouse is captured.
+    const bool ok = SDL_SetWindowRelativeMouseMode(window_, on);
+    mouseCaptured_ = on && ok;
+    if (mouseCaptured_) SDL_HideCursor();
 }
 
 void Video::toggleFullscreen() {

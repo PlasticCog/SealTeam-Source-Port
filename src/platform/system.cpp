@@ -34,6 +34,7 @@ void System::pump() {
             // Let go of the mouse when the player switches away; take it back
             // with the next click inside the window.
             if (ev.type == SDL_EVENT_WINDOW_FOCUS_LOST) video_.captureMouse(false);
+            if (ev.type == SDL_EVENT_WINDOW_FOCUS_GAINED && !scripted_) video_.captureMouse(true);
             video_.markDirty();
             continue;
         }
