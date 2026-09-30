@@ -222,8 +222,13 @@ reference only afterwards).
   `uiShowKeyReference` (ui.cpp) in place of the key: a modal card like the
   pause dialog, page copy before, both pages
   restored after. `mission::run` installs `uiSetOverlayHooks` so it behaves
-  as Alt-P (`clkSave` / `clkRestore`, `skipPresent`, `fullRedraw = 2`); the
-  front end gets `cursorReset` + `redrawFrames = 2` instead. Ctrl+Q throws
+  as Alt-P (`clkSave` / `clkRestore`, `skipPresent`, `fullRedraw = 2`); a
+  front-end screen gets no redraw request at all (the cursor is erased from
+  both pages first, `cursorEraseAll`), because a forced full redraw breaks
+  screens that keep state on their pages (the intel screen's zoomed area
+  map kept drawing its markers over the restored office picture). Keys
+  typed while the H is still held are dropped and the queue is flushed at
+  close, so repeats neither close nor reopen it. Ctrl+Q throws
   `QuitRequested` from `System::pump` like closing the window. In `--keys`,
   "CtrlH" replays a synthetic SDL Ctrl+H (the real keyboard path) and "H"
   opens the card directly.

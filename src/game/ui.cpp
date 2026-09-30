@@ -480,7 +480,7 @@ void uiShowKeyReference() {
     // Pad A / B close it like a key (other buttons are muted).
     engine::Controller::DialogScope padDialog(engine::Controller::Dialog::Enter);
     gx.setClip(0, 0, 320, 200);
-    cursorErase();
+    cursorEraseAll();  // no cursor image in the frame the pages keep
     gx.copyPage(gx.displayPage(), gx.drawPage());  // page_copy_full
     uiDrawTextPanel("", 10, 9, 300, 182);
     fontSelect(FontId::Dialog);
@@ -495,23 +495,31 @@ void uiShowKeyReference() {
         y += 7;
     }
     present();
+    // Keys typed while the H that opened it is still held (its repeats) are
+    // dropped; the first key after that closes it, another Ctrl+H included.
+    bool hUp = false;
     for (;;) {
         clock.frameLimitWait();
-        // Repeats of the H key that opened it do not close it.
-        const int key = pollBiosKey();
-        if (key != 0 && !sys().input().keyDown(sc::H)) break;
+        sys().pump();
+        if (!hUp) {
+            sys().input().flushKeys();
+            if (sys().input().keyDown(sc::H)) {
+                sys().idle();
+                clock.updateGameTime();
+                continue;
+            }
+            hUp = true;
+        }
+        if (pollBiosKey() != 0) break;
         sys().idle();
         clock.updateGameTime();
     }
-    // Both pages back to the frame that was up: the displayed page still
-    // holds it after the flip.
+    sys().input().flushKeys();  // repeats of the closing key do not reopen it
+    // Both pages back to the frame that was up (the draw page still holds it
+    // after the flip), so a screen that keeps state on its pages - the intel
+    // screen's zoomed area map, say - continues as if nothing had happened.
     gx.copyPage(gx.drawPage(), gx.displayPage());
-    if (g_overlayHooks.after) {
-        g_overlayHooks.after();
-    } else {
-        cursorReset();
-        ui().redrawFrames = 2;
-    }
+    if (g_overlayHooks.after) g_overlayHooks.after();
 }
 
 // ---------------------------------------------------------------- cursor
@@ -561,6 +569,20 @@ void cursorErase() {
     if (g_savedX[p] == -1) return;
     gx.blit(g_saveUnder[p], 0, 0, gx.screen(), g_savedX[p] - 4, g_savedY[p] - 5, 0x14, 0x13);
     g_savedX[p] = -1;
+}
+
+// The draw page's cursor as cursorErase, then the displayed page's (the one
+// cursorDraw drew last, saved under the other index).
+void cursorEraseAll() {
+    Gfx& gx = gfx();
+    cursorErase();
+    const int p = g_cursorPage ^ 1;
+    if (g_savedX[p] == -1) return;
+    const int drawPage = gx.drawPage();
+    gx.setDrawPage(gx.displayPage());
+    gx.blit(g_saveUnder[p], 0, 0, gx.screen(), g_savedX[p] - 4, g_savedY[p] - 5, 0x14, 0x13);
+    g_savedX[p] = -1;
+    gx.setDrawPage(drawPage);
 }
 
 } // namespace st::game

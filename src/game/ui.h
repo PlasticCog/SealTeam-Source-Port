@@ -74,10 +74,10 @@ bool uiConfirmExitDos();                  // 365e:481F
 int pollBiosKey();
 
 // Port: the key reference (Ctrl+H on any screen). Modal like the dialogs:
-// both pages hold the frame that was up when it returns. The screen that is
-// up can install what to do around it (the mission pauses its clock and asks
-// for a full redraw as after the pause dialog); without hooks the front end's
-// full redraw is requested.
+// both pages hold the frame that was up (cursor erased) when it returns, so
+// a screen continues untouched. The screen that is up can install what to
+// do around it (the mission pauses its clock and asks for a full redraw as
+// after the pause dialog).
 struct OverlayHooks {
     std::function<void()> before, after;
 };
@@ -88,6 +88,7 @@ void uiShowKeyReference();
 void cursorLoadAll();       // 19ac:2D7F
 void cursorDraw();          // 19ac:36E0
 void cursorErase();         // 19ac:37E9
+void cursorEraseAll();      // port: both pages (before a page copy)
 void cursorReset();
 void cursorSetWait(bool on);
 void cursorSetSight(bool on);
