@@ -168,6 +168,11 @@ void selfTestGfx() {
 
 } // namespace
 
+const DevCommand kShotHotkeyTest("--test-f12", "exercise the F12 screenshot path", [](const DevArgs&) {
+    sys().saveScreenshot(sys().screenshotDir() + "sealteam-shot-test.bmp");
+    return 0;
+});
+
 const DevCommand kSelfTestGfx("--selftest-gfx", "draw fonts, primitives and sprites for inspection", [](const DevArgs&) {
     selfTestGfx();
     return 0;

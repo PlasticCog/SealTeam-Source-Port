@@ -105,6 +105,7 @@ int main(int argc, char** argv) {
 
     int rc = 0;
     if (!sys().init(vcfg)) return 1;
+    sys().setScreenshotDir(exeDir);
     if (!shotPath.empty()) sys().scheduleScreenshot(shotPath, shotAfter);
     try {
         rc = game::run(gameArgs);

@@ -2,6 +2,8 @@
 
 #include <SDL3/SDL.h>
 
+#include <cstdio>
+
 namespace st {
 
 System& sys() {
@@ -44,6 +46,14 @@ void System::pump() {
         }
         if (ev.type == SDL_EVENT_KEY_DOWN && ev.key.key == SDLK_RETURN && (ev.key.mod & SDL_KMOD_ALT)) {
             video_.toggleFullscreen();
+            continue;
+        }
+        if (ev.type == SDL_EVENT_KEY_DOWN && ev.key.key == SDLK_F12) {
+            // Screenshot for bug reports: sealteam-shot-N.bmp next to the program.
+            static int n = 0;
+            char name[64];
+            std::snprintf(name, sizeof name, "sealteam-shot-%d.bmp", ++n);
+            saveScreenshot(shotDir_ + name);
             continue;
         }
         // Mouse positions arrive in window pixels; map them to the logical

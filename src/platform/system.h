@@ -40,6 +40,9 @@ public:
     // Testing aid: after `afterSeconds`, save the displayed frame as a BMP
     // and quit (used to verify screens without interaction).
     void scheduleScreenshot(const std::string& path, double afterSeconds);
+    // Directory for F12 screenshots (the program directory).
+    void setScreenshotDir(const std::string& dir) { shotDir_ = dir; }
+    const std::string& screenshotDir() const { return shotDir_; }
     bool saveScreenshot(const std::string& path);
 
 private:
@@ -50,6 +53,7 @@ private:
     double tickEpoch_ = 0.0;
     u64 ticksDelivered_ = 0;
     std::string shotPath_;
+    std::string shotDir_;
     bool scripted_ = false;  // automated --shot run: never grab the mouse
     double shotAt_ = 0.0;
     Video video_;
