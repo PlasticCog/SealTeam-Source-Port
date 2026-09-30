@@ -26,9 +26,10 @@ constexpr u8 Clickable = 0x01, Disabled = 0x02, NoLabel = 0x04, Highlighted = 0x
              Hidden = 0x40;
 }
 
-// Reads a button list from st.exe: records at far segment `seg`:0000 up to the
-// record with key 0, labels from the near pointer table at DS:`labelTable`.
-ButtonList loadButtonList(u16 seg, u16 labelTable);
+// Reads a button list from st.exe: records at far `seg`:`off` up to the
+// record with key 0, labels from the near pointer table at DS:`labelTable`
+// (0: no labels).
+ButtonList loadButtonList(u16 seg, u16 labelTable, u16 off = 0);
 
 struct UiState {
     int focus = -1;         // g_ui_focus (DS:EEBE)
@@ -47,6 +48,29 @@ void uiButtonRelease(int key);                           // 365e:2AF6
 void uiCursorToButton(const Button& b);                  // 365e:327A
 void uiDrawButtons(const ButtonList& list);              // 365e:32BA
 void uiDrawTitleTab(const std::string& caption, int x, int y);  // 365e:2FB7
+// menu_arrow_keys (19ac:0AC1): arrows move the pointer by 8 / 5 pixels
+// through uiPointerUpdate; true if the key was an arrow.
+bool uiMenuArrowKeys(int key, const ButtonList& list);
+
+// ui_draw_text_panel (365e:2EBA): bevelled panel around (x, y, w, h). With a
+// text (dialog font, black on a white shadow at x+6, y+4) the face is
+// filled; with nullptr only its outline is drawn.
+void uiDrawTextPanel(const char* text, int x, int y, int w, int h);
+
+// ui_dialog_prompt (365e:2B25). Modal: reads the BIOS keyboard directly.
+// Y/N mode (maxLen 0, yesNo): returns with buf = "y" or "n" (Esc = "n").
+// Text mode (maxLen > 0): edits buf (starts empty) up to (maxLen+1)*6/6-3
+// characters; Enter finishes (with `needText` an empty entry is refused),
+// Esc returns buf = "". The prompt is `prompt`.
+void uiDialogPrompt(const std::string& prompt, std::string& buf, int x, int y, int maxLen, bool yesNo,
+                    bool needText);
+bool uiConfirmLoadCampaign(int slot);     // 365e:4643
+bool uiConfirmReplaceCampaign(int slot);  // 365e:4702
+bool uiConfirmEndMission();               // 365e:47C2
+bool uiConfirmExitDos();                  // 365e:481F
+
+// INT 16h poll as input_poll_bios_key (19ac:2B3B): 0, ASCII, or scan << 8.
+int pollBiosKey();
 
 // Cursor with save-under per video page.
 void cursorLoadAll();       // 19ac:2D7F

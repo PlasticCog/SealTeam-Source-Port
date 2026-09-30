@@ -4,6 +4,7 @@
 #include "engine/palette_fade.h"
 #include "engine/sound.h"
 #include "engine/ticker.h"
+#include "game/front/common.h"
 #include "game/globals.h"
 #include "game/screens.h"
 #include "gfx/gfx.h"
@@ -132,7 +133,7 @@ int titleScreen() {
                 if (++page == kPageCount) page = 0;
             }
         }
-        const int key = in.getKey();
+        const int key = front::getKey();
         if (inputToggleKeys(key)) continue;
         if (key == engine::key::Enter) break;
         if (elapsed(timeoutTimer, kTitleTimeout)) break;

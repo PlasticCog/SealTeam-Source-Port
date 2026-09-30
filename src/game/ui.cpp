@@ -1,12 +1,18 @@
 #include "game/ui.h"
 
 #include "data/exeimage.h"
+#include "engine/input_layer.h"
+#include "engine/ticker.h"
+#include "game/campaign.h"
+#include "game/front/common.h"
 #include "game/screens.h"
 #include "gfx/font.h"
 #include "gfx/gfx.h"
 #include "gfx/image.h"
+#include "platform/system.h"
 
 #include <algorithm>
+#include <cctype>
 #include <cstring>
 
 namespace st::game {
@@ -60,10 +66,10 @@ UiState& ui() {
     return instance;
 }
 
-ButtonList loadButtonList(u16 seg, u16 labelTable) {
+ButtonList loadButtonList(u16 seg, u16 labelTable, u16 off) {
     ButtonList list;
     for (int i = 0;; ++i) {
-        const u8* r = exe().at(seg, u16(i * kButtonRecord));
+        const u8* r = exe().at(seg, u16(off + i * kButtonRecord));
         if (!r) fatal("button table %04x missing from st.exe", seg);
         Button b;
         b.key = rd16(r + 8);
@@ -74,7 +80,7 @@ ButtonList loadButtonList(u16 seg, u16 labelTable) {
         b.h = rds16(r + 6);
         b.hotIndex = s8(r[10]);
         b.flags = r[11];
-        b.label = exe().dgStringPtr(u16(labelTable + 2 * i));
+        if (labelTable != 0) b.label = exe().dgStringPtr(u16(labelTable + 2 * i));
         list.push_back(std::move(b));
     }
     return list;
@@ -208,6 +214,174 @@ void uiDrawTitleTab(const std::string& caption, int x, int y) {
     gx.line(x, y + 15, x + w - 1, y + 15, colour(0x10));
     drawTextShadow(x + 2, y + 4, caption, 0x00, 0x0f);
 }
+
+bool uiMenuArrowKeys(int key, const ButtonList& list) {
+    int dx = 0, dy = 0;
+    switch (key) {
+    case engine::key::Up: dy = -5; break;
+    case engine::key::Left: dx = -8; break;
+    case engine::key::Right: dx = 8; break;
+    case engine::key::Down: dy = 5; break;
+    default: return false;
+    }
+    uiPointerUpdate(dx, dy, list);
+    return true;
+}
+
+// ---------------------------------------------------------------- panels and dialogs
+
+void uiDrawTextPanel(const char* text, int x, int y, int w, int h) {
+    Gfx& gx = gfx();
+    fontSelect(FontId::Dialog);
+    gx.rect(x - 4, y - 3, w + 8, h + 6, colour(0x18));
+    gx.rect(x - 3, y - 2, w + 6, h + 4, colour(0x16));
+    gx.line(x - 3, y - 2, x + w + 2, y - 2, colour(0x12));
+    gx.line(x - 4, y - 3, x + w + 3, y - 3, colour(0x10));
+    if (text) {
+        gx.fillRect(x - 2, y - 1, w + 4, h + 2, colour(0x14));
+        drawTextShadow(x + 6, y + 4, text, 0x00, 0x0f);  // white text, black shadow
+    } else {
+        gx.rect(x - 2, y - 1, w + 4, h + 2, colour(0x14));
+    }
+}
+
+int pollBiosKey() {
+    sys().pump();
+    if (const int k = front::scriptedBiosKey()) return k;
+    Input& in = sys().input();
+    if (!in.keyAvailable()) return 0;
+    const u16 k = in.readKey();
+    return (k & 0xff) ? (k & 0xff) : k;
+}
+
+namespace {
+
+// The dialog's cursor glyph is the string at DS:3A67 ("_"); DS:3A66 is an
+// empty string that clears the edit buffer.
+constexpr u16 kDialogCursor = 0x3a67;
+
+void finishEdit(int cursorX, int editX, int editY, int lineH) {
+    engine::ticker().frameLimitWait();
+    gfx().fillRect(cursorX + editX + 6, editY + 2, 8, lineH - 4, colour(0x16));
+    present();
+}
+
+} // namespace
+
+void uiDialogPrompt(const std::string& prompt, std::string& buf, int x, int y, int maxLen, bool yesNo,
+                    bool needText) {
+    Gfx& gx = gfx();
+    auto& clock = engine::ticker();
+    gx.setClip(0, 0, 320, 200);
+    fontSelect(FontId::Dialog);
+    const int promptW = textWidth(prompt);
+    const int editX = promptW + x + 8;
+    const int editY = y + 1;
+    const int boxW = maxLen != 0 ? (maxLen + 1) * 6 : 0;
+    buf.clear();
+    int cursorX = textWidth(buf);
+    const std::string cursorGlyph = exe().dgString(kDialogCursor);
+    const Font* f = gfx().font();
+    const int lineH = (f ? f->height() : 9) + 6;
+    int redraws = boxW == 0 ? 1 : 2;
+    int count = 0;
+    if (boxW != 0) cursorErase();
+    gx.copyPage(gx.displayPage(), gx.drawPage());  // page_copy_full
+    for (;;) {
+        int key = pollBiosKey();
+        if ((key == engine::key::Enter || key == engine::key::Esc) && !yesNo &&
+            (count != 0 || boxW == 0 || key == engine::key::Esc || !needText) && redraws == 0) {
+            if (boxW != 0) {
+                finishEdit(cursorX, editX, editY, lineH);
+                if (key == engine::key::Esc) buf = std::string(1, char(1));
+            } else if (key == engine::key::Esc) {
+                buf = "n";
+            }
+            return;
+        }
+        if (redraws != 0) {
+            clock.frameLimitWait();
+            if (redraws == 1 && boxW == 0) cursorErase();
+            if (redraws == 2 && boxW != 0) cursorErase();
+            uiDrawTextPanel(prompt.c_str(), x, y, promptW + boxW + 8, lineH + 2);
+            if (boxW == 0) {
+                present();
+            } else {
+                gx.rect(editX, editY, boxW, lineH, colour(0x16));
+                gx.rect(editX + 1, editY + 1, boxW - 2, lineH - 2, colour(0x18));
+                gx.line(editX + 1, editY + lineH - 2, editX + boxW - 2, editY + lineH - 2, colour(0x14));
+                gx.line(editX, editY + lineH - 1, editX + boxW - 1, editY + lineH - 1, colour(0x12));
+                gx.fillRect(editX + 2, editY + 2, boxW - 4, lineH - 4, colour(0x16));
+                drawTextShadow(editX + 6, editY + 3, buf, 0x0f, 0x00);  // black text, white shadow
+            }
+            --redraws;
+        }
+        if (yesNo) {
+            if (key == engine::key::Esc) {
+                buf = "n";
+                return;
+            }
+            key |= 0x60;
+            if (key == 'y' || key == 'n') {
+                buf = std::string(1, char(key));
+                return;
+            }
+        }
+        if (key == 8) {
+            if (count > 0) --count;
+            buf.resize(size_t(count));
+            cursorX = textWidth(buf);
+            redraws = 2;
+        }
+        if (boxW != 0 && key > 0 && key < 0x80 &&
+            (std::isalnum(key) || key == ' ' || key == '.' || key == 0x27 || key == '-')) {
+            if (count < boxW / 6 - 3) {
+                buf.resize(size_t(count));
+                buf.push_back(char(key));
+                ++count;
+            }
+            buf.resize(size_t(count));
+            cursorX = textWidth(buf);
+            redraws = 2;
+        }
+        if (boxW != 0) {
+            clock.frameLimitWait();
+            if (clock.time() & 0x40) drawTextShadow(cursorX + editX + 6, editY + 3, cursorGlyph, 0x0f, 0x00);
+            else gx.fillRect(cursorX + editX + 6, editY + 2, 8, lineH - 4, colour(0x16));
+            present();
+        } else {
+            sys().idle();
+        }
+        clock.updateGameTime();
+    }
+}
+
+namespace {
+
+// "<a><campaign name><b>" centred on x = cx; the width is measured in the
+// font that happens to be selected, as in the original.
+bool confirmCampaign(u16 a, u16 b, int slot) {
+    const std::string prompt = exe().dgString(a) + campaign::slotName(slot) + exe().dgString(b);
+    const int x = 184 - textWidth(prompt) / 2;
+    std::string buf;
+    uiDialogPrompt(prompt, buf, x, 60, 0, true, false);
+    return !buf.empty() && buf[0] == 'y';
+}
+
+bool confirmPlain(u16 text, int cx) {
+    const std::string prompt = exe().dgString(text);
+    const int x = cx - textWidth(prompt) / 2;
+    std::string buf;
+    uiDialogPrompt(prompt, buf, x, 64, 0, true, false);
+    return !buf.empty() && buf[0] == 'y';
+}
+
+} // namespace
+
+bool uiConfirmLoadCampaign(int slot) { return confirmCampaign(0x3cf2, 0x3d02, slot); }
+bool uiConfirmReplaceCampaign(int slot) { return confirmCampaign(0x3d0d, 0x3d20, slot); }
+bool uiConfirmEndMission() { return confirmPlain(0x3d2b, 160); }
+bool uiConfirmExitDos() { return confirmPlain(0x3d44, 154); }
 
 // ---------------------------------------------------------------- cursor
 

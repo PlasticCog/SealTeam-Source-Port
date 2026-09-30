@@ -61,6 +61,14 @@ void picBlitToScreen() {
     gx.drawImage(g_picture, 0, 0);
 }
 
+void picGrabScreen() {
+    Bitmap& scr = gfx().screen();
+    g_picture.w = 320;
+    g_picture.h = 200;
+    g_picture.pixels.resize(320 * 200);
+    for (int y = 0; y < 200; ++y) std::memcpy(g_picture.row(y), scr.row(y), 320);
+}
+
 void present() {
     Gfx& gx = gfx();
     gx.clipFull();

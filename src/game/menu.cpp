@@ -6,6 +6,8 @@
 #include "engine/sound.h"
 #include "engine/ticker.h"
 #include "game/config.h"
+#include "game/front/front.h"
+#include "game/front/common.h"
 #include "game/globals.h"
 #include "game/screens.h"
 #include "game/title.h"
@@ -51,20 +53,6 @@ void menuRender() {
     cursorDraw();
 }
 
-// menu_arrow_keys (19ac:0AC1): arrows move the pointer.
-bool menuArrowKeys(int key, const ButtonList& list) {
-    int dx = 0, dy = 0;
-    switch (key) {
-    case engine::key::Up: dy = -5; break;
-    case engine::key::Left: dx = -8; break;
-    case engine::key::Right: dx = 8; break;
-    case engine::key::Down: dy = 5; break;
-    default: return false;
-    }
-    uiPointerUpdate(dx, dy, list);
-    return true;
-}
-
 int menuHandleInput(int key, int dx, int dy) {
     UiState& s = ui();
     int result = 1;
@@ -74,7 +62,7 @@ int menuHandleInput(int key, int dx, int dy) {
         menuHandleInput(g_buttons[size_t(s.focus)].key, 0, 0);
         s.redrawFrames = 2;
     }
-    if (inputToggleKeys(key) || menuArrowKeys(key, g_buttons)) return 1;
+    if (inputToggleKeys(key) || uiMenuArrowKeys(key, g_buttons)) return 1;
     Globals& gs = g();
     switch (key) {
     case engine::key::Enter:
@@ -96,7 +84,7 @@ int menuHandleInput(int key, int dx, int dy) {
         result = 0;
         break;
     case engine::key::F10:
-        // TODO(difficulty): diff_screen (365e:e5bd) is not ported yet.
+        front::difficultyScreen();  // its result is ignored here
         menuEnter();
         s.redrawFrames = 2;
         return result;
@@ -113,7 +101,6 @@ int menuRun() {
     auto& clock = engine::ticker();
     auto& in = engine::input();
     if (g_buttons.empty()) g_buttons = loadButtonList(kMenuButtonSeg, kMenuLabelTable);
-    cfgLoadSCnf(slotConfig());
     screenTransition(PalMenu, true);
     menuEnter();
     ui().redrawFrames = 2;
@@ -129,7 +116,7 @@ int menuRun() {
         menuRender();
         present();
         clock.updateGameTime();
-        const int key = in.getKey();
+        const int key = front::getKey();
         int dx = 0, dy = 0;
         in.getMotion(dx, dy);
         result = menuHandleInput(key, dx, dy);

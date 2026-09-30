@@ -26,6 +26,7 @@ void palApply();                      // pal_apply: upload it (respecting the fa
 bool picLoad(int n);                  // pic_load into the single picture buffer
 const Image& picture();
 void picBlitToScreen();               // pic_blit_to_screen (full picture rectangle)
+void picGrabScreen();                 // pic_grab_screen (1000:1E2C): the draw page becomes the picture
 void present();                       // gfx_present: full clip, flip + 5-tick wait, reset limiter
 void screenTransition(int pal, bool wait);  // ui_screen_transition
 
