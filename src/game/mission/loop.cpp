@@ -7,6 +7,8 @@
 // helpers (1000:2FEA..314B) are here as well.
 #include "game/mission/loop.h"
 
+#include "platform/system.h"
+
 #include "engine/input_layer.h"
 #include "engine/palette_fade.h"
 #include "engine/sound.h"
@@ -182,6 +184,8 @@ int run() {
     LoopState& L = ls();
     if (!viewEnsureRenderer()) fatal("mission: renderer data missing");
     installHooks();
+    logInfo("mission loop: start (t=%.1fs)", sys().timer().seconds());
+    front::rebaseKeyScript("mission");
     // Loop state of mis_run's set-up (the simulation clears its own flags).
     L.fullRedraw = 0;
     L.skipPresent = false;
@@ -217,12 +221,13 @@ int run() {
     engine::input().flushKeyboard();
     engine::paletteFade().setLevel(0x100);  // pal_set_level(0x100): the frame loop fades in
     while (!S.misDone && !S.quitGame) frame();
-    logInfo("mission loop: exit at %d ticks, done %d quit %d view %d", S.time, S.misDone ? 1 : 0, S.quitGame ? 1 : 0, S.viewMode);
+    logInfo("mission loop: exit at %d ticks (t=%.1fs), done %d quit %d view %d", S.time, sys().timer().seconds(), S.misDone ? 1 : 0, S.quitGame ? 1 : 0, S.viewMode);
     // mis_run exit (1000:06F9): page copy, shake off, menu input mode, sprites, ai_shutdown.
     pageCopyFull();
     engine::ticker().shakeStop();
     engine::input().setMode(engine::InputMode::Menu);
-    engine::paletteFade().setLevel(0);
+    // 1000:076A-0787 leaves the palette fade level as it is (the front end's next
+    // screen transition sets it), so no pal_set_level here.
     if (S.quitGame) {
         // Alt-X: the original exits to DOS without mis_cleanup.
         unload();

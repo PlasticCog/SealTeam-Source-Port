@@ -11,6 +11,8 @@
 // Screens return 0 = quit, 1 = back, 2 = next.
 #include "game/main_loop.h"
 
+#include "platform/system.h"
+
 #include "engine/rng.h"
 #include "game/campaign.h"
 #include "game/config.h"
@@ -39,7 +41,7 @@ bool playMission() {
 bool runPractice(int& step) {
     Globals& gs = g();
     for (;;) {
-        logInfo("main loop: practice step %d", step);
+        logInfo("main loop: practice step %d (t=%.1fs)", step, sys().timer().seconds());
         switch (step) {
         case 0: {
             const int r = front::intelScreen();
@@ -101,7 +103,7 @@ bool runCampaign(int& step) {
     const auto demo = [&gs] { return gs.gameMode == GameMode::Demo; };
     for (;;) {
         if (step == 0 && gs.gameMode != GameMode::Menu) step = 1;
-        logInfo("main loop: campaign step %d (mode %d)", step, int(gs.gameMode));
+        logInfo("main loop: campaign step %d (mode %d, t=%.1fs)", step, int(gs.gameMode), sys().timer().seconds());
         switch (step) {
         case 0: {
             const int r = front::recruitScreen();

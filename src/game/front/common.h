@@ -147,5 +147,9 @@ int scriptedBiosKey();
 // set); keys without a time follow the previous one after 0.4 s (the first
 // at 1 s).
 void setKeyScript(const std::string& spec);
+// A key time may be written "anchor+seconds" (e.g. Esc@mission+4): it counts
+// from rebaseKeyScript(anchor), which the mission loop calls with "mission"
+// when a mission starts, so mission keys do not depend on the front-end timing.
+void rebaseKeyScript(const std::string& anchor);
 
 } // namespace st::game::front

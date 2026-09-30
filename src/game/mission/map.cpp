@@ -838,8 +838,11 @@ void mapScreenKeys(int key, int dx, int dy) {
             mapFocusButtonInternal(b);
             u.pressed = true;
             L.fullRedraw = 2;
-        } else if (key == 'o' && !S.radioDamaged) {
-            L.fullRedraw = 2;  // "Engine malfunction!": the loiter order is set anyway
+        } else if (key == 'o' && !S.radioDamaged && S.mapSelTeam != 0 && S.mapSelTeam < S.firstMtmGroup &&
+                   team(S.mapSelTeam)) {
+            // 19ac:~5A10: only the "Engine malfunction!" path (radio intact, a craft
+            // selected) sets the loiter order and forces the redraw.
+            L.fullRedraw = 2;
         }
         return;
     }

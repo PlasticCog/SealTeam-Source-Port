@@ -16,6 +16,7 @@
 #include <algorithm>
 #include <cctype>
 #include <chrono>
+#include <map>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -479,10 +480,12 @@ namespace {
 struct ScriptKey {
     double at = 0;
     int code = 0;  // BIOS form: ASCII or scan << 8
+    std::string anchor;  // "": from the script start; else relative to rebaseKeyScript(anchor)
 };
 std::vector<ScriptKey> g_script;
 size_t g_scriptPos = 0;
 std::chrono::steady_clock::time_point g_scriptStart;
+std::map<std::string, std::chrono::steady_clock::time_point> g_anchors;  // fired anchors
 
 int parseKey(const std::string& name) {
     struct Named { const char* name; int code; };
@@ -507,8 +510,15 @@ int parseKey(const std::string& name) {
 // Returns the next due scripted key (0 if none).
 int dueKey() {
     if (g_scriptPos >= g_script.size()) return 0;
-    const double t = std::chrono::duration<double>(std::chrono::steady_clock::now() - g_scriptStart).count();
-    if (g_script[g_scriptPos].at > t) return 0;
+    const ScriptKey& k = g_script[g_scriptPos];
+    auto base = g_scriptStart;
+    if (!k.anchor.empty()) {
+        const auto it = g_anchors.find(k.anchor);
+        if (it == g_anchors.end()) return 0;  // anchor not reached yet
+        base = it->second;
+    }
+    const double t = std::chrono::duration<double>(std::chrono::steady_clock::now() - base).count();
+    if (k.at > t) return 0;
     return g_script[g_scriptPos++].code;
 }
 
@@ -518,6 +528,7 @@ void setKeyScript(const std::string& spec) {
     g_script.clear();
     g_scriptPos = 0;
     g_scriptStart = std::chrono::steady_clock::now();
+    g_anchors.clear();
     double t = 0.6;
     size_t pos = 0;
     while (pos < spec.size()) {
@@ -528,8 +539,15 @@ void setKeyScript(const std::string& spec) {
         if (tok.empty()) continue;
         double at = t + 0.4;
         const size_t atPos = tok.find('@', 1);
+        std::string anchor;
         if (atPos != std::string::npos) {
-            at = std::atof(tok.c_str() + atPos + 1);
+            std::string when = tok.substr(atPos + 1);
+            const size_t plus = when.find('+');
+            if (plus != std::string::npos && !std::isdigit(u8(when[0]))) {
+                anchor = when.substr(0, plus);  // e.g. mission+4
+                when = when.substr(plus + 1);
+            }
+            at = std::atof(when.c_str());
             tok = tok.substr(0, atPos);
         }
         const int code = parseKey(tok);
@@ -538,11 +556,13 @@ void setKeyScript(const std::string& spec) {
             continue;
         }
         t = at;
-        g_script.push_back(ScriptKey{at, code});
+        g_script.push_back(ScriptKey{at, code, anchor});
     }
 }
 
 int scriptedBiosKey() { return dueKey(); }
+
+void rebaseKeyScript(const std::string& anchor) { g_anchors[anchor] = std::chrono::steady_clock::now(); }
 
 int getKey() {
     int k = dueKey();
