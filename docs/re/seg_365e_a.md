@@ -554,9 +554,10 @@ the unit (4511:00a4); free the group (4511:037d); clear the table slot.
   `g_split_groups`++; returns the new index (or -1).
 * `ent_group_merge(a, b)`: both type 0 -> append b's members to a, free b,
   clear its table slot, ec87--, g_split_groups--. Returns a or -1.
-* `ent_team_rejoin`: if the selected group (ec86) is not a SEAL group select
-  0; if g_split_groups is 2 or 1 merge the last group into group 0 (up to two
-  times).
+* `ent_team_rejoin`: if the selected group (ec86) **is** a SEAL group select
+  0 (corrected: at 365e:17BF the JNZ skips the reset for non-SEAL groups; the
+  first version of this note had the test inverted); if g_split_groups is 2
+  or 1 merge the last group into group 0 (up to two times).
 * `ent_order_extraction(pos)`: group = ec8e if present else ec8d; ec92 =
   group; group+24 = 3; copy pos to `g_extraction_point` (DS:0ea0) and to the
   leader's movement destination; `ent_team_rejoin`.

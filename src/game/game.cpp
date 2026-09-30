@@ -12,9 +12,8 @@
 #include "game/devtools.h"
 #include "game/globals.h"
 #include "game/launcher.h"
-#include "game/menu.h"
+#include "game/main_loop.h"
 #include "game/screens.h"
-#include "game/title.h"
 #include "game/ui.h"
 #include "gfx/font.h"
 #include "gfx/gfx.h"
@@ -167,21 +166,6 @@ void selfTestGfx() {
     waitForInput();
 }
 
-// main_game_loop (19ac:016D), the parts ported so far: title and main menu.
-int mainGameLoop() {
-    Globals& gs = g();
-    if (gs.showTitle) {
-        if (gs.gameMode != GameMode::Demo && titleScreen() == 0) return 0;
-        gs.showTitle = false;
-    }
-    if (gs.gameMode == GameMode::Menu) {
-        if (menuRun() == 0) return 0;
-    }
-    // Campaign screens and missions are not ported yet.
-    logInfo("chosen game mode %d; the screens after the main menu are not ported yet", int(gs.gameMode));
-    return 0;
-}
-
 } // namespace
 
 const DevCommand kSelfTestGfx("--selftest-gfx", "draw fonts, primitives and sprites for inspection", [](const DevArgs&) {
@@ -223,7 +207,7 @@ int run(const std::vector<std::string>& args) {
         logInfo("preset: %s", settings().original() ? "Original" : "Enhanced");
         // Sound starts after the start menu so its device choice applies.
         engine::sound().init();
-        rc = mainGameLoop();
+        rc = mainLoop();
     }
     engine::sound().shutdown();
     return rc;
