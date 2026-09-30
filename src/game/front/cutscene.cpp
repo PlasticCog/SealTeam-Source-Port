@@ -213,7 +213,7 @@ int run(bool extraction) {
     initViewport();
     initCamera();
     screenTransition(tod::paletteIndex(), true);
-    hooks::campSceneTick();  // view_update_camera(g_view_mode)
+    g_angle = hooks::campSceneTick(g_angle, int(g_zoom));  // view_update_camera(g_view_mode)
     msg::reset();
     g_done = false;
     int result = 1;
@@ -241,7 +241,7 @@ int run(bool extraction) {
         clock.updateGameTime();
         tod::update();
         // view_update_camera, spr_advance_anim_clocks, evt_mission_tick
-        hooks::campSceneTick();
+        g_angle = hooks::campSceneTick(g_angle, int(g_zoom));
         const int key = getKey();
         int dx = 0, dy = 0;
         in.getMotion(dx, dy);

@@ -490,6 +490,13 @@ int parseKey(const std::string& name) {
         {"Enter", 0x0d}, {"Esc", 0x1b}, {"Space", 0x20}, {"Backspace", 0x08}, {"Up", 0x4800},
         {"Down", 0x5000}, {"Left", 0x4b00}, {"Right", 0x4d00}, {"F10", 0x4400}, {"AltX", 0x2d00},
         {"AltE", 0x1200}, {"AltS", 0x1f00}, {"AltM", 0x3200}, {"Plus", '+'}, {"Minus", '-'}, {"Comma", ','},
+        // Mission keys (docs/re/seg_19ac.md 5-6).
+        {"F1", 0x3b00}, {"F2", 0x3c00}, {"F3", 0x3d00}, {"F4", 0x3e00}, {"F5", 0x3f00}, {"F6", 0x4000},
+        {"F7", 0x4100}, {"F8", 0x4200}, {"F9", 0x4300}, {"Tab", 0x09}, {"ShiftTab", 0x0f00},
+        {"Home", 0x4700}, {"End", 0x4f00}, {"PgUp", 0x4900}, {"PgDn", 0x5100}, {"Center", 0x4c00},
+        {"CtrlLeft", 0x7300}, {"CtrlRight", 0x7400}, {"CtrlPgUp", 0x8400}, {"CtrlPgDn", 0x7600},
+        {"AltT", 0x1400}, {"AltU", 0x1600}, {"AltI", 0x1700}, {"AltP", 0x1900}, {"AltD", 0x2000},
+        {"AltN", 0x3100}, {"Equals", '='}, {"LBracket", '['}, {"RBracket", ']'},
     };
     for (const Named& n : kNamed)
         if (name == n.name) return n.code;

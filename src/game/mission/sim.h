@@ -42,7 +42,12 @@ struct MissionSetup {
 
 // Optional callbacks into the presentation layer (all may be empty).
 struct SimHooks {
-    std::function<void(int mode)> viewModeChanged;   // view_set_mode(7/8), first person/chase switches
+    // view_set_mode / view_set_first_person / view_set_chase (1000:23FB,
+    // 2321, 2349): the loop selects g_cur_camera (and runs view_enter_map for
+    // 0xC) BEFORE the scenery refresh, and sets the redraw / marker state
+    // AFTER the mode is stored.
+    std::function<void(int mode)> viewModeChanging;  // before veg_update(1): camera selection
+    std::function<void(int mode)> viewModeChanged;   // after the store: g_full_redraw = 2, fx_markers_hide
     std::function<void()> clockResync;               // clk_resync_raw after time compression
     std::function<void()> fullRedraw;                // g_full_redraw = 2
     std::function<bool(s16 score)> missionWon;       // 365e:3FAE cmp_mission_won (extraction music 7)

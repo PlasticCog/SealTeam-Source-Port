@@ -1867,6 +1867,8 @@ int projectionCentreX() { return g_hi.on ? g_hi.cx : g_clipCx; }
 
 void project(const s32 v[3], s16& sx, s16& sy) { projectVert(v[0], v[1], v[2], sx, sy); }
 
+void projectPage(const s32 v[3], s16& sx, s16& sy) { projectNormal(v[0], v[1], v[2], sx, sy); }
+
 void viewInit() {
     viewFree();
     g_view = View{};

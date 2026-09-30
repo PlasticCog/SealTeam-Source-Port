@@ -144,7 +144,25 @@ void todDrawSkyGround(const game::Camera& cam, int detail, s32 time, int hour) {
 
 void viewClearMapGround(const game::Camera& cam) {
     engine::ticker().frameLimitWait();
-    gfx().fillRect(cam.rect_x, cam.rect_y, cam.rect_w, cam.rect_h, u16(Gfx::kSolid | g_gradGround[0xB6]));
+    Gfx& gx = gfx();
+    const u16 c = u16(Gfx::kSolid | g_gradGround[0xB6]);
+    gx.fillRect(cam.rect_x, cam.rect_y, cam.rect_w, cam.rect_h, c);
+    // Enhanced: the map view is rendered into the high-resolution layer, which
+    // must start from the same ground colour (like the gradient rows above).
+    if (HiResLayer* layer = hiResLayerForDrawPage()) {
+        const int N = layer->scale;
+        Bitmap hb;
+        hb.w = layer->w;
+        hb.h = layer->h;
+        hb.bpr = layer->w / 4;
+        hb.data = layer->pixels.data();
+        const int x0 = gx.clipX0(), y0 = gx.clipY0(), x1 = gx.clipX1(), y1 = gx.clipY1();
+        gx.setTarget(&hb);
+        gx.setClip(x0 * N, y0 * N, (x1 - x0 + 1) * N, (y1 - y0 + 1) * N);
+        gx.fillRect(cam.rect_x * N, cam.rect_y * N, cam.rect_w * N, cam.rect_h * N, c);
+        gx.setTarget(nullptr);
+        gx.setClip(x0, y0, x1 - x0 + 1, y1 - y0 + 1);
+    }
 }
 
 }  // namespace st::render

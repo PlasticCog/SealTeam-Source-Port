@@ -273,6 +273,8 @@ void vegReset() {
     g_force = true;
 }
 
+void vegForgetCoverPosition() { g_coverX = g_coverZ = 0; }
+
 // veg_update (1000:784D)
 void vegUpdate(const game::Camera& cam, bool force) {
     const RenderContext& ctx = renderContext();

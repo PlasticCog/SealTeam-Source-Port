@@ -54,8 +54,10 @@ void campSceneLoad(int area);
 void campScenePlace(bool extraction);
 void campSceneLeave();      // mis_free_sprites, mis_free_world
 // One frame of the orbiting camp camera (view_update_camera, spr_advance_anim_clocks,
-// evt_mission_tick) - world update part.
-void campSceneTick();
+// evt_mission_tick) - world update part. `heading` / `zoom` are the cut-scene's
+// camera angle (DS:D842) and distance (DS:D846); view_update_camera adds a
+// random offset to the angle on the first frames, so the new angle is returned.
+int campSceneTick(int heading, int zoom);
 // Sky/ground (1000:1AFC) and r3d_render_view for the camp viewport; the
 // camera orbits at `heading` (1/8 degree) and `zoom`.
 void drawCampView(const View& view, int heading, int zoom);

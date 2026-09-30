@@ -47,6 +47,7 @@ bool elapsedPeriod(Ticks& last, s32 period) {
 // (2349): veg_update(1) runs BEFORE g_view_mode is written (the scenery code
 // sees the old mode); mode 0xC (view_enter_map) does not refresh scenery.
 void setViewMode(int mode) {
+    if (g_hooks.viewModeChanging) g_hooks.viewModeChanging(mode);
     if (mode != 0x0C && g_vegHook) g_vegHook(true);
     ms().viewMode = u8(mode);
     if (g_hooks.viewModeChanged) g_hooks.viewModeChanged(mode);

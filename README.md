@@ -23,9 +23,11 @@ Early work in progress.
 - [x] Symbol map of the whole executable: 1354 functions and 1008 globals named, notes per module in `docs/re/`
 - [x] Graphics library: Mode X pages, clipping, dithered primitives, polygons, lines, scaled RLE sprites, fonts, masks
 - [x] 256 Hz game timer, frame pacing, palette fades, screen shake
-- [ ] Front end: main menu, campaign, recruits, briefing, debriefing
-- [ ] Mission engine: world, units, AI, combat
-- [ ] Sound: XMIDI music and VOC effects
+- [x] Front end: main menu, campaign, recruits, briefing, debriefing
+- [x] 3D world and renderer (Original and Enhanced presets)
+- [x] Mission simulation: world, units, AI, combat, craft, objectives
+- [x] Mission loop: cameras and views, HUD, map screen / control panel, time compression
+- [x] Sound: XMIDI music and VOC effects
 
 ## Building
 

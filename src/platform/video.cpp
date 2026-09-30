@@ -1,5 +1,7 @@
 #include "platform/video.h"
 
+#include "platform/window_icon.h"
+
 #include <SDL3/SDL.h>
 
 #include <algorithm>
@@ -36,6 +38,11 @@ bool Video::init(const VideoConfig& cfg) {
     }
     textureScale_ = 1;
     SDL_SetTextureScaleMode(texture_, SDL_SCALEMODE_NEAREST);
+    if (SDL_Surface* icon = SDL_CreateSurfaceFrom(kWindowIconSize, kWindowIconSize, SDL_PIXELFORMAT_RGBA32,
+                                                  const_cast<std::uint8_t*>(kWindowIconRgba), kWindowIconSize * 4)) {
+        SDL_SetWindowIcon(window_, icon);
+        SDL_DestroySurface(icon);
+    }
     SDL_HideCursor();  // the game draws its own cursor
     present(true);
     return true;

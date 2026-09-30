@@ -144,11 +144,9 @@ redraw frame is dropped.
 
 ## Open issues
 
-* 3D views (briefing, debriefing, camp cut-scenes) wait for the hooks above.
-* The debriefing parks the Point Man only through the hook; without a world
-  the camera target is the origin.
-* Demo mode (command-line mission) is wired in the main loop but only tested
-  with the mission stub.
+* The 3D views (briefing, debriefing, camp cut-scenes) are connected through
+  `front/hooks.cpp` (see `docs/loop.md`); the demo mode (command-line
+  mission) runs the real mission loop.
 
 ## Developer commands
 

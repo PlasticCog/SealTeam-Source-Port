@@ -59,6 +59,11 @@ int renderView(s32 x, s32 y, s32 z, int heading, int pitch, int roll, int rectX,
 // In a high-resolution frame the result is in layer pixels.
 void project(const s32 v[3], s16& sx, s16& sy);
 
+// r3d_project with the normal (non-precise) routine in 320x200 page pixels,
+// whatever the render scale: for 2D overlays drawn after the frame with the
+// projection of the last renderView (the map markers of 19ac:2F47).
+void projectPage(const s32 v[3], s16& sx, s16& sy);
+
 // x of the projection centre (the clip centre) in the pixels of the frame
 // being drawn (DS:F248).
 int projectionCentreX();

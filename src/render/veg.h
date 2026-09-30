@@ -26,6 +26,9 @@ void setBlockerProbe(BlockerProbe fn);
 
 // veg_reset (1000:70B3)
 void vegReset();
+// Forget the last ground-cover placement position (DS:ED18..ED1E = 0, the
+// Alt-D detail level 5 path of 19ac:0B2A) so the next veg_update places again.
+void vegForgetCoverPosition();
 // veg_update (1000:784D). `cam` = current camera; the Point Man position for
 // the ground cover defaults to the camera unless set with vegSetPointMan.
 void vegUpdate(const game::Camera& cam, bool force);
