@@ -11,6 +11,7 @@
 #include "render/sky.h"
 #include "render/world.h"
 
+#include <cmath>
 #include <cstring>
 #include <map>
 #include <string>
@@ -332,8 +333,12 @@ void billboardCb(u16 /*prim*/, int x, int y) {
     if (ctx.viewMode == 1 || ctx.viewMode == 0xC) return;
     const DrawState& d = drawState();
     const int N = frameScale();
-    // Scale: projected width of 0x60 model units at the object's depth.
-    const s32 v[3] = {mk32(0x60, 0), 0, s32(u32(s32(d.z)) << 16) >> d.K};
+    // Scale: projected width of 0x60 model units at the object's depth
+    // (Enhanced: a negative K scales the width instead of the depth).
+    s32 vx = mk32(0x60, 0), vz = s32(u32(s32(d.z)) << 16);
+    if (d.K >= 0) vz >>= d.K;
+    else vx >>= -d.K;
+    const s32 v[3] = {vx, 0, vz};
     s16 sx, sy;
     project(v, sx, sy);
     int scale = s16(sx - projectionCentreX());
@@ -415,11 +420,11 @@ void sprDrawBottomCentered(int x, int y, int scale, const u8* rle) {
 // 1000:6D56: never larger than the image itself, x snapped to 8 pixels.
 void sprDrawClippedBottom(int x, int y, int scale, const u8* rle) {
     if (renderContext().detail < 4) return;
-    const int N = frameScale();
+    const double kx = frameScaleX(), ky = frameScaleY();
     int w = mul88(sprW(rle), scale), h = mul88(sprH(rle), scale);
-    if (sprW(rle) * N < w) w = sprW(rle) * N;
-    if (sprH(rle) * N < h) h = sprH(rle) * N;
-    const int xs = N > 1 ? x - (x % (8 * N) + 8 * N) % (8 * N) : (x & ~7);
+    if (int(sprW(rle) * kx) < w) w = int(sprW(rle) * kx);
+    if (int(sprH(rle) * ky) < h) h = int(sprH(rle) * ky);
+    const int xs = kx != 1.0 ? int(std::floor(x / (8 * kx)) * (8 * kx)) : (x & ~7);
     gfx().spriteScaled(xs - (s16(w) >> 1), y - h, w, h, rle);
 }
 

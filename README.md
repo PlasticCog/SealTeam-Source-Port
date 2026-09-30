@@ -18,15 +18,14 @@ the title screen through briefing, missions, debriefing and awards, in the
 Original (1:1) and Enhanced presets. Every module was written from a full
 reverse engineering of the original executable and checked against it; the
 renderer and the map screen were compared pixel by pixel with the original
-running in DOSBox. Still rough: the joystick is not emulated, some HUD details
-were checked visually only, and the port has had little playtesting yet, so
+running in DOSBox. Still rough: some HUD details were checked visually only, and the port has had little playtesting yet, so
 expect bugs (see `docs/loop.md`, `docs/mission.md` and `docs/front.md` for the
 known deviations).
 
 - [x] EALIB archive reader and LZSS decompression (byte-exact against all 555 compressed entries)
 - [x] PXPK pictures and VGA palettes
 - [x] Mode X VGA emulation (planar memory as linear pixels, page flipping), SDL3 window, 4:3 aspect
-- [x] Keyboard (PC scancodes + BIOS key queue), mouse, PIT/retrace timing
+- [x] Keyboard (PC scancodes + BIOS key queue), mouse, game controller (SDL3 gamepad, remappable), PIT/retrace timing
 - [x] Title screen through the full data pipeline
 - [x] Symbol map of the whole executable: 1354 functions and 1008 globals named, notes per module in `docs/re/`
 - [x] Graphics library: Mode X pages, clipping, dithered primitives, polygons, lines, scaled RLE sprites, fonts, masks
@@ -87,12 +86,18 @@ When the port starts it shows a start menu:
 
 * **Original Game** plays 1:1 like the DOS version: 320x200, the original
   view distance, timings and rules, including the original's quirks.
-* **Enhanced Game** keeps the same game but renders the 3D view at a higher
-  resolution (up to 1920x1200) with a longer draw distance; the 2D screens,
-  HUD and fonts stay pixel-art on top.
+* **Enhanced Game** keeps the same game but renders the 3D view at the
+  window's own resolution (any size up to 4K and beyond, or a fixed multiple
+  of 320x200 for weaker machines), fills a wide screen with a wider field of
+  view (or keeps 4:3), and draws much farther, up to the whole world; the 2D
+  screens, HUD and fonts stay pixel-art on top.
 * **Setup** changes window size, fullscreen, 4:3 aspect, smooth scaling, the
-  Enhanced options and sound (AdLib or Sound Blaster Pro 2 music, digital or
-  FM effects, volumes).
+  Enhanced options (3D resolution, wide view, draw distance) and sound (AdLib
+  or Sound Blaster Pro 2 music, digital or FM effects, volumes).
+* **Controller** shows the game controller layout (Xbox-style default: left
+  stick moves and turns, right stick is the camera, A fires / selects, B
+  cancels, LB / RB hold the view and order layers) and remaps every action;
+  see `docs/controller.md`.
 
 Settings are saved in `sealteam.cfg` next to the program. `--original` or
 `--enhanced` skip the menu; the menu can be switched off in Setup and
@@ -104,6 +109,7 @@ brought back with `--launcher`.
 | `--launcher` | show the start menu even if it was switched off |
 | `--data DIR` | use another directory instead of `Game` |
 | `--scale N` | window scale (default from Setup) |
+| `--window WxH` | window size in pixels instead of the scale |
 | `--fullscreen` | start fullscreen (Alt+Enter toggles) |
 | `--no-aspect` | square pixels instead of 4:3 |
 | `--shot FILE --shot-after S` | save a screenshot after S seconds and quit (testing) |
@@ -121,6 +127,7 @@ skip title screen, and a mission number.
 | `src/gfx` | pictures, palettes, drawing |
 | `src/game` | the ported game modules |
 | `docs/formats.md` | data file formats |
+| `docs/controller.md` | game controller layout, remapping, how the mapping layer works |
 | `docs/re/` | reverse-engineering notes per original module |
 | `tools/` | Python and Ghidra scripts used for the reverse engineering |
 

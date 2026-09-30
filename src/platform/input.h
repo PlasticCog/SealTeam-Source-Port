@@ -43,6 +43,10 @@ public:
     u16 readKey();          // pops; 0 if empty
     u16 peekKey() const { return queue_.empty() ? 0 : queue_.front(); }
     void flushKeys() { queue_.clear(); }
+    // Inject a keystroke (scancode << 8 | ascii) as if typed: used by the
+    // controller mapping layer so pad buttons go through the same BIOS
+    // queue and throttling as keyboard keys.
+    void pushKey(u16 k) { if (queue_.size() < 16) queue_.push_back(k); }
 
     const MouseState& mouse() const { return mouse_; }
     void setMousePos(int x, int y);

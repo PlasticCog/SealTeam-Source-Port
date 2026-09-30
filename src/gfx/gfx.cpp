@@ -65,23 +65,26 @@ void Gfx::setDrawPage(int page) {
     refreshCoverage();
 }
 
-u8* Gfx::coverageOf(const Bitmap& b) const {
+HiResLayer* Gfx::layerOf(const Bitmap& b) const {
     for (int p = 0; p < 2; ++p)
-        if (&b == &pages_[p] || b.data == pages_[p].data) {
-            HiResLayer* l = sys().video().hiResLayer(p);
-            return l ? l->coverage.data() : nullptr;
-        }
+        if (&b == &pages_[p] || b.data == pages_[p].data) return sys().video().hiResLayer(p);
     return nullptr;
 }
 
-void Gfx::refreshCoverage() { cov_ = coverageOf(pages_[drawPage_]); }
+void Gfx::refreshCoverage() { layer_ = layerOf(pages_[drawPage_]); }
 
-void Gfx::touchSlow(int x0, int x1, int y) {
+// A 2D write to page pixels x0..x1 of row y: they show the page from now on.
+// A write across the whole row also ends the row's extension beyond the page
+// area (a 2D screen has replaced the 3D view there).
+void Gfx::uncover(HiResLayer& l, int x0, int x1, int y) {
     if (y < 0 || y >= 200) return;
+    if (x0 <= 0 && x1 >= 319) l.extRows[size_t(y)] = 0;
     x0 = std::max(x0, 0);
     x1 = std::min(x1, 319);
-    if (x1 >= x0) std::memset(cov_ + y * 320 + x0, 0, size_t(x1 - x0 + 1));
+    if (x1 >= x0) std::memset(l.coverage.data() + y * 320 + x0, 0, size_t(x1 - x0 + 1));
 }
+
+void Gfx::touchSlow(int x0, int x1, int y) { uncover(*layer_, x0, x1, y); }
 
 void Gfx::setDisplayPage(int page) {
     displayPage_ = page & 1;
@@ -166,8 +169,14 @@ void Gfx::rawSpan(int x0, int x1, int y) {
     if (pattern_ == 0xff) {
         std::memset(row + x0, color_, size_t(x1 - x0 + 1));
     } else {
-        for (int x = x0; x <= x1; ++x)
-            if (patternAllows(x, y, false)) row[x] = color_;
+        // Dithered span: one strided pass per set bit of the row's nibble
+        // (bit 3 = leftmost pixel of each group of four).
+        const int nib = (y & 1) ? (pattern_ >> 4) : (pattern_ & 0xf);
+        for (int phase = 0; phase < 4; ++phase) {
+            if (!((nib >> (3 - phase)) & 1)) continue;
+            int x = x0 + ((phase - x0) & 3);
+            for (; x <= x1; x += 4) row[x] = color_;
+        }
     }
 }
 
@@ -231,7 +240,8 @@ void Gfx::fillSplitRows(const s16* xs, int y0, int y1, u8 left, u8 right) {
 }
 
 void Gfx::fillCircle(int x, int y, int r, u16 c) {
-    if (r < 0 || r >= 750) return;
+    // The original's sanity limit of 750 pixels, scaled with a large target.
+    if (r < 0 || r >= 750 * std::max(1, surfW() / 320)) return;
     if (r == 0) {
         pixel(x, y, c);
         return;
@@ -885,30 +895,31 @@ bool Gfx::createBitmap(Bitmap& b, int w, int h) {
 // Latched copies move whole 4-pixel groups.
 void Gfx::blit(const Bitmap& src, int sx, int sy, Bitmap& dst, int dx, int dy, int w, int h) {
     const int groups = w >> 2;
-    if (u8* cov = coverageOf(dst)) {
-        // Page to page: the high-resolution layer travels with the pixels.
-        HiResLayer* sl = nullptr;
-        HiResLayer* dl = nullptr;
-        for (int p = 0; p < 2; ++p) {
-            if (&src == &pages_[p] || src.data == pages_[p].data) sl = sys().video().hiResLayer(p);
-            if (&dst == &pages_[p] || dst.data == pages_[p].data) dl = sys().video().hiResLayer(p);
-        }
-        const u8* scov = (sl && dl && sl->scale == dl->scale) ? sl->coverage.data() : nullptr;
+    if (HiResLayer* dl = layerOf(dst)) {
+        // Page to page at the same position: the high-resolution layer
+        // travels with the pixels (the game never blits between pages
+        // elsewhere); any other source uncovers the destination.
+        HiResLayer* sl = layerOf(src);
+        const bool carry = sl && sl != dl && sl->sameGeometry(*dl) && (sx & ~3) == (dx & ~3) && sy == dy;
         for (int r = 0; r < h; ++r) {
             const int yd = dy + r, ys = sy + r;
             if (yd < 0 || yd >= 200) continue;
             const int a = std::max(dx & ~3, 0), b = std::min((dx & ~3) + groups * 4, 320);
             if (b <= a) continue;
-            if (!scov || ys < 0 || ys >= 200) {
-                std::memset(cov + yd * 320 + a, 0, size_t(b - a));
+            if (!carry || ys < 0 || ys >= 200) {
+                uncover(*dl, a, b - 1, yd);
                 continue;
             }
-            const int xs0 = (sx & ~3) + (a - (dx & ~3));
-            std::memcpy(cov + yd * 320 + a, scov + ys * 320 + xs0, size_t(b - a));
-            const int N = sl->scale;
-            for (int j = 0; j < N; ++j)
-                std::memcpy(&dl->pixels[size_t(yd * N + j) * size_t(dl->w) + size_t(a * N)],
-                            &sl->pixels[size_t(ys * N + j) * size_t(sl->w) + size_t(xs0 * N)], size_t((b - a) * N));
+            std::memcpy(dl->coverage.data() + yd * 320 + a, sl->coverage.data() + ys * 320 + a, size_t(b - a));
+            if (a <= 0 && b >= 320) {
+                dl->extRows[size_t(yd)] = sl->extRows[size_t(ys)];
+                dl->extX0 = sl->extX0, dl->extX1 = sl->extX1, dl->extY0 = sl->extY0, dl->extY1 = sl->extY1;
+            }
+            int X0, Y0, X1, Y1;
+            dl->rectOf(a, yd, b - 1, yd, a <= 0 && b >= 320, X0, Y0, X1, Y1);
+            for (int Y = Y0; Y <= Y1; ++Y)
+                std::memcpy(&dl->pixels[size_t(Y) * size_t(dl->w) + size_t(X0)],
+                            &sl->pixels[size_t(Y) * size_t(sl->w) + size_t(X0)], size_t(X1 - X0 + 1));
         }
     }
     for (int r = 0; r < h; ++r) {
@@ -921,11 +932,11 @@ void Gfx::blit(const Bitmap& src, int sx, int sy, Bitmap& dst, int dx, int dy, i
 void Gfx::blitMasked(const Bitmap& src, int sx, int sy, Bitmap& dst, int dx, int dy, int w, int h,
                      const u8* mask) {
     const int pairs = w >> 3;
-    if (u8* cov = coverageOf(dst))
+    if (HiResLayer* dl = layerOf(dst))
         for (int r = 0; r < h; ++r)
             if (dy + r >= 0 && dy + r < 200) {
                 const int a = std::max(dx & ~3, 0), b = std::min((dx & ~3) + pairs * 8, 320);
-                if (b > a) std::memset(cov + (dy + r) * 320 + a, 0, size_t(b - a));
+                if (b > a) uncover(*dl, a, b - 1, dy + r);
             }
     for (int r = 0; r < h; ++r) {
         for (int k = 0; k < pairs; ++k) {

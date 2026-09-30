@@ -6,6 +6,7 @@
 
 #include "core/common.h"
 
+#include <map>
 #include <string>
 
 namespace st {
@@ -23,8 +24,9 @@ struct Settings {
     bool smoothScaling = false;   // linear instead of nearest-neighbour upscaling
 
     // Enhancements (only used with the Enhanced preset).
-    int renderScale = 2;          // 3D view resolution multiplier: 1 = 320x200, 2 = 640x400, ...
-    int drawDistancePct = 200;    // view distance in percent of the original
+    int renderScale = 0;          // 3D view resolution: 0 = native (the window's pixels), N = 320N x 200N
+    bool wideView = true;         // native only: widen the field of view to fill a wide window (else 4:3)
+    int drawDistancePct = 400;    // view distance in percent of the original; kDrawDistanceMax = whole world
 
     // Audio.
     MusicDevice musicDevice = MusicDevice::AdLib;
@@ -38,8 +40,21 @@ struct Settings {
     // Runtime only (not saved): automated run (--shot), no launcher or dialogs.
     bool scriptedRun = false;
 
+    // --- Game controller (engine/controller.cpp, docs/controller.md) -----
+    // Kept as one block: the mapping layer owns the meaning of the values.
+    bool padEnabled = true;
+    int padDeadZonePct = 20;      // stick dead zone, percent of full deflection
+    int padSensitivityPct = 100;  // stick response scale (turn / pointer speed)
+    // Action id -> input name ("bind_<action> = <input>" lines); an absent
+    // action uses the default Xbox layout.
+    std::map<std::string, std::string> padBindings;
+    // --- end controller block ------------------------------------------
+
     bool original() const { return preset == Preset::Original; }
+    // 0 = native resolution (Enhanced only), else the fixed multiple of 320x200.
     int effectiveRenderScale() const { return original() ? 1 : renderScale; }
+    bool effectiveWideView() const { return !original() && renderScale == 0 && wideView; }
+    // Percent of the original view distance; kDrawDistanceMax = the whole world.
     int effectiveDrawDistancePct() const { return original() ? 100 : drawDistancePct; }
 };
 
@@ -51,7 +66,12 @@ bool loadSettings();
 bool saveSettings();
 
 // Allowed values for the menus.
-constexpr int kRenderScales[] = {1, 2, 3, 4, 6};
-constexpr int kDrawDistances[] = {100, 150, 200, 300, 400};
+constexpr int kRenderScaleNative = 0;
+constexpr int kRenderScales[] = {kRenderScaleNative, 1, 2, 3, 4, 6};
+constexpr int kDrawDistanceMax = 0;  // "Max": every object of the world is drawn
+constexpr int kDrawDistances[] = {100, 150, 200, 300, 400, 800, 1600, kDrawDistanceMax};
+// Menu / command-line text of a value.
+const char* renderScaleName(int scale);      // "Native", "320x200", ...
+const char* drawDistanceName(int pct);       // "100%", ..., "Max"
 
 } // namespace st

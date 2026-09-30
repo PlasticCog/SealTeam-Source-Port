@@ -6,11 +6,12 @@
 // Two raster modes share the geometry code:
 //  * Original: everything is drawn into the 320x200 gfx draw page with the
 //    original integer projection (including its quirks).
-//  * Enhanced (render scale N > 1): the camera-space pipeline is the same,
-//    but projection is done in 64-bit at N x resolution and primitives are
-//    rasterised into the page's high-resolution layer (platform/video).
-//    Draw distances are extended and some visual bugs are fixed (see
-//    docs/render.md).
+//  * Enhanced: the camera-space pipeline is the same, but projection is done
+//    in double precision into the page's high-resolution layer (platform/
+//    video: a fixed multiple of 320x200 or the window's own pixels, possibly
+//    wider than 4:3), the gathering, culling and camera transform use 32/64-bit
+//    distances so the draw distance can reach the whole world, and some
+//    visual bugs are fixed (see docs/render.md).
 #include "render/r3d.h"
 
 #include "core/settings.h"
@@ -30,6 +31,7 @@
 
 namespace st::render {
 
+using s64 = long long;
 using game::Obj3D;
 namespace of = game::obj3d_flag;
 
@@ -52,7 +54,7 @@ struct RenderRec {
     u16 model = 0;          // +00 LOD model (DS offset)
     RenderRec* next = nullptr;  // +02
     u8 clip = 0;            // +04
-    u8 K = 0;               // +05
+    s8 K = 0;               // +05 (negative for far objects in the Enhanced preset)
     s16 x = 0, y = 0, z = 0;    // +06 +08 +0A
     u32 dist = 0;           // +0C
     ProjCache* cache = nullptr;  // +10
@@ -520,11 +522,22 @@ void clipShifts() {
 
 // ============================================================ gathering (8.2-8.4)
 
-// Enhanced draw distance.
+// Enhanced draw distance: P percent of the original, kDrawDistanceMax = the
+// whole world.
 int distancePct() { return settings().effectiveDrawDistancePct(); }
+// Raise of the world-box size class so the view pyramid boxes reach P/100
+// times deeper (class c covers depth 2^(c+8) world units); 10 = never culled.
 int sizeClassBonus() {
     const int p = distancePct();
-    return p >= 400 ? 2 : p > 100 ? 1 : 0;
+    if (p == kDrawDistanceMax) return 10;
+    int b = 0;
+    while ((100 << b) < p) ++b;
+    return b;
+}
+int floorLog2(s64 v) {
+    int lg = 0;
+    while ((v >> (lg + 1)) != 0) ++lg;
+    return lg;
 }
 
 // r3d_cull_world_box (82AC): true if the object's box overlaps the view pyramid box.
@@ -594,12 +607,38 @@ void objToCamera(const Obj3D* o, RenderRec& rec) {
             }
         }
     }
-    rec.K = u8(K);
+    rec.K = s8(K);
     for (s32& v : r) v = shl32(v, K);
     mathMatVec(r, xform().cam);
     rec.x = hi16(r[0]);
     rec.y = hi16(r[1]);
     rec.z = hi16(r[2]);
+}
+
+// The same in 64-bit for the Enhanced preset: the magnitude test cannot wrap
+// and K becomes negative for objects farther than 2^14 model units, so the
+// camera-space centre always fits the 14 bits the rest of the pipeline
+// expects (camera units are then 2^-K model units).
+void objToCameraWide(const Obj3D* o, RenderRec& rec) {
+    const game::ModelDesc* d = o->model;
+    const int s = d->scale_shift;
+    s64 r[3] = {sub32(o->pos.x, g_camX), sub32(o->pos.y, g_camY), sub32(o->pos.z, g_camZ)};
+    s64 m = 0;
+    for (s64& v : r) {
+        v = (8 - s) >= 0 ? (v << (8 - s)) : (v >> (s - 8));  // 16.16 model units
+        const s64 h = v >> 16;
+        m |= h < 0 ? -h : h;
+    }
+    m += d->radius + 1;
+    int K = 13 - floorLog2(std::max<s64>(m, 1));
+    if (K > 13) K = 13;
+    rec.K = s8(K);
+    s32 r32[3];
+    for (int i = 0; i < 3; ++i) r32[i] = s32(K >= 0 ? (r[i] << K) : (r[i] >> -K));
+    mathMatVec(r32, xform().cam);
+    rec.x = hi16(r32[0]);
+    rec.y = hi16(r32[1]);
+    rec.z = hi16(r32[2]);
 }
 
 // r3d_cull_sphere (4E9C)
@@ -630,6 +669,33 @@ bool cullSphere(RenderRec& rec, const game::ModelDesc* d) {
     return true;
 }
 
+// r3d_cull_sphere without the 16-bit wrap-around (Enhanced, K may be negative).
+bool cullSphereWide(RenderRec& rec, const game::ModelDesc* d) {
+    const View& v = g_view;
+    const int K = rec.K;
+    auto shr = [](s64 p, int k) { return k >= 0 ? (p >> k) : (p << -k); };
+    if (shr(rec.z, K) + d->radius < 0) {
+        ++g_stats.out;
+        return false;
+    }
+    const s64 rx = d->radius_x, ry = d->radius_y;
+    const s64 h1 = shr(s64(rec.x) * v.nLrX, K - 2) >> 16, h2 = shr(s64(rec.y) * v.nTbY, K - 2) >> 16;
+    const s64 h3 = shr(s64(rec.z) * v.nLrZ, K - 2) >> 16, h4 = shr(s64(rec.z) * v.nTbZ, K - 2) >> 16;
+    const s64 L = h3 + h1, Rt = h3 - h1, Bt = h4 + h2, T = h4 - h2;
+    if (T < -ry || Bt < -ry || L < -rx || Rt < -rx) {
+        ++g_stats.out;
+        return false;
+    }
+    if (T > ry && Bt > ry && L > rx && Rt > rx) {
+        ++g_stats.in;
+        rec.clip = 0;
+        return true;
+    }
+    ++g_stats.clipped;
+    rec.clip = u8((T <= ry ? 1 : 0) | (Bt <= ry ? 2 : 0) | (L <= rx ? 4 : 0) | (Rt <= rx ? 8 : 0));
+    return true;
+}
+
 // r3d_obj_visible (53BB)
 bool objVisible(Obj3D* o, RenderRec& rec) {
     if (!(o->flags & of::kEnabled)) return false;
@@ -643,11 +709,15 @@ bool objVisible(Obj3D* o, RenderRec& rec) {
     const u32 dist =
         u32(abs32(sub32(o->pos.x, g_camX))) + u32(abs32(sub32(o->pos.y, g_camY))) + u32(abs32(sub32(o->pos.z, g_camZ)));
     rec.dist = dist;
-    const u16 D = u16((dist >> 16) + 1);
-    auto thr = [&](int k) {
-        u32 t = d->lod_distance[k];
-        if (enhanced()) t = std::min<u32>(0xFFFF, t * u32(distancePct()) / 100);
-        return t;
+    const bool enh = enhanced();
+    // D never exceeds 16 bits (a world is 24000 game units square).
+    const u32 D = (dist >> 16) + 1;
+    auto thr = [&](int k) -> u32 {
+        const u32 t = d->lod_distance[k];
+        if (!enh || t == 0) return t;
+        const int p = distancePct();
+        if (p == kDrawDistanceMax) return 0xFFFFFFFFu;
+        return u32(std::min<u64>(u64(t) * u64(p) / 100, 0xFFFFFFFFu));
     };
     int lod = 2 - (thr(0) < D) - (thr(1) < D) - (thr(2) < D);
     bool far = lod < 0;
@@ -657,13 +727,14 @@ bool objVisible(Obj3D* o, RenderRec& rec) {
         if (!g_view.persist) o->flags |= of::kCullSkip;
         return false;
     }
-    objToCamera(o, rec);
+    if (enh) objToCameraWide(o, rec);
+    else objToCamera(o, rec);
     // rec.parent: no group objects exist in the game
     if (o->flags & of::kClipSkip) {
         o->flags &= u16(~of::kClipSkip);
         rec.clip = 0x0F;
     } else {
-        if (!cullSphere(rec, d)) return false;
+        if (!(enh ? cullSphereWide(rec, d) : cullSphere(rec, d))) return false;
         if (rec.clip != 0 && !g_view.persist) o->flags |= of::kClipSkip;
     }
     rec.model = d->lod_model[lod];
@@ -1448,7 +1519,8 @@ void drawDisc(u16 p) {
     VertexSlot& v = slot(ds8(u16(p + 7)));
     if (!zPositive(v)) return;
     projectSlotCached(v);
-    const s16 rho = s16(ds16(u16(p + 5)) << xform().K);
+    const int K = xform().K;
+    const s16 rho = s16(K >= 0 ? (ds16(u16(p + 5)) << K) : (ds16(u16(p + 5)) >> -K));
     s16 sx, sy;
     projectVert(mk32(rho, 0), 0, v.z, sx, sy);
     const int cx = g_hi.on ? g_hi.cx : g_clipCx;
@@ -1845,8 +1917,8 @@ void updateReticle() {
             s16 sx, sy;
             if (g_hi.on) {
                 g_hi.project(mk32(r->x, 0), mk32(r->y, 0), mk32(r->z, 0), sx, sy);
-                sx = s16(sx / g_hi.N);
-                sy = s16(sy / g_hi.N);
+                sx = s16(std::clamp(std::lround(g_hi.toPageX(sx)), -32000L, 32000L));
+                sy = s16(std::clamp(std::lround(g_hi.toPageY(sy)), -32000L, 32000L));
             } else {
                 projectNormal(mk32(r->x, 0), mk32(r->y, 0), mk32(r->z, 0), sx, sy);
             }
@@ -1865,7 +1937,9 @@ RenderContext& renderContext() { return g_ctx; }
 const RenderStats& renderStats() { return g_stats; }
 const DrawState& drawState() { return g_drawState; }
 void setBillboardCallback(PrimCallback fn) { g_billboard = fn; }
-int frameScale() { return g_hi.on ? g_hi.N : 1; }
+int frameScale() { return g_hi.on ? std::max(1, int(std::ceil(std::max(g_hi.kx, g_hi.ky)))) : 1; }
+double frameScaleX() { return g_hi.on ? g_hi.kx : 1.0; }
+double frameScaleY() { return g_hi.on ? g_hi.ky : 1.0; }
 int projectionCentreX() { return g_hi.on ? g_hi.cx : g_clipCx; }
 
 void project(const s32 v[3], s16& sx, s16& sy) { projectVert(v[0], v[1], v[2], sx, sy); }
@@ -1920,8 +1994,18 @@ int renderView(s32 x, s32 y, s32 z, int heading, int pitch, int roll, int rx, in
     const bool enh = enhanced();
     g_workSize = enh ? 5000 * 64 : 5000;
     g_view.capacity = enh ? 200 * 64 : 200;
-    const int N = settings().effectiveRenderScale();
-    g_hi.begin(N > 1 ? N : 1, rx, ry, rw, rh, g_clipCx, g_clipCy, zoom, x, y, z);
+    g_hi.begin(rx, ry, rw, rh, g_clipCx, g_clipCy, zoom, x, y, z);
+    if (g_hi.on) {
+        // A wide window widens the viewport: the frustum, the culling and
+        // the clip planes use the page rectangle that covers it (the
+        // projection centre stays the camera rect's).
+        g_clipX0 = g_hi.cvx;
+        g_clipY0 = g_hi.cvy;
+        g_clipW = g_hi.cvw;
+        g_clipH = g_hi.cvh;
+        g_clipX1 = g_clipX0 + g_clipW - 1;
+        g_clipY1 = g_clipY0 + g_clipH - 1;
+    }
 
     frustumNormals();
     cameraMatrix();

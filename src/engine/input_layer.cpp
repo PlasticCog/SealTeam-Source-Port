@@ -1,5 +1,6 @@
 #include "engine/input_layer.h"
 
+#include "engine/controller.h"
 #include "engine/ticker.h"
 #include "platform/system.h"
 
@@ -19,7 +20,10 @@ InputLayer& input() {
 }
 
 void InputLayer::init() {
-    joyPresent_ = false;  // game port joystick: not emulated yet
+    // The game port joystick is a game controller through the mapping layer
+    // (engine/controller.h); presence is re-checked at every poll (hot-plug).
+    controller().init();
+    joyPresent_ = controller().present();
     mousePresent_ = true;
     mouseX_ = mouseY_ = kStickCentre;
     centreX_ = mouseX_;
@@ -66,7 +70,24 @@ int InputLayer::pollBiosKey() {
 
 int InputLayer::getKey() {
     sys().pump();
-    // 1. Joystick: not present.
+    // 1. Joystick (a game controller): button 1 -> Enter, button 2 -> Space
+    //    and the Y axis -> Down / Up with the original's timers. The mapping
+    //    layer types every other bound action into the BIOS queue, so it is
+    //    read by the keyboard path below with the keyboard's throttle.
+    Controller& pad = controller();
+    pad.pump(mode_);
+    joyPresent_ = pad.present();
+    if (joyPresent_) {
+        const int buttons = pad.stickButtons();
+        if (buttons == 1 && elapsed(tJoyButton1_, 0x50)) return key::Enter;
+        if (buttons == 2 && elapsed(tJoyButton2_, mode_ == InputMode::Menu ? 0x50 : 0x100)) return key::Space;
+        if (mode_ == InputMode::Action && elapsed(tJoyAxis_, 0x60)) {
+            int jx, jy, moveY;
+            pad.stick(jx, jy, moveY);
+            if (moveY > 0x30) return key::Down;
+            if (moveY < -0x30) return key::Up;
+        }
+    }
     // 2. Mouse buttons.
     if (mousePresent_) {
         pumpMouse();
@@ -95,6 +116,20 @@ int InputLayer::getKey() {
 
 void InputLayer::getMotion(int& dx, int& dy) {
     dx = dy = 0;
+    // Joystick first (4e98:0074 scale, +-128); the mouse only when the stick
+    // gave (0, 0). Shifts are arithmetic like the original's.
+    if (joyPresent_) {
+        int jx, jy, moveY;
+        controller().stick(jx, jy, moveY);
+        if (mode_ == InputMode::Action) {
+            dx = std::abs(jx) > 5 ? (std::clamp(jx, -100, 100) >> 3) : 0;
+            dy = std::abs(jy) > 5 ? (std::clamp(jy, -100, 100) >> 4) : 0;
+        } else {
+            dx = std::clamp(jx, -100, 100) >> 2;
+            dy = std::clamp(jy, -100, 100) >> 2;
+        }
+        if (dx != 0 || dy != 0) return;
+    }
     if (!mousePresent_) return;
     pumpMouse();
     const int jx = mouseX_ - centreX_, jy = mouseY_ - centreY_;

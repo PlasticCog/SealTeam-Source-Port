@@ -39,13 +39,14 @@ void startupError(const char* msg) {
 void usage() {
     std::printf(
         "SEAL Team source port\n"
-        "usage: sealteam [--original | --enhanced | --launcher] [--data DIR] [--scale N]\n"
+        "usage: sealteam [--original | --enhanced | --launcher] [--data DIR] [--scale N | --window WxH]\n"
         "                [--fullscreen] [--no-aspect] [options]\n"
         "  --original    play 1:1 like the DOS game (skips the start menu)\n"
         "  --enhanced    play with the enhancements chosen in Setup (skips the start menu)\n"
         "  --launcher    show the start menu even if it was switched off\n"
         "  --data DIR    use DIR instead of the Game folder for the original files\n"
         "  --scale N     window scale factor (default from Setup, 3)\n"
+        "  --window WxH  window size in pixels instead of the scale factor\n"
         "  --fullscreen  start in fullscreen (Alt+Enter toggles)\n"
         "  --no-aspect   show square pixels instead of 4:3\n"
         "Settings are stored in sealteam.cfg next to the program.\n"
@@ -68,6 +69,7 @@ int main(int argc, char** argv) {
     vcfg.scale = st.windowScale;
     vcfg.fullscreen = st.fullscreen;
     vcfg.aspectCorrect = st.aspectCorrect;
+    vcfg.smooth = st.smoothScaling;
     std::vector<std::string> gameArgs{"st"};
     std::string shotPath;
     double shotAfter = 2.0;
@@ -76,6 +78,9 @@ int main(int argc, char** argv) {
         const std::string a = argv[i];
         if (a == "--data" && i + 1 < argc) dataDir = argv[++i];
         else if (a == "--scale" && i + 1 < argc) vcfg.scale = std::max(1, std::atoi(argv[++i]));
+        else if (a == "--window" && i + 1 < argc) {
+            if (std::sscanf(argv[++i], "%dx%d", &vcfg.width, &vcfg.height) != 2) vcfg.width = vcfg.height = 0;
+        }
         else if (a == "--fullscreen") vcfg.fullscreen = true;
         else if (a == "--no-aspect") vcfg.aspectCorrect = false;
         else if (a == "--shot" && i + 1 < argc) shotPath = argv[++i];

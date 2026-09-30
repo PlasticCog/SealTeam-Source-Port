@@ -3,6 +3,7 @@
 // polled hardware or waited for a retrace.
 #pragma once
 
+#include "platform/gamepad.h"
 #include "platform/input.h"
 #include "platform/timer.h"
 #include "platform/video.h"
@@ -18,6 +19,7 @@ public:
 
     Video& video() { return video_; }
     Input& input() { return input_; }
+    Gamepad& gamepad() { return gamepad_; }
     Timer& timer() { return timer_; }
 
     // Process host events and refresh the window (VGA memory is always
@@ -58,6 +60,7 @@ private:
     double shotAt_ = 0.0;
     Video video_;
     Input input_;
+    Gamepad gamepad_;
     Timer timer_;
     int logicalH_ = 240;
     u32 lastRetrace_ = 0;

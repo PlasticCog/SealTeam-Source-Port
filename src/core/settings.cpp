@@ -25,6 +25,25 @@ bool parseBool(const std::string& v) { return v == "1" || v == "true" || v == "y
 
 } // namespace
 
+const char* renderScaleName(int scale) {
+    switch (scale) {
+    case kRenderScaleNative: return "Native";
+    case 1: return "320x200";
+    case 2: return "640x400";
+    case 3: return "960x600";
+    case 4: return "1280x800";
+    case 6: return "1920x1200";
+    default: return "?";
+    }
+}
+
+const char* drawDistanceName(int pct) {
+    static char buf[16];
+    if (pct == kDrawDistanceMax) return "Max";
+    std::snprintf(buf, sizeof buf, "%d%%", pct);
+    return buf;
+}
+
 Settings& settings() {
     static Settings instance;
     return instance;
@@ -56,13 +75,20 @@ bool loadSettings() {
         else if (k == "fullscreen") s.fullscreen = parseBool(v);
         else if (k == "aspect_correct") s.aspectCorrect = parseBool(v);
         else if (k == "smooth_scaling") s.smoothScaling = parseBool(v);
-        else if (k == "render_scale") s.renderScale = nearestAllowed(n, kRenderScales);
-        else if (k == "draw_distance") s.drawDistancePct = nearestAllowed(n, kDrawDistances);
+        else if (k == "render_scale") s.renderScale = (v == "native") ? kRenderScaleNative : nearestAllowed(std::max(n, 1), kRenderScales);
+        else if (k == "wide_view") s.wideView = parseBool(v) || v == "fill";
+        else if (k == "draw_distance") s.drawDistancePct = (v == "max") ? kDrawDistanceMax : nearestAllowed(std::max(n, 100), kDrawDistances);
         else if (k == "music_device") s.musicDevice = (v == "opl3") ? MusicDevice::SoundBlasterPro2 : MusicDevice::AdLib;
         else if (k == "digital_sfx") s.digitalSfx = parseBool(v);
         else if (k == "music_volume") s.musicVolume = std::clamp(n, 0, 100);
         else if (k == "sfx_volume") s.sfxVolume = std::clamp(n, 0, 100);
         else if (k == "skip_launcher") s.skipLauncher = parseBool(v);
+        // --- controller block (docs/controller.md) ---
+        else if (k == "pad_enabled") s.padEnabled = parseBool(v);
+        else if (k == "pad_dead_zone") s.padDeadZonePct = std::clamp(n, 0, 60);
+        else if (k == "pad_sensitivity") s.padSensitivityPct = std::clamp(n, 25, 200);
+        else if (k.rfind("bind_", 0) == 0) s.padBindings[k.substr(5)] = v;
+        // --- end controller block ---
     }
     return true;
 }
@@ -77,13 +103,20 @@ bool saveSettings() {
       << "fullscreen = " << s.fullscreen << "\n"
       << "aspect_correct = " << s.aspectCorrect << "\n"
       << "smooth_scaling = " << s.smoothScaling << "\n"
-      << "render_scale = " << s.renderScale << "\n"
-      << "draw_distance = " << s.drawDistancePct << "\n"
+      << "render_scale = " << (s.renderScale == kRenderScaleNative ? std::string("native") : std::to_string(s.renderScale)) << "\n"
+      << "wide_view = " << (s.wideView ? "fill" : "4:3") << "\n"
+      << "draw_distance = " << (s.drawDistancePct == kDrawDistanceMax ? std::string("max") : std::to_string(s.drawDistancePct)) << "\n"
       << "music_device = " << (s.musicDevice == MusicDevice::SoundBlasterPro2 ? "opl3" : "opl2") << "\n"
       << "digital_sfx = " << s.digitalSfx << "\n"
       << "music_volume = " << s.musicVolume << "\n"
       << "sfx_volume = " << s.sfxVolume << "\n"
       << "skip_launcher = " << s.skipLauncher << "\n";
+    // --- controller block (docs/controller.md) ---
+    f << "pad_enabled = " << s.padEnabled << "\n"
+      << "pad_dead_zone = " << s.padDeadZonePct << "\n"
+      << "pad_sensitivity = " << s.padSensitivityPct << "\n";
+    for (const auto& [action, inputName] : s.padBindings) f << "bind_" << action << " = " << inputName << "\n";
+    // --- end controller block ---
     return bool(f);
 }
 

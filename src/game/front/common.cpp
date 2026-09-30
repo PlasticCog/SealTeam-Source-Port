@@ -13,6 +13,8 @@
 #include "gfx/gfx.h"
 #include "platform/system.h"
 
+#include <SDL3/SDL.h>
+
 #include <algorithm>
 #include <cctype>
 #include <chrono>
@@ -487,6 +489,49 @@ size_t g_scriptPos = 0;
 std::chrono::steady_clock::time_point g_scriptStart;
 std::map<std::string, std::chrono::steady_clock::time_point> g_anchors;  // fired anchors
 
+// Game controller tokens of the key script: PadA, PadLB, PadUp (d-pad),
+// PadLT (trigger), PadLX- / PadRY+ (stick full deflection); "Pad~X"
+// releases. Replayed as synthetic SDL events, so the mapping layer sees
+// them like a real pad.
+struct PadName { const char* name; int sdl; bool axis; int value; };
+const PadName kPad[] = {
+    {"A", SDL_GAMEPAD_BUTTON_SOUTH, false, 0}, {"B", SDL_GAMEPAD_BUTTON_EAST, false, 0},
+    {"X", SDL_GAMEPAD_BUTTON_WEST, false, 0}, {"Y", SDL_GAMEPAD_BUTTON_NORTH, false, 0},
+    {"LB", SDL_GAMEPAD_BUTTON_LEFT_SHOULDER, false, 0}, {"RB", SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER, false, 0},
+    {"LS", SDL_GAMEPAD_BUTTON_LEFT_STICK, false, 0}, {"RS", SDL_GAMEPAD_BUTTON_RIGHT_STICK, false, 0},
+    {"Start", SDL_GAMEPAD_BUTTON_START, false, 0}, {"Back", SDL_GAMEPAD_BUTTON_BACK, false, 0},
+    {"Up", SDL_GAMEPAD_BUTTON_DPAD_UP, false, 0}, {"Down", SDL_GAMEPAD_BUTTON_DPAD_DOWN, false, 0},
+    {"Left", SDL_GAMEPAD_BUTTON_DPAD_LEFT, false, 0}, {"Right", SDL_GAMEPAD_BUTTON_DPAD_RIGHT, false, 0},
+    {"LT", SDL_GAMEPAD_AXIS_LEFT_TRIGGER, true, 32767}, {"RT", SDL_GAMEPAD_AXIS_RIGHT_TRIGGER, true, 32767},
+    {"LX+", SDL_GAMEPAD_AXIS_LEFTX, true, 32767}, {"LX-", SDL_GAMEPAD_AXIS_LEFTX, true, -32767},
+    {"LY+", SDL_GAMEPAD_AXIS_LEFTY, true, 32767}, {"LY-", SDL_GAMEPAD_AXIS_LEFTY, true, -32767},
+    {"RX+", SDL_GAMEPAD_AXIS_RIGHTX, true, 32767}, {"RX-", SDL_GAMEPAD_AXIS_RIGHTX, true, -32767},
+    {"RY+", SDL_GAMEPAD_AXIS_RIGHTY, true, 32767}, {"RY-", SDL_GAMEPAD_AXIS_RIGHTY, true, -32767},
+};
+
+int scriptedPadIndex(const std::string& name) {
+    for (size_t i = 0; i < sizeof(kPad) / sizeof(kPad[0]); ++i)
+        if (name == kPad[i].name) return int(i);
+    return -1;
+}
+
+void pushScriptedPadEvent(int code) {
+    const PadName& p = kPad[code & 0xff];
+    const bool release = (code & 0x100) != 0;
+    sys().gamepad().setVirtual(true);
+    SDL_Event ev{};
+    if (p.axis) {
+        ev.type = SDL_EVENT_GAMEPAD_AXIS_MOTION;
+        ev.gaxis.axis = u8(p.sdl);
+        ev.gaxis.value = s16(release ? 0 : p.value);
+    } else {
+        ev.type = release ? SDL_EVENT_GAMEPAD_BUTTON_UP : SDL_EVENT_GAMEPAD_BUTTON_DOWN;
+        ev.gbutton.button = u8(p.sdl);
+        ev.gbutton.down = !release;
+    }
+    SDL_PushEvent(&ev);
+}
+
 int parseKey(const std::string& name) {
     struct Named { const char* name; int code; };
     static const Named kNamed[] = {
@@ -503,6 +548,13 @@ int parseKey(const std::string& name) {
     };
     for (const Named& n : kNamed)
         if (name == n.name) return n.code;
+    if (name.rfind("Pad", 0) == 0) {  // PadA / Pad~A: game controller press / release (see kPad)
+        std::string rest = name.substr(3);
+        const bool release = !rest.empty() && rest[0] == '~';
+        if (release) rest = rest.substr(1);
+        const int i = scriptedPadIndex(rest);
+        return i < 0 ? 0 : 0x20000 | (release ? 0x100 : 0) | i;
+    }
     if (name.rfind("Move", 0) == 0) {  // MoveDX_DY: relative pointer motion in pixels
         const size_t us = name.find('_');
         if (us != std::string::npos) {
@@ -527,6 +579,10 @@ int dueKey() {
     const double t = std::chrono::duration<double>(std::chrono::steady_clock::now() - base).count();
     if (k.at > t) return 0;
     const int code = g_script[g_scriptPos++].code;
+    if (code & 0x20000) {  // scripted game controller event (SDL_PushEvent), not a key
+        pushScriptedPadEvent(code);
+        return 0;
+    }
     if (code & 0x10000) {  // scripted pointer motion, not a key
         sys().input().addMotion(s8(u8(code >> 8)), s8(u8(code)));
         return 0;

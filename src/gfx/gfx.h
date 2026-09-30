@@ -13,6 +13,7 @@
 
 #include "core/common.h"
 #include "gfx/image.h"
+#include "platform/video.h"
 
 #include <string_view>
 #include <vector>
@@ -133,10 +134,11 @@ private:
     int surfH() { return target_ ? target_->h : 200; }
     // Clear high-resolution coverage for pixels x0..x1 of row y of the draw page.
     void touch(int x0, int x1, int y) {
-        if (cov_ && !target_) touchSlow(x0, x1, y);
+        if (layer_ && !target_) touchSlow(x0, x1, y);
     }
     void touchSlow(int x0, int x1, int y);
-    u8* coverageOf(const Bitmap& b) const;
+    HiResLayer* layerOf(const Bitmap& b) const;  // the page's layer, nullptr if none / not a page
+    static void uncover(HiResLayer& l, int x0, int x1, int y);
     bool patternAllows(int x, int y, bool pixelQuirk) const;
     void plot(int x, int y);                // span-convention pattern, no clip
     void rawSpan(int x0, int x1, int y);    // clipped span with current colour
@@ -145,7 +147,7 @@ private:
 
     Bitmap pages_[2];
     Bitmap* target_ = nullptr;
-    u8* cov_ = nullptr;  // coverage mask of the draw page's layer (nullptr: none)
+    HiResLayer* layer_ = nullptr;  // the draw page's high-resolution layer (nullptr: none)
     int drawPage_ = 0, displayPage_ = 0;
     int x0_ = 0, y0_ = 0, x1_ = 319, y1_ = 199, cw_ = 320, ch_ = 200, cx_ = 159, cy_ = 99;
     u8 color_ = 0;

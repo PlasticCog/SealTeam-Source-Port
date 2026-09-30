@@ -80,26 +80,20 @@ void todDrawSkyGround(const game::Camera& cam, int detail, s32 time, int hour) {
     Gfx& gx = gfx();
     HiResLayer* layer = detail >= 2 ? hiResLayerForDrawPage() : nullptr;
     Bitmap hb;
-    int N = 1;
-    if (layer) {
-        N = layer->scale;
-        hb.w = layer->w;
-        hb.h = layer->h;
-        hb.bpr = layer->w / 4;
-        hb.data = layer->pixels.data();
-    }
     auto row = [&](int y, u8 c) {
         gx.hline(0, 0x13F, y, u16(Gfx::kSolid | c));
         if (layer) {
             // Same rows in the high-resolution layer (the viewport shows the
-            // layer once the 3D view has been rendered on top).
+            // layer once the 3D view has been rendered on top), across the
+            // whole width of the (possibly widened) view.
             const int x0 = gx.clipX0(), y0 = gx.clipY0(), x1 = gx.clipX1(), y1 = gx.clipY1();
             if (y < y0 || y > y1) return;
-            gx.setTarget(&hb);
-            gx.setClip(x0 * N, y0 * N, (x1 - x0 + 1) * N, (y1 - y0 + 1) * N);
-            for (int j = 0; j < N; ++j) gx.hline(x0 * N, (x1 + 1) * N - 1, y * N + j, u16(Gfx::kSolid | c));
-            gx.setTarget(nullptr);
-            gx.setClip(x0, y0, x1 - x0 + 1, y1 - y0 + 1);
+            int X0, Y0, X1, Y1;
+            layer->rectOf(x0, y, x1, y, true, X0, Y0, X1, Y1);
+            if (layerTargetBegin(*layer, hb)) {
+                for (int Y = Y0; Y <= Y1; ++Y) gx.hline(X0, X1, Y, u16(Gfx::kSolid | c));
+                layerTargetEnd();
+            }
         }
     };
     for (int i = 0; i < 100; ++i) {
@@ -150,18 +144,14 @@ void viewClearMapGround(const game::Camera& cam) {
     // Enhanced: the map view is rendered into the high-resolution layer, which
     // must start from the same ground colour (like the gradient rows above).
     if (HiResLayer* layer = hiResLayerForDrawPage()) {
-        const int N = layer->scale;
         Bitmap hb;
-        hb.w = layer->w;
-        hb.h = layer->h;
-        hb.bpr = layer->w / 4;
-        hb.data = layer->pixels.data();
-        const int x0 = gx.clipX0(), y0 = gx.clipY0(), x1 = gx.clipX1(), y1 = gx.clipY1();
-        gx.setTarget(&hb);
-        gx.setClip(x0 * N, y0 * N, (x1 - x0 + 1) * N, (y1 - y0 + 1) * N);
-        gx.fillRect(cam.rect_x * N, cam.rect_y * N, cam.rect_w * N, cam.rect_h * N, c);
-        gx.setTarget(nullptr);
-        gx.setClip(x0, y0, x1 - x0 + 1, y1 - y0 + 1);
+        int X0, Y0, X1, Y1;
+        layer->rectOf(cam.rect_x, cam.rect_y, cam.rect_x + cam.rect_w - 1, cam.rect_y + cam.rect_h - 1, true, X0,
+                      Y0, X1, Y1);
+        if (layerTargetBegin(*layer, hb)) {
+            gx.fillRect(X0, Y0, X1 - X0 + 1, Y1 - Y0 + 1, c);
+            layerTargetEnd();
+        }
     }
 }
 

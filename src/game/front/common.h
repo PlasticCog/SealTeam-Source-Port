@@ -145,7 +145,11 @@ int scriptedBiosKey();
 // Backspace, Up, Down, Left, Right, F10, AltX, AltE, AltS, AltM, Plus, Minus,
 // Comma - each optionally followed by "@seconds" (time since the script was
 // set); keys without a time follow the previous one after 0.4 s (the first
-// at 1 s).
+// at 1 s). Game controller events: PadA, PadB, PadX, PadY, PadLB, PadRB,
+// PadLS, PadRS, PadStart, PadBack, PadUp/Down/Left/Right (d-pad), PadLT,
+// PadRT (triggers), PadLX+/-, PadLY+/-, PadRX+/-, PadRY+/- (sticks, full
+// deflection); "Pad~A" releases. They are pushed as synthetic SDL gamepad
+// events and go through the controller mapping layer (docs/controller.md).
 void setKeyScript(const std::string& spec);
 // A key time may be written "anchor+seconds" (e.g. Esc@mission+4): it counts
 // from rebaseKeyScript(anchor), which the mission loop calls with "mission"

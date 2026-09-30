@@ -1,7 +1,7 @@
 // The 3D renderer: port of r3d_render_view (2255:3090) and everything it
 // uses (docs/re/seg_2255.md 7-9). Draws the world built with render/world.h
 // into the current gfx draw page (Original preset) or into the page's
-// high-resolution layer (Enhanced preset, render scale > 1).
+// high-resolution layer (Enhanced preset).
 #pragma once
 
 #include "core/common.h"
@@ -68,9 +68,12 @@ void projectPage(const s32 v[3], s16& sx, s16& sy);
 // being drawn (DS:F248).
 int projectionCentreX();
 
-// The render scale of the frame being drawn (1 = original 320x200 page,
-// N = layer of the Enhanced preset). Valid during renderView (callbacks).
+// Layer pixels per page pixel of the frame being drawn (1 in the Original
+// preset; the Enhanced layer scales x and y independently). frameScale() is
+// the rounded-up larger one, for coarse limits. Valid during renderView.
 int frameScale();
+double frameScaleX();
+double frameScaleY();
 
 // State of the object being drawn, for primitive callbacks (type 4).
 struct DrawState {

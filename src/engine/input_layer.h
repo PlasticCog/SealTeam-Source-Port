@@ -30,6 +30,7 @@ public:
 
     bool mousePresent() const { return mousePresent_; }
     bool joystickPresent() const { return joyPresent_; }
+    void setMousePresent(bool on) { mousePresent_ = on; }  // tests: pad only
 
 private:
     int pollBiosKey();                       // 2B3B

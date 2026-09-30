@@ -1,9 +1,13 @@
 // Developer entry points of the renderer:
-//   --view-world <mission 1..80> [x y z heading pitch] [enhanced [scale [dist]]]
-//                [detail D] [hour H] [chase]
-//   --view-model <table index 0..96> [enhanced [scale]]
-// Both render until Esc/Enter (arrows turn/move, PgUp/PgDn height, Home/End
-// pitch, +/- speed, 1..6 detail level). Combine with --shot FILE --shot-after S.
+//   --view-world <mission 1..80> [x y z heading pitch] [enhanced [native|N [dist%|max]]]
+//                [fill|4:3] [size WxH] [detail D] [hour H] [chase]
+//   --view-model <table index 0..96> [enhanced [native|N]]
+//   --bench-view <mission 1..80> [the same options] [frames N]
+// The viewers render until Esc/Enter (arrows turn/move, PgUp/PgDn height,
+// Home/End pitch, +/- speed, 1..6 detail level). Combine with --shot FILE
+// --shot-after S. `size WxH` renders native-resolution frames at that size
+// whatever the window (a 4K frame on a smaller monitor). --bench-view prints
+// the average and worst frame times over a full turn of the camera.
 #include "core/settings.h"
 #include "data/ealib.h"
 #include "engine/palette_fade.h"
@@ -21,6 +25,7 @@
 #include "render/veg.h"
 #include "render/world.h"
 
+#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 #include <string>
@@ -39,6 +44,7 @@ struct ViewOpts {
     int detail = 5;
     int hour = -1, minute = 0;
     bool hud = true;
+    int frames = 180;      // --bench-view: frames of one full turn
 };
 
 bool parseInt(const std::string& s, int& v) {
@@ -57,16 +63,28 @@ void parseOptions(const game::DevArgs& a, size_t i, ViewOpts& o) {
         int v = 0;
         if (k == "enhanced") {
             settings().preset = Preset::Enhanced;
-            if (i < a.size() && parseInt(a[i], v)) {
-                settings().renderScale = v;
+            if (i < a.size() && (a[i] == "native" || parseInt(a[i], v))) {
+                settings().renderScale = a[i] == "native" ? kRenderScaleNative : v;
                 ++i;
-                if (i < a.size() && parseInt(a[i], v)) {
-                    settings().drawDistancePct = v;
+                if (i < a.size() && (a[i] == "max" || parseInt(a[i], v))) {
+                    settings().drawDistancePct = a[i] == "max" ? kDrawDistanceMax : v;
                     ++i;
                 }
             }
         } else if (k == "original") {
             settings().preset = Preset::Original;
+        } else if (k == "fill") {
+            settings().wideView = true;
+        } else if (k == "4:3") {
+            settings().wideView = false;
+        } else if (k == "size" && i < a.size()) {
+            int w = 0, h = 0;
+            if (std::sscanf(a[i].c_str(), "%dx%d", &w, &h) == 2 && w >= 320 && h >= 200)
+                sys().video().setOutputSizeOverride(w, h);
+            ++i;
+        } else if (k == "frames" && i < a.size() && parseInt(a[i], v)) {
+            o.frames = std::max(1, v);
+            ++i;
         } else if (k == "detail" && i < a.size() && parseInt(a[i], v)) {
             o.detail = v;
             ++i;
@@ -215,8 +233,10 @@ void runView(game::Camera& cam, ViewOpts& o, const std::string& title, Obj3D* sp
             gx.setTextColors(15, 0);
             const RenderStats& st = renderStats();
             char line[160];
-            std::snprintf(line, sizeof line, "%s  %s x%d", title.c_str(),
-                          settings().original() ? "ORIGINAL" : "ENHANCED", settings().effectiveRenderScale());
+            std::snprintf(line, sizeof line, "%s  %s %s %s", title.c_str(),
+                          settings().original() ? "ORIGINAL" : "ENHANCED",
+                          settings().original() ? "" : renderScaleName(settings().effectiveRenderScale()),
+                          settings().original() ? "" : drawDistanceName(settings().effectiveDrawDistancePct()));
             gx.draw4x6String(f4, line, 2, 1);
             std::snprintf(line, sizeof line, "X %d Y %d Z %d H %d P %d  OBJ %d/%d  DET %d",
                           int(cam.pos.x >> 8), int(cam.pos.y >> 8), int(cam.pos.z >> 8), cam.yaw >> 3,
@@ -227,12 +247,9 @@ void runView(game::Camera& cam, ViewOpts& o, const std::string& title, Obj3D* sp
     }
 }
 
-int viewWorld(const game::DevArgs& a) {
-    int mission = 1;
-    if (a.empty() || !parseInt(a[0], mission) || mission < 1 || mission > 80) {
-        std::fprintf(stderr, "usage: --view-world <mission 1..80> [x y z heading pitch] [enhanced [scale [dist]]]\n");
-        return 2;
-    }
+// Load mission `mission`'s world and set the camera up; returns the world
+// index or -1.
+int setupWorldView(const game::DevArgs& a, int mission, ViewOpts& o, game::Camera& cam) {
     size_t i = 1;
     int user[5];
     bool haveCam = false;
@@ -242,9 +259,8 @@ int viewWorld(const game::DevArgs& a) {
             if (!parseInt(a[1 + size_t(k)], user[k])) haveCam = false;
         if (haveCam) i = 6;
     }
-    ViewOpts o;
     parseOptions(a, i, o);
-    if (!initRenderer()) return 1;
+    if (!initRenderer()) return -1;
 
     const int y = (mission - 1) / 20 + 1, n = (mission - 1) % 20 + 1;
     char name[16];
@@ -252,7 +268,7 @@ int viewWorld(const game::DevArgs& a) {
     std::vector<u8> mci;
     if (!resources().read(name, mci) || mci.size() < 0x176) {
         std::fprintf(stderr, "cannot read %s\n", name);
-        return 1;
+        return -1;
     }
     const int hour = rd16(&mci[0]), minute = rd16(&mci[2]), worldIdx = rd16(&mci[4]);
     const s32 insX = s32(rd32(&mci[0x0A])), insZ = s32(rd32(&mci[0x12]));
@@ -264,7 +280,7 @@ int viewWorld(const game::DevArgs& a) {
     renderContext().todHour = o.hour;
 
     worldBegin();
-    if (!wldLoad(worldIdx)) return 1;
+    if (!wldLoad(worldIdx)) return -1;
     vegCreatePools();
     worldEnd();
     logInfo("view-world: mission %d %s, world %d %s (%s), %d objects", mission, name, worldIdx,
@@ -273,7 +289,7 @@ int viewWorld(const game::DevArgs& a) {
     setPalette(o.hour, o.minute);
     modelsSetTimeOfDay(o.hour);
 
-    game::Camera cam{};
+    cam = game::Camera{};
     cam.rect_x = 0;
     cam.rect_y = 8;
     cam.rect_w = 320;
@@ -309,7 +325,97 @@ int viewWorld(const game::DevArgs& a) {
     }
     renderContext().reinsertPoint = game::Vec3{insX, 0, insZ};
     vegReset();
+    return worldIdx;
+}
+
+int viewWorld(const game::DevArgs& a) {
+    int mission = 1;
+    if (a.empty() || !parseInt(a[0], mission) || mission < 1 || mission > 80) {
+        std::fprintf(stderr, "usage: --view-world <mission 1..80> [x y z heading pitch] [enhanced [native|N [dist%%|max]]]\n");
+        return 2;
+    }
+    ViewOpts o;
+    game::Camera cam{};
+    const int worldIdx = setupWorldView(a, mission, o, cam);
+    if (worldIdx < 0) return 1;
     runView(cam, o, worldName(worldIdx));
+    worldFree();
+    wldFree();
+    sys().video().dropHiResLayers();
+    return 0;
+}
+
+// --bench-view: render `frames` frames while the camera makes a full turn,
+// without the frame limiter, and print the frame times.
+int benchView(const game::DevArgs& a) {
+    int mission = 3;
+    if (a.empty() || !parseInt(a[0], mission) || mission < 1 || mission > 80) {
+        std::fprintf(stderr, "usage: --bench-view <mission 1..80> [enhanced [native|N [dist%%|max]]] [size WxH] [frames N]\n");
+        return 2;
+    }
+    ViewOpts o;
+    game::Camera cam{};
+    const int worldIdx = setupWorldView(a, mission, o, cam);
+    if (worldIdx < 0) return 1;
+    Gfx& gx = gfx();
+    gx.setDrawPage(1);
+    gx.setDisplayPage(0);
+    auto& clock = engine::ticker();
+    clock.setFrameLimit(false);
+    clock.resetClock();
+    RenderContext& ctx = renderContext();
+    ctx.detail = o.detail;
+    const Timer& timer = sys().timer();
+    double renderSum = 0, renderMax = 0, presentSum = 0, presentMax = 0;
+    int drawnSum = 0, drawnMax = 0;
+    const s16 yaw0 = cam.yaw;
+    // Warm-up frame (layer allocation, view list) is not counted.
+    for (int f = -1; f < o.frames; ++f) {
+        if (f == 0) sys().video().resetPresentStats();
+        clock.updateGameTime();
+        ctx.frameTicks = clock.frameDt();
+        ctx.time = clock.time();
+        cam.yaw = s16(angleWrap(yaw0 + (f < 0 ? 0 : kAngleFull * f / o.frames)));
+        const double t0 = timer.seconds();
+        gx.clipFull();
+        gx.clear(0);
+        gx.setClip(cam.rect_x, cam.rect_y, cam.rect_w, cam.rect_h);
+        vegUpdate(cam, false);
+        if (o.gradient) todDrawSkyGround(cam, o.detail, clock.time(), o.hour);
+        renderView(cam, false);
+        const double t1 = timer.seconds();
+        presentFrame();
+        const double t2 = timer.seconds();
+        if (f < 0) continue;
+        renderSum += t1 - t0;
+        renderMax = std::max(renderMax, t1 - t0);
+        presentSum += t2 - t1;
+        presentMax = std::max(presentMax, t2 - t1);
+        drawnSum += renderStats().drawn;
+        drawnMax = std::max(drawnMax, renderStats().drawn);
+    }
+    int W = 320, H = 200;
+    if (const HiResLayer* l = sys().video().hiResLayer(gx.displayPage())) {
+        W = l->w;
+        H = l->h;
+    }
+    const double n = o.frames;
+    std::printf("bench-view: mission %d (%s), %s %s, distance %s, %dx%d, %d frames\n", mission,
+                worldName(worldIdx).c_str(), settings().original() ? "Original" : "Enhanced",
+                settings().original() ? "" : renderScaleName(settings().effectiveRenderScale()),
+                drawDistanceName(settings().effectiveDrawDistancePct()), W, H, o.frames);
+    std::printf("  objects drawn: avg %d, max %d\n", int(drawnSum / n), drawnMax);
+    std::printf("  render:  avg %.2f ms, max %.2f ms\n", 1000 * renderSum / n, 1000 * renderMax);
+    std::printf("  present: avg %.2f ms, max %.2f ms\n", 1000 * presentSum / n, 1000 * presentMax);
+    const Video::PresentStats& ps = sys().video().presentStats();
+    if (ps.frames > 0)
+        std::printf("    lock: avg %.2f ms, max %.2f ms; compose+convert: avg %.2f ms, max %.2f ms; "
+                    "upload+present: avg %.2f ms, max %.2f ms\n",
+                    1000 * ps.lock / ps.frames, 1000 * ps.lockMax, 1000 * ps.compose / ps.frames,
+                    1000 * ps.composeMax, 1000 * ps.upload / ps.frames, 1000 * ps.uploadMax);
+    std::printf("  frame:   avg %.2f ms (%.1f fps), max %.2f ms\n", 1000 * (renderSum + presentSum) / n,
+                n / (renderSum + presentSum), 1000 * (renderMax + presentMax));
+    std::fflush(stdout);
     worldFree();
     wldFree();
     sys().video().dropHiResLayers();
@@ -365,10 +471,14 @@ int viewModel(const game::DevArgs& a) {
 }  // namespace
 
 const game::DevCommand kViewWorld("--view-world",
-                                  "render a mission's world: <1..80> [x y z heading pitch] [enhanced [N [dist%]]] "
-                                  "[detail D] [hour H]",
+                                  "render a mission's world: <1..80> [x y z heading pitch] "
+                                  "[enhanced [native|N [dist%|max]]] [fill|4:3] [size WxH] [detail D] [hour H]",
                                   viewWorld);
-const game::DevCommand kViewModel("--view-model", "render one model of the table: <0..96> [enhanced [N]]",
+const game::DevCommand kViewModel("--view-model", "render one model of the table: <0..96> [enhanced [native|N]]",
                                   viewModel);
+const game::DevCommand kBenchView("--bench-view",
+                                  "frame times of a mission's world: <1..80> [enhanced [native|N [dist%|max]]] "
+                                  "[fill|4:3] [size WxH] [frames N]",
+                                  benchView);
 
 }  // namespace st::render

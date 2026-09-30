@@ -2,6 +2,7 @@
 
 #include "data/ealib.h"
 #include "data/exeimage.h"
+#include "engine/controller.h"
 #include "engine/input_layer.h"
 #include "engine/palette_fade.h"
 #include "engine/rng.h"
@@ -110,7 +111,10 @@ void waitForInput() {
     sys().input().flushKeys();
     for (;;) {
         sys().waitRetrace();
-        if (sys().input().keyAvailable() || sys().input().mouse().buttons) break;
+        engine::controller().pump(engine::input().mode());  // pad buttons count as keys
+        if (sys().input().keyAvailable() || sys().input().mouse().buttons ||
+            engine::controller().stickButtons() != 0)
+            break;
     }
 }
 

@@ -227,6 +227,6 @@ reference only afterwards).
   and the map screen of mission 1; the target diamond / names, the split
   team lines and markers, the support orders on the map, the enemy view
   (F10) and the hand-signal icons were checked visually / by the code only.
-* Joystick input is not emulated (the input layer); the mouse is.
+* Joystick input: a game controller stands in for the game-port joystick (docs/controller.md); the calibration screen is not reproduced.
 * Screen shake (`ticker().shake*`) is driven by the simulation; not
   verified here.

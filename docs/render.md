@@ -19,14 +19,15 @@ unit libraries, gradients and remap tables from `main.lib`.
 | `model.h/.cpp` | DS image, LOD models, `.pnt` loading, `mdl_compile` replacement (signed-digit tables), transform tables, model hooks' data, time-of-day model colours |
 | `r3dmath.h/.cpp` | Table sine/cosine/atan (from st.exe), sqrt, 16.16 mul/div, 1.14 matrices, `math_rotate_2d`, headings |
 | `r3d.h/.cpp` | **Public renderer API** (`renderView`, `project`, `RenderContext`) and the port of `r3d_render_view` |
-| `r3dhires.h/.cpp` | The Enhanced preset's high-resolution frame |
+| `r3dhires.h/.cpp` | The Enhanced preset's high-resolution frame (any layer size, wide view, page-space geometry) |
 | `sky.h/.cpp` | `tod_palette_index`, `tod_draw_sky_ground`, gradients, remap tables |
 | `sprites.h/.cpp` | `spr_draw_billboard_cb` (348e:0C52): soldier frame selection and drawing, scenery billboards (jungle, bush, muzzle), sprite banks |
 | `veg.h/.cpp` | `veg_*` ground cover, camera scatter, ambient flyer placement |
 | `viewer.cpp` | Dev commands `--view-world`, `--view-model` |
 
 `src/gfx` (render targets, coverage) and `src/platform/video` (high-resolution
-layers, composition, screenshots) were extended for the Enhanced preset.
+layers of any size, composition, presentation, screenshots) were extended for
+the Enhanced preset.
 
 ## Using it from the mission code
 
@@ -122,38 +123,111 @@ differences (palm trunks crossing the top of the viewport).
 
 ## Enhanced preset
 
-`settings().effectiveRenderScale()` N and `effectiveDrawDistancePct()` P.
+`settings().effectiveRenderScale()` (0 = native, N = a fixed multiple of
+320x200), `effectiveWideView()` and `effectiveDrawDistancePct()` P
+(`kDrawDistanceMax` = the whole world). The Enhanced preset always renders
+through the high-resolution frame of `r3dhires`, also at 320x200.
 
-**Render scale (N > 1)** — `platform/video` keeps a high-resolution layer per
-VGA page: (320N)x(200N) palette indices plus a 320x200 coverage mask.
+**The layer** — `platform/video` keeps a high-resolution layer per VGA page
+(`HiResLayer`): `w x h` palette indices, a 320x200 coverage mask and the
+placement of the page inside the layer. At a fixed scale N the layer is
+320N x 200N and the page fills it; at native resolution the layer has the
+window's pixel size (queried every frame, so resizing and Alt+Enter just
+reallocate it) and the page occupies the centred 4:3 rectangle (8:5 with
+square pixels), so a layer pixel is a screen pixel. Page pixel (x, y) covers
+layer columns `colStart[x] .. colStart[x+1]-1` and rows `rowStart[y] ..`;
+the scales `kx = pw/320`, `ky = ph/200` differ (4:3 pixels are not square)
+and need not be integers. `--window WxH` starts with a given window size;
+the viewer's `size WxH` renders native frames at a size other than the
+window's (a 4K frame on a smaller monitor).
+
 `renderView` activates the draw page's layer, points `gfx` at it (render
-target) with the viewport scaled by N, and draws the same camera-space
-pipeline with:
+target) with the clip set to the viewport's layer rectangle, and draws the
+same camera-space pipeline with:
 
-* projection in double precision: `sx = N*cx + (N-1)/2 + N * x * 2^zoom / z`
-  (original pixel p covers layer pixels pN..pN+N-1);
+* projection in double precision around the original projection centre:
+  `sx = ox + (cx + 0.5) kx - 0.5 + kx * x * 2^zoom / z`, `sy` likewise with
+  `ky` (original pixel p covers layer pixels `ox + p kx ..`; the original
+  zoom is kept, so the world is never stretched, and the non-square 4:3
+  pixel geometry of the page is reproduced by `kx != ky`);
 * a floating-point vertex transform (object centre recomputed without the
   16-bit truncation, parts with their own matrices);
-* lines N pixels thick, points as NxN squares, discs/sprites scaled by the
-  projection, sprites' 8.8 scale factors in layer pixels;
-* sky/ground split computed per layer row; the time-of-day gradient is drawn
-  into both the page and the layer.
+* lines `round(min(kx, ky))` pixels thick, points as squares of that size,
+  discs/sprites scaled by the projection, sprites' 8.8 scale factors in
+  layer pixels (`frameScaleX/Y()`);
+* the horizon geometry of `r3d_draw_sky_ground` computed in page pixels and
+  rasterised per layer row; the time-of-day gradient rows are drawn into
+  both the page and the layer (across the widened view).
 
-After the 3D view the viewport's coverage is set and a point-sampled copy of
-the layer is written into the page (so page copies and blits see the 3D
-view). Every 2D write through `gfx` (spans, pixels, lines, text, sprites,
-images, blits) clears the coverage of the pixels it touches, so HUD text,
-cursor and messages appear on top. Page-to-page blits and `copyPage` carry the
-layer along. `Video::present` composes the displayed page: covered pixels from
-the layer, others upscaled from the page (display page and screen-shake
-offset respected); screenshots save the composed frame. With N = 1 or the
-Original preset no layer exists and nothing changes. `worldFree()` drops the
-layers.
+**Wide view** (`wideView`, native resolution only) — a viewport that touches
+the page border is extended to the window border on that side
+(`HiResLayer::rectOf`): the mission's main view (0, 8, 320, 171) fills a
+16:9 window's full width between the page rows 8 and 178, the map view (x 8,
+w 204) stays inside the page. The frustum normals, world boxes, sphere test
+and clip-plane shifts then use the "virtual" page rectangle that covers the
+extended viewport (`HiFrame::cvx/cvy/cvw/cvh`, e.g. 427 x 171 for 16:9)
+while the projection centre stays the camera rect's, so the field of view
+widens horizontally (Hor+) and nothing moves. The 2D page (HUD, text,
+cursor, map, menus) is always shown in its 4:3 rectangle, so HUD overlays
+land where they do in the original. With `4:3` the sides stay black.
 
-**Draw distance (P > 100)** — LOD thresholds are scaled by P/100 (capped at
-0xFFFF), the world-box size class of every object is raised by 1 (P > 100) or
-2 (P >= 400) so the view-pyramid boxes reach 2x/4x deeper, and the work
-buffer and view list are made 64x larger so gathering never fails.
+After the 3D view the viewport's coverage is set, the rows' extension flags
+(`extRows`) and the extended rectangle (`ext*`) are recorded, and a
+point-sampled copy of the layer is written into the page (so page copies and
+blits see the 3D view). Every 2D write through `gfx` (spans, pixels, lines,
+text, sprites, images, blits) clears the coverage of the pixels it touches,
+so HUD text, cursor and messages appear on top; a write across the full page
+width also clears the row's extension (a 2D screen has replaced the view
+there). `copyPage` carries the layer along; page-to-page blits at the same
+position copy the layer rectangle, any other blit uncovers the destination.
+`Video::present` composes the displayed page into an ARGB texture of the
+layer size, row by row on a few threads: covered page pixels take the
+layer, others the (nearest-neighbour upscaled) page, the area outside the
+page rectangle the layer inside the extension or black (display page and
+screen-shake offset respected). A native layer is shown pixel for pixel, a
+fixed-scale layer and the plain page are stretched over the page rectangle
+(SDL's logical presentation is not used; mouse positions are mapped through
+`Video::pageArea()`). Screenshots (`--shot`, F12) save the composed frame at
+the layer's size, i.e. the full window at native resolution. In the Original
+preset no layer exists and nothing changes. `worldFree()` drops the layers.
+
+**Draw distance** — the original renderer is 16-bit in three places that
+limit how far it can see: the LOD thresholds (`u16`, units of 65536 world
+units), the world-box size class (the view-pyramid boxes reach depth
+`2^(c+8)` world units), and `r3d_obj_to_camera`, whose magnitude test
+`m = |x| | |y| | |z| + radius + 1` and scale shift K (0..13) wrap for an
+object farther than 2^15 model units and cannot represent one whose
+camera-space centre needs more than 14 bits. The Enhanced preset widens
+all of them (Original keeps the exact 16-bit behaviour):
+
+* LOD thresholds scaled by P/100 in 32 bits; at Max every threshold is
+  infinite (the distance `D = Manhattan >> 16` never exceeds ~300 in a
+  24000-unit world).
+* The size class is raised by `ceil(log2(P/100))` (1600 % = +4); at Max
+  every object passes the world-box test (class >= 20).
+* `objToCameraWide`: the magnitude is computed in 64 bits and
+  `K = 13 - floor(log2 m)` may be **negative** (camera units of 2^-K model
+  units), so the rotated centre always fits 14 bits; `cullSphereWide`
+  does the frustum test in 64 bits. A negative K is honoured by the
+  double-precision transform, the disc radius, the sprite depth (the width
+  is scaled instead) and the render record (`K` is `s8`). The work buffer
+  and view list are 64x the original's (12300 / 12800 records).
+
+The remaining limits are the original's polygon pipeline: clipped vertices
+are rounded to whole camera units (2^-K model units, sub-pixel at those
+distances) and projected coordinates are clamped to +-32000 layer pixels.
+The flat "horizon" of the time-of-day gradient is the middle row of the
+viewport whatever the pitch (original design), so with a long draw distance
+a camera pitched down sees distant objects above the gradient's ground rows;
+the game's field cameras look level.
+
+Frame times of `--bench-view 3 enhanced native max fill size ...` (mission 3,
+Tay Khanh village, the camera making a full turn, 150-200 objects drawn) on
+a 2024 desktop CPU, RelWithDebInfo: 3D render 2 ms at 4K (1 ms at 1080p);
+composition + palette conversion 2 ms at 4K (8 threads); the 33 MB texture
+upload and present 1-10 ms depending on the GPU driver's state; 6-14 ms per
+frame at 4K, 6-7 ms at 1080p, i.e. within the game's own 5-tick (19.5 ms)
+frame limiter. The `--view-world` viewer at 640x400 / 200 % takes 2 ms.
 
 **Differences from the original in Enhanced only** (clear bugs):
 
@@ -164,6 +238,7 @@ buffer and view list are made 64x larger so gathering never fails.
 | projection cache (static far objects keep their projected shape up to 25 frames / 2 degrees) | disabled (exact projection every frame) |
 | a zero-angle articulated part after a rotated part uses the rotated part's tables | uses the object matrix |
 | zoom shift keeps the low byte, 16-bit vertex precision | double-precision transform/projection |
+| 16-bit distances, LOD and world-box culling | 32/64-bit, draw distance up to the whole world |
 
 ## Billboards (348e)
 
@@ -197,15 +272,21 @@ so the bird branch is only reached through the mission code (open issue).
 ## Dev commands
 
 ```
-sealteam --view-world <1..80> [x y z heading pitch] [enhanced [N [dist%]]] [detail D] [hour H]
-sealteam --view-model <0..96> [stand|walk|run|crouch|crawl|prone|dead] [enhanced [N]]
+sealteam --view-world <1..80> [x y z heading pitch] [enhanced [native|N [dist%|max]]]
+                     [fill|4:3] [size WxH] [detail D] [hour H] [chase]
+sealteam --view-model <0..96> [stand|walk|run|crouch|crawl|prone|dead] [enhanced [native|N]]
+sealteam --bench-view <1..80> [enhanced [native|N [dist%|max]]] [fill|4:3] [size WxH] [frames N]
 ```
 Mission n's world is loaded from `cYmNN.mci` (world index, start time,
 insertion point); the camera starts at the insertion point, 24 units up,
 facing the primary objective. Keys: arrows turn/move, PgUp/PgDn height,
 Home/End pitch, +/- speed, 1..6 detail, `e` toggles Original/Enhanced, `h`
 HUD, `r` rotates the model, Esc quits. Add `--shot FILE --shot-after S` for a
-screenshot (the composed high-resolution frame in Enhanced).
+screenshot (the composed frame at the layer's size in Enhanced). `size WxH`
+renders native frames at that size whatever the window (e.g.
+`--view-world 3 enhanced native max fill size 3840x2160`). `--bench-view`
+turns the camera once around over `frames` frames without the frame limiter
+and prints the average and worst render, compose and present times.
 
 ## Open issues
 
@@ -223,4 +304,12 @@ screenshot (the composed high-resolution frame in Enhanced).
 * `veg_setup_distant_tree`'s bird branch needs mission state; the flyers'
   movement is the mission's `evt_update_ambient_flyer`.
 * Enhanced: sprite and line thickness choices are cosmetic; dither patterns
-  are applied at layer resolution (finer, same coverage).
+  are applied at layer resolution (finer, same coverage). The mouse cursor's
+  save-under restore is a 2D blit, so on the map screen it leaves a
+  page-resolution patch in the 3D map where the cursor was.
+* Enhanced, wide view: the extension beyond the 4:3 page is a whole-row
+  affair (a row keeps its extension until a full-width 2D write): a 2D
+  element narrower than the page cannot uncover the extension next to it.
+* Enhanced, Max distance: everything in the world is gathered every frame
+  (about 400-500 objects on mission 3); the cost is in the composition and
+  texture upload of a 4K frame, not in the 3D pipeline.

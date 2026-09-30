@@ -1,6 +1,7 @@
 #include "game/ui.h"
 
 #include "data/exeimage.h"
+#include "engine/controller.h"
 #include "engine/input_layer.h"
 #include "engine/ticker.h"
 #include "game/campaign.h"
@@ -248,6 +249,7 @@ void uiDrawTextPanel(const char* text, int x, int y, int w, int h) {
 int pollBiosKey() {
     sys().pump();
     if (const int k = front::scriptedBiosKey()) return k;
+    engine::controller().pump(engine::input().mode());  // pad buttons into the BIOS queue
     Input& in = sys().input();
     if (!in.keyAvailable()) return 0;
     const u16 k = in.readKey();
@@ -272,6 +274,10 @@ void uiDialogPrompt(const std::string& prompt, std::string& buf, int x, int y, i
                     bool needText) {
     Gfx& gx = gfx();
     auto& clock = engine::ticker();
+    // Game controller: A / B answer the prompt (y / n or Enter / Esc), other
+    // buttons are muted so they cannot type into the edit box.
+    engine::Controller::DialogScope padDialog(yesNo ? engine::Controller::Dialog::YesNo
+                                                    : engine::Controller::Dialog::Enter);
     gx.setClip(0, 0, 320, 200);
     fontSelect(FontId::Dialog);
     const int promptW = textWidth(prompt);

@@ -2,6 +2,7 @@
 
 #include <SDL3/SDL.h>
 
+#include <algorithm>
 #include <cstdio>
 
 namespace st {
@@ -16,14 +17,19 @@ bool System::init(const VideoConfig& vcfg) {
         logError("SDL_Init: %s", SDL_GetError());
         return false;
     }
+    // Game controllers are optional: without the subsystem the keyboard and
+    // mouse still work.
+    if (!SDL_InitSubSystem(SDL_INIT_GAMEPAD)) logWarn("SDL gamepad: %s", SDL_GetError());
     logicalH_ = vcfg.aspectCorrect ? 240 : kScreenH;
     timer_.init();
     if (!video_.init(vcfg)) return false;
+    gamepad_.init();
     if (!scripted_) video_.captureMouse(true);
     return true;
 }
 
 void System::shutdown() {
+    gamepad_.shutdown();
     video_.shutdown();
     SDL_Quit();
 }
@@ -38,6 +44,10 @@ void System::pump() {
             if (ev.type == SDL_EVENT_WINDOW_FOCUS_LOST) video_.captureMouse(false);
             if (ev.type == SDL_EVENT_WINDOW_FOCUS_GAINED && !scripted_) video_.captureMouse(true);
             video_.markDirty();
+            continue;
+        }
+        if (ev.type >= SDL_EVENT_GAMEPAD_AXIS_MOTION && ev.type <= SDL_EVENT_GAMEPAD_STEAM_HANDLE_UPDATED) {
+            gamepad_.handleEvent(ev);
             continue;
         }
         if (ev.type == SDL_EVENT_MOUSE_BUTTON_DOWN && !video_.mouseCaptured() && !scripted_) {
@@ -64,10 +74,15 @@ void System::pump() {
         const float xrel = motion ? ev.motion.xrel : 0.0f, yrel = motion ? ev.motion.yrel : 0.0f;
         SDL_ConvertEventToRenderCoordinates(video_.renderer(), &ev);
         if (motion) {
+            // Output pixels -> 320x200 page coordinates through the page area
+            // (the 4:3 rectangle; a wide 3D view outside it maps to the edge).
+            const PixelRect a = video_.pageArea();
+            ev.motion.x = (ev.motion.x - float(a.x)) * float(kScreenW) / float(std::max(a.w, 1));
+            ev.motion.y = (ev.motion.y - float(a.y)) * float(kScreenH) / float(std::max(a.h, 1));
             ev.motion.xrel = xrel;
             ev.motion.yrel = yrel;
         }
-        input_.handleEvent(ev, kScreenW, logicalH_);
+        input_.handleEvent(ev, kScreenW, kScreenH);
     }
     runTicks();
     if (!video_.explicitPresent()) video_.present();
