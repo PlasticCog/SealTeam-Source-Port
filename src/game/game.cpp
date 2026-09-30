@@ -4,6 +4,7 @@
 #include "data/exeimage.h"
 #include "engine/input_layer.h"
 #include "engine/palette_fade.h"
+#include "engine/rng.h"
 #include "engine/sound.h"
 #include "engine/ticker.h"
 #include "game/config.h"
@@ -90,6 +91,7 @@ void parseCommandLine(const std::vector<std::string>& args) {
 // sys_load_resources (1959:0265), the parts ported so far.
 void initSystems() {
     openLibraries();
+    engine::rng().init();
     engine::ticker().install();
     gfx().init();
     gfx().clear(0);
