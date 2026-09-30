@@ -48,7 +48,7 @@ first configure then takes a few minutes).
 ```sh
 pacman -S mingw-w64-ucrt-x86_64-{gcc,cmake,ninja}
 pacman -S mingw-w64-ucrt-x86_64-sdl3          # optional, skips building SDL3
-cmake -S . -B build -G Ninja
+cmake -S . -B build -G Ninja                   # or -G "MinGW Makefiles" with mingw32-make
 cmake --build build
 ```
 
