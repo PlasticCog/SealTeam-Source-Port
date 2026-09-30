@@ -13,7 +13,15 @@ screens and data, running natively on current systems.
 
 ## Status
 
-Early work in progress.
+The whole game is ported and playable: campaign, practice and demo modes from
+the title screen through briefing, missions, debriefing and awards, in the
+Original (1:1) and Enhanced presets. Every module was written from a full
+reverse engineering of the original executable and checked against it; the
+renderer and the map screen were compared pixel by pixel with the original
+running in DOSBox. Still rough: the joystick is not emulated, some HUD details
+were checked visually only, and the port has had little playtesting yet, so
+expect bugs (see `docs/loop.md`, `docs/mission.md` and `docs/front.md` for the
+known deviations).
 
 - [x] EALIB archive reader and LZSS decompression (byte-exact against all 555 compressed entries)
 - [x] PXPK pictures and VGA palettes
