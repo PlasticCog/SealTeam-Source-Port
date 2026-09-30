@@ -18,6 +18,8 @@ struct DevCommand {
     DevCommand(const char* name, const char* help, std::function<int(const DevArgs&)> fn);
 };
 
+// Whether `args` selects a registered command.
+bool hasDevCommand(const std::vector<std::string>& args);
 // Returns true and sets `rc` if `args` selects a registered command.
 bool runDevCommand(const std::vector<std::string>& args, int& rc);
 void printDevCommands();

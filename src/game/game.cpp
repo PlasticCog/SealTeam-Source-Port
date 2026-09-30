@@ -8,8 +8,10 @@
 #include "engine/sound.h"
 #include "engine/ticker.h"
 #include "game/config.h"
+#include "core/settings.h"
 #include "game/devtools.h"
 #include "game/globals.h"
+#include "game/launcher.h"
 #include "game/menu.h"
 #include "game/screens.h"
 #include "game/title.h"
@@ -102,7 +104,6 @@ void initSystems() {
     cursorLoadAll();
     engine::paletteFade().setLevel(0);
     engine::input().init();
-    engine::sound().init();
     cfgLoadSCnf(slotConfig());
 }
 
@@ -189,14 +190,41 @@ const DevCommand kSelfTestGfx("--selftest-gfx", "draw fonts, primitives and spri
 });
 
 int run(const std::vector<std::string>& args) {
-    // Port-only "--" options (developer commands and their arguments) are
-    // not seen by the original single-letter parser.
+    // Port-only "--" options are not seen by the original single-letter
+    // parser, and neither are the arguments following a developer command.
+    const bool devCommand = hasDevCommand(args);
     std::vector<std::string> original{args.empty() ? std::string("st") : args[0]};
-    for (size_t i = 1; i < args.size() && args[i].rfind("--", 0) != 0; ++i) original.push_back(args[i]);
+    bool presetGiven = false, forceLauncher = false;
+    for (size_t i = 1; i < args.size(); ++i) {
+        const std::string& a = args[i];
+        if (a == "--original") { settings().preset = Preset::Original; presetGiven = true; }
+        else if (a == "--enhanced") { settings().preset = Preset::Enhanced; presetGiven = true; }
+        else if (a == "--launcher") forceLauncher = true;
+        if (a.rfind("--", 0) == 0) {
+            if (devCommand) break;
+            continue;
+        }
+        original.push_back(a);
+    }
     parseCommandLine(original);
     initSystems();
+
     int rc = 0;
-    if (!runDevCommand(args, rc)) rc = mainGameLoop();
+    if (devCommand) {
+        engine::sound().init();
+        runDevCommand(args, rc);
+    } else {
+        const Settings& st = settings();
+        const bool showLauncher = forceLauncher || (!presetGiven && !st.skipLauncher && !st.scriptedRun);
+        if (showLauncher && !runLauncher()) {
+            engine::sound().shutdown();
+            return 0;
+        }
+        logInfo("preset: %s", settings().original() ? "Original" : "Enhanced");
+        // Sound starts after the start menu so its device choice applies.
+        engine::sound().init();
+        rc = mainGameLoop();
+    }
     engine::sound().shutdown();
     return rc;
 }

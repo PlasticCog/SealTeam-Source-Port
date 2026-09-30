@@ -35,6 +35,9 @@ struct Settings {
     // Launcher.
     bool skipLauncher = false;    // start the game directly with the saved preset
 
+    // Runtime only (not saved): automated run (--shot), no launcher or dialogs.
+    bool scriptedRun = false;
+
     bool original() const { return preset == Preset::Original; }
     int effectiveRenderScale() const { return original() ? 1 : renderScale; }
     int effectiveDrawDistancePct() const { return original() ? 100 : drawDistancePct; }

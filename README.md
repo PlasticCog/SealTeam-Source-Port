@@ -71,10 +71,29 @@ The `Game` folder is looked up next to the executable, one or two directories
 above it (so `build/sealteam.exe` finds `Game/` in the repository root), and in
 the current directory.
 
+### Original and Enhanced
+
+When the port starts it shows a start menu:
+
+* **Original Game** plays 1:1 like the DOS version: 320x200, the original
+  view distance, timings and rules, including the original's quirks.
+* **Enhanced Game** keeps the same game but renders the 3D view at a higher
+  resolution (up to 1920x1200) with a longer draw distance; the 2D screens,
+  HUD and fonts stay pixel-art on top.
+* **Setup** changes window size, fullscreen, 4:3 aspect, smooth scaling, the
+  Enhanced options and sound (AdLib or Sound Blaster Pro 2 music, digital or
+  FM effects, volumes).
+
+Settings are saved in `sealteam.cfg` next to the program. `--original` or
+`--enhanced` skip the menu; the menu can be switched off in Setup and
+brought back with `--launcher`.
+
 | Option | Effect |
 |--------|--------|
+| `--original` / `--enhanced` | start directly with that preset |
+| `--launcher` | show the start menu even if it was switched off |
 | `--data DIR` | use another directory instead of `Game` |
-| `--scale N` | window scale (default 3) |
+| `--scale N` | window scale (default from Setup) |
 | `--fullscreen` | start fullscreen (Alt+Enter toggles) |
 | `--no-aspect` | square pixels instead of 4:3 |
 | `--shot FILE --shot-after S` | save a screenshot after S seconds and quit (testing) |

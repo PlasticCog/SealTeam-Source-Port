@@ -8,6 +8,7 @@
 // sound off, t title screen off, NN start mission NN.
 
 #include "core/common.h"
+#include "core/settings.h"
 #include "data/ealib.h"
 #include "data/exeimage.h"
 #include "data/gamefs.h"
@@ -37,11 +38,16 @@ void startupError(const char* msg) {
 void usage() {
     std::printf(
         "SEAL Team source port\n"
-        "usage: sealteam [--data DIR] [--scale N] [--fullscreen] [--no-aspect] [options]\n"
+        "usage: sealteam [--original | --enhanced | --launcher] [--data DIR] [--scale N]\n"
+        "                [--fullscreen] [--no-aspect] [options]\n"
+        "  --original    play 1:1 like the DOS game (skips the start menu)\n"
+        "  --enhanced    play with the enhancements chosen in Setup (skips the start menu)\n"
+        "  --launcher    show the start menu even if it was switched off\n"
         "  --data DIR    use DIR instead of the Game folder for the original files\n"
-        "  --scale N     window scale factor (default 3)\n"
+        "  --scale N     window scale factor (default from Setup, 3)\n"
         "  --fullscreen  start in fullscreen (Alt+Enter toggles)\n"
         "  --no-aspect   show square pixels instead of 4:3\n"
+        "Settings are stored in sealteam.cfg next to the program.\n"
         "Original game options are passed through: ? h (help) d (no digital sound)\n"
         "t (no title screen) and a mission number.\n");
 }
@@ -49,8 +55,17 @@ void usage() {
 } // namespace
 
 int main(int argc, char** argv) {
+    std::string exeDir;
+    if (const char* base = SDL_GetBasePath()) exeDir = base;  // owned by SDL
+    setSettingsDir(exeDir);
+    loadSettings();
+    Settings& st = settings();
+
     std::string dataDir;
     VideoConfig vcfg;
+    vcfg.scale = st.windowScale;
+    vcfg.fullscreen = st.fullscreen;
+    vcfg.aspectCorrect = st.aspectCorrect;
     std::vector<std::string> gameArgs{"st"};
     std::string shotPath;
     double shotAfter = 2.0;
@@ -68,8 +83,7 @@ int main(int argc, char** argv) {
     }
 
     g_interactive = shotPath.empty();
-    std::string exeDir;
-    if (const char* base = SDL_GetBasePath()) exeDir = base;  // owned by SDL
+    st.scriptedRun = !g_interactive;
     if (!gameFS().init(dataDir, exeDir)) {
         startupError(dataDir.empty()
             ? "Could not find the original SEAL Team files.\n\n"

@@ -23,6 +23,12 @@ DevCommand::DevCommand(const char* name, const char* help, std::function<int(con
     registry()[name] = Entry{help, std::move(fn)};
 }
 
+bool hasDevCommand(const std::vector<std::string>& args) {
+    for (size_t i = 1; i < args.size(); ++i)
+        if (registry().count(args[i])) return true;
+    return false;
+}
+
 bool runDevCommand(const std::vector<std::string>& args, int& rc) {
     for (size_t i = 1; i < args.size(); ++i) {
         const auto it = registry().find(args[i]);
