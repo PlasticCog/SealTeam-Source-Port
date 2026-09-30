@@ -12,6 +12,9 @@ constexpr int Enter = 0x0d, Esc = 0x1b, Space = 0x20;
 constexpr int Up = 0x4800, Down = 0x5000, Left = 0x4b00, Right = 0x4d00;
 constexpr int AltS = 0x1f00, AltD = 0x2000, AltM = 0x3200, AltX = 0x2d00;
 constexpr int F10 = 0x4400;
+// Port: Ctrl+H as its BIOS word (scan 0x23, ASCII 8), kept apart from
+// Backspace (ASCII 8 too) by InputLayer::pollBiosKey.
+constexpr int Help = 0x2308;
 } // namespace key
 
 enum class InputMode { Action = 0, Menu = 1, Map = 2 };  // g_input_mode DS:D820
@@ -32,7 +35,7 @@ public:
     bool joystickPresent() const { return joyPresent_; }
     void setMousePresent(bool on) { mousePresent_ = on; }  // tests: pad only
 
-    // Port: Shift+H on any screen shows the key reference. The game installs
+    // Port: Ctrl+H on any screen shows the key reference. The game installs
     // the screen; getKey() runs it in place of the key and returns 0.
     void setHelpHook(void (*hook)()) { helpHook_ = hook; }
     void showHelp() { if (helpHook_) helpHook_(); }

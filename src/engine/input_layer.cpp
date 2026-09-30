@@ -65,6 +65,7 @@ int InputLayer::pollBiosKey() {
     Input& in = sys().input();
     if (!in.keyAvailable()) return 0;
     const u16 k = in.readKey();
+    if (k == key::Help) return k;  // Ctrl+H (port): the whole word, not Backspace's ASCII 8
     return (k & 0xff) ? (k & 0xff) : k;
 }
 
@@ -106,10 +107,8 @@ int InputLayer::getKey() {
         int k = pollBiosKey();
         flushKeyboard();
         keyPollNow_ = (k == 0);
-        // Port: Shift+H (the shift key itself, so Caps Lock does not count).
-        if ((k == 'H' || k == 'h') && helpHook_ &&
-            (sys().input().keyDown(sc::LShift) || sys().input().keyDown(sc::RShift))) {
-            helpHook_();
+        if (k == key::Help) {  // Port: Ctrl+H, the key reference
+            if (helpHook_) helpHook_();
             return 0;
         }
         if (k >= 'A' && k <= 'Z') k |= 0x60;

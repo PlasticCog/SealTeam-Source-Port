@@ -532,8 +532,24 @@ void pushScriptedPadEvent(int code) {
     SDL_PushEvent(&ev);
 }
 
+// "CtrlH": a synthetic SDL keyboard press and release of Ctrl+H, so the
+// port's key reference is reached the way a real keyboard reaches it
+// (System::pump, Input::handleEvent, the BIOS queue, InputLayer::getKey).
+void pushScriptedKeyEvent(SDL_Scancode scancode, SDL_Keycode keycode, SDL_Keymod mod) {
+    for (const bool down : {true, false}) {
+        SDL_Event ev{};
+        ev.type = down ? SDL_EVENT_KEY_DOWN : SDL_EVENT_KEY_UP;
+        ev.key.scancode = scancode;
+        ev.key.key = keycode;
+        ev.key.mod = mod;
+        ev.key.down = down;
+        SDL_PushEvent(&ev);
+    }
+}
+
 int parseKey(const std::string& name) {
     struct Named { const char* name; int code; };
+    if (name == "CtrlH") return 0x40000;
     static const Named kNamed[] = {
         {"Enter", 0x0d}, {"Esc", 0x1b}, {"Space", 0x20}, {"Backspace", 0x08}, {"Up", 0x4800},
         {"Down", 0x5000}, {"Left", 0x4b00}, {"Right", 0x4d00}, {"F10", 0x4400}, {"AltX", 0x2d00},
@@ -579,6 +595,10 @@ int dueKey() {
     const double t = std::chrono::duration<double>(std::chrono::steady_clock::now() - base).count();
     if (k.at > t) return 0;
     const int code = g_script[g_scriptPos++].code;
+    if (code & 0x40000) {  // scripted keyboard event (SDL_PushEvent), not a key
+        pushScriptedKeyEvent(SDL_SCANCODE_H, SDLK_H, SDL_KMOD_LCTRL);
+        return 0;
+    }
     if (code & 0x20000) {  // scripted game controller event (SDL_PushEvent), not a key
         pushScriptedPadEvent(code);
         return 0;
@@ -635,7 +655,7 @@ void rebaseKeyScript(const std::string& anchor) { g_anchors[anchor] = std::chron
 int getKey() {
     int k = dueKey();
     if (k == 0) return engine::input().getKey();
-    if (k == 'H') {  // a scripted "H" is Shift+H: the key reference
+    if (k == 'H') {  // a scripted "H" opens the key reference directly (Ctrl+H)
         engine::input().showHelp();
         return 0;
     }

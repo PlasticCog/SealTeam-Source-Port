@@ -221,7 +221,7 @@ int run() {
     engine::input().resetRepeatTimers();
     engine::input().flushKeyboard();
     engine::paletteFade().setLevel(0x100);  // pal_set_level(0x100): the frame loop fades in
-    // The key reference (Shift+H) is handled like the pause dialog (Alt-P).
+    // The key reference (Ctrl+H) is handled like the pause dialog (Alt-P).
     uiSetOverlayHooks({clkSave, [] {
                            clkRestore();
                            ls().skipPresent = true;

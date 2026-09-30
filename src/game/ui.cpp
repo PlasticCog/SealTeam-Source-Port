@@ -453,7 +453,7 @@ const KeyRow kOrderKeys[] = {
 const char* const kGeneralKeys[] = {
     "Alt+P pause   Alt+T time compression   Alt+I team names   Alt+X quit game",
     "Alt+S sound   Alt+M music   Alt+D detail   Alt+Enter fullscreen",
-    "Ctrl+Q quit to desktop   F12 screenshot   Shift+H this screen",
+    "Ctrl+Q quit to desktop   F12 screenshot   Ctrl+H this screen",
 };
 
 template <size_t N>
