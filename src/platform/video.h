@@ -12,6 +12,8 @@
 #include "core/common.h"
 
 #include <array>
+#include <string>
+#include <vector>
 
 struct SDL_Window;
 struct SDL_Renderer;
@@ -23,6 +25,17 @@ constexpr int kScreenW = 320;
 constexpr int kScreenH = 200;
 constexpr int kPageSize = kScreenW * kScreenH;     // 64000 pixels
 constexpr int kVramSize = 256 * 1024;              // 4 planes x 64 KB
+
+// High-resolution layer of a VGA page (Enhanced preset): the 3D view is
+// rendered at `scale` x the page resolution into `pixels`; `coverage` marks
+// the 320x200 page pixels that show the layer instead of the page (the 3D
+// renderer sets it for its viewport, every 2D write through gfx clears it).
+struct HiResLayer {
+    int scale = 0;             // 0 = inactive
+    int w = 0, h = 0;          // 320*scale, 200*scale
+    std::vector<u8> pixels;    // w*h palette indices
+    std::vector<u8> coverage;  // 320*200, 1 = use the layer
+};
 
 struct VideoConfig {
     int scale = 3;               // window scale factor
@@ -59,10 +72,27 @@ public:
 
     void toggleFullscreen();
 
+    // --- high-resolution layers (Enhanced preset), one per page (0 = linear
+    // 0x00000, 1 = linear 0x10000). No layer = zero overhead, the output is
+    // exactly the 320x200 page.
+    HiResLayer* hiResLayer(int page);                    // nullptr if inactive
+    HiResLayer& activateHiResLayer(int page, int scale); // (re)allocate, coverage cleared
+    void copyHiResLayer(int src, int dst);               // with gfx page copies
+    void dropHiResLayers();
+
+    // Save what the window shows (the composed high-resolution frame when a
+    // layer is displayed) as an 8-bit BMP.
+    bool saveScreenshot(const std::string& path);
+
     SDL_Renderer* renderer() const { return renderer_; }
 
 private:
+    int composeScale() const;  // scale of the displayed page's layer, 1 if none
+    void compose(u8* out, int scale) const;  // indexed pixels of the shown frame
+
     std::array<u8, kVramSize> vram_{};
+    HiResLayer layers_[2];
+    int textureScale_ = 1;
     std::array<u8, 768> dac_{};
     u32 displayStart_ = 0;
     u32 displayOffset_ = 0;

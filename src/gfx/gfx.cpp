@@ -4,6 +4,7 @@
 #include "engine/ticker.h"
 #include "gfx/font.h"
 #include "platform/system.h"
+#include "platform/video.h"
 
 #include <algorithm>
 #include <cstdlib>
@@ -59,7 +60,28 @@ void Gfx::initPages() {
     setDisplayPage(0);
 }
 
-void Gfx::setDrawPage(int page) { drawPage_ = page & 1; }
+void Gfx::setDrawPage(int page) {
+    drawPage_ = page & 1;
+    refreshCoverage();
+}
+
+u8* Gfx::coverageOf(const Bitmap& b) const {
+    for (int p = 0; p < 2; ++p)
+        if (&b == &pages_[p] || b.data == pages_[p].data) {
+            HiResLayer* l = sys().video().hiResLayer(p);
+            return l ? l->coverage.data() : nullptr;
+        }
+    return nullptr;
+}
+
+void Gfx::refreshCoverage() { cov_ = coverageOf(pages_[drawPage_]); }
+
+void Gfx::touchSlow(int x0, int x1, int y) {
+    if (y < 0 || y >= 200) return;
+    x0 = std::max(x0, 0);
+    x1 = std::min(x1, 319);
+    if (x1 >= x0) std::memset(cov_ + y * 320 + x0, 0, size_t(x1 - x0 + 1));
+}
 
 void Gfx::setDisplayPage(int page) {
     displayPage_ = page & 1;
@@ -81,6 +103,8 @@ void Gfx::flip(bool flipPages, bool wait) {
 void Gfx::copyPage(int src, int dst) {
     clipFull();
     std::memcpy(pages_[dst & 1].data, pages_[src & 1].data, size_t(kPageSize));
+    sys().video().copyHiResLayer(src & 1, dst & 1);
+    refreshCoverage();
     sys().video().markDirty();
 }
 
@@ -122,7 +146,10 @@ bool Gfx::patternAllows(int x, int y, bool pixelQuirk) const {
 }
 
 void Gfx::plot(int x, int y) {
-    if (patternAllows(x, y, false)) screen().row(y)[x] = color_;
+    if (patternAllows(x, y, false)) {
+        surf().row(y)[x] = color_;
+        touch(x, x, y);
+    }
 }
 
 // ---------------------------------------------------------------- filled primitives
@@ -133,7 +160,8 @@ void Gfx::rawSpan(int x0, int x1, int y) {
     if (x0 > x1_ || x1 < x0_) return;
     x1 = std::min(x1, x1_);
     if (x1 < x0) return;
-    u8* row = screen().row(y);
+    touch(x0, x1, y);
+    u8* row = surf().row(y);
     if (pattern_ == 0xff) {
         std::memset(row + x0, color_, size_t(x1 - x0 + 1));
     } else {
@@ -170,11 +198,14 @@ void Gfx::fillRows(int y, int n, u8 c) {
     // width rounded down to 8 pixels.
     const int xs = x0_ & ~3;
     const int len = 8 * (cw_ >> 3);
-    const int ya = std::max(y, y0_), yb = std::min(y + n - 1, y1_);
+    const int ya = std::max(y, std::max(y0_, 0)), yb = std::min(y + n - 1, std::min(y1_, surfH() - 1));
     for (int yy = ya; yy <= yb; ++yy) {
-        u8* row = screen().row(yy);
-        const int a = std::max(xs, 0), b = std::min(xs + len, 320);
-        if (b > a) std::memset(row + a, c, size_t(b - a));
+        u8* row = surf().row(yy);
+        const int a = std::max(xs, 0), b = std::min(xs + len, surfW());
+        if (b > a) {
+            std::memset(row + a, c, size_t(b - a));
+            touch(a, b - 1, yy);
+        }
     }
 }
 
@@ -188,10 +219,12 @@ void Gfx::fillSplitRows(const s16* xs, int y0, int y1, u8 left, u8 right) {
         } else if (x >= x1_) {
             fillRows(y, 1, left);
         } else {
-            if (y < y0_ || y > y1_) continue;
-            u8* row = screen().row(y);
-            for (int px = std::max(colStart, 0); px <= x; ++px) row[px] = left;
-            for (int px = x + 1; px <= std::min(colEnd, 319); ++px) row[px] = right;
+            if (y < y0_ || y > y1_ || y < 0 || y >= surfH()) continue;
+            u8* row = surf().row(y);
+            const int wmax = surfW() - 1;
+            for (int px = std::max(colStart, 0); px <= std::min(x, wmax); ++px) row[px] = left;
+            for (int px = std::max(x + 1, 0); px <= std::min(colEnd, wmax); ++px) row[px] = right;
+            touch(colStart, colEnd, y);
         }
     }
 }
@@ -241,162 +274,364 @@ void Gfx::fillCircle(int x, int y, int r, u16 c) {
 
 namespace {
 
-// One polygon chain edge stepper (edge set-up of 10FC, see seg_2255.md 3.4).
-struct Edge {
-    int x = 0, q = 0, r = 0, dy = 0, err = 0;
-    bool neg = false;
+// ---- polygon filler 2255:10FC (seg_2255.md 3.4) ------------------------------
+// The original works on 16-bit words throughout; w16() reproduces the wrap.
+inline s16 w16(int v) { return s16(u16(unsigned(v))); }
+inline s16 abs16(s16 v) { return v < 0 ? w16(-int(v)) : v; }
 
-    void setup(int xa, int ya, int xb, int yb, bool isLeft) {
-        const int dx = xb - xa;
-        dy = yb - ya;
-        const int dyp = (std::abs(dy) <= std::abs(dx)) ? dy + 1 : dy;
-        q = dx / dyp;
-        r = dx % dyp;
-        x = xa;
-        neg = dx < 0;
-        if (!neg) err = 2 * r - dy;
-        else err = 2 * std::abs(r) - dy - 1;
-        if ((isLeft && q <= -1) || (!isLeft && q >= 1)) step();
-    }
-    void step() {
-        const int rr = std::abs(r);
-        if (err >= 0) {
-            x += neg ? q - 1 : q + 1;
-            err += 2 * rr - 2 * dy;
+// One chain of the filler. The original keeps a "left" and a "right" set of
+// variables (DS:5098/509C/50A0/50A4/50A6/50B2 and 509A/509E/50A8/50AC/50AE/
+// 50B0) plus step values patched into its stepping code, and exchanges the
+// complete sets when the chains cross (1844).
+struct PolyChain {
+    int cur = 0, end = 0;     // vertices the current edge runs from / to
+    s16 x = 0;                // x on the current row
+    s16 endX = 0, endY = 0;   // end vertex; endY is the row test of 152F/1535
+    s16 err = 0;
+    s16 q = 0, qAlt = 0;      // x step when err < 0 / err >= 0
+    s16 inc = 0, incAlt = 0;  // err step when err < 0 / err >= 0
+
+    void step() {  // 14E4
+        if (err < 0) {
+            err = w16(err + inc);
+            x = w16(x + q);
         } else {
-            x += q;
-            err += 2 * rr;
+            err = w16(err + incAlt);
+            x = w16(x + qAlt);
         }
     }
 };
 
+enum class EdgeSetup { Ok, Flat, Exhausted };
+
+// Edge set-up 1615 (left slot) / 1732 (right slot): from (e.x, y) to the end
+// vertex. 32-bit differences, both halved until |dy| < 0x3FFF, IDIV by dy
+// (dy + sign(dy) when |dy| <= |dx|), Bresenham-style error terms.
+EdgeSetup polySetupEdge(PolyChain& e, int endIdx, s16 endX, s16 endY, s16 y, bool rightSlot,
+                        int& edgesLeft) {
+    if (--edgesLeft < 0) return EdgeSetup::Exhausted;
+    e.end = endIdx;
+    e.endX = endX;
+    e.endY = endY;
+    const s32 dy32 = s32(endY) - s32(y);
+    if (dy32 == 0) return EdgeSetup::Flat;
+    const s32 dx32 = s32(endX) - s32(e.x);
+    u16 dyLo = u16(u32(dy32)), dxLo = u16(u32(dx32));
+    s16 dyHi = s16(dy32 >> 16);
+    const s16 dxHi = s16(dx32 >> 16);
+    // Quirk (1667): until a halving happens the sign used below is the sign
+    // of the LOW word of dx, so |dx| >= 0x8000 takes the wrong branch.
+    bool negative = s16(dxLo) < 0;
+    for (;;) {
+        const s16 ext = s16(dyLo) < 0 ? -1 : 0;
+        bool fits;
+        if (ext != dyHi) fits = false;
+        else if (dyHi < 0) fits = s16(dyLo) > -16383;
+        else fits = s16(dyLo) < 0x3FFF;
+        if (fits) break;
+        dyLo = u16((dyLo >> 1) | ((u16(dyHi) & 1u) << 15));
+        dyHi = s16(dyHi >> 1);
+        // The high word of dx is reloaded unhalved every time (harmless: it
+        // is 0 or -1 for 16-bit coordinates).
+        dxLo = u16((dxLo >> 1) | ((u16(dxHi) & 1u) << 15));
+        negative = s16(dxHi >> 1) < 0;
+    }
+    const s16 dy = s16(dyLo), dxl = s16(dxLo);
+    s16 div = dy;
+    if (!(abs16(dy) > abs16(dxl))) div = w16(div + (div < 0 ? -1 : 1));
+    const s32 dividend = s32(u32(u16(dxHi)) << 16 | dxLo);
+    const s16 q = w16(dividend / div), r = w16(dividend % div);
+    e.q = q;
+    if (!negative) {
+        const s16 twoR = w16(r * 2);
+        e.inc = twoR;
+        e.err = w16(twoR - dy);
+        e.incAlt = w16(twoR - 2 * dy);
+        e.qAlt = w16(q + 1);
+        // Right edges moving right by >= 1 pixel per row take one step at
+        // once. Quirk (1803): the choice tests 2r - 2dy, not the error term.
+        if (rightSlot && q >= 1) {
+            if (e.incAlt >= 0) {
+                e.x = w16(e.x + e.qAlt);
+                e.err = w16(e.err + e.incAlt);
+            } else {
+                e.x = w16(e.x + q);
+                e.err = w16(e.err + twoR);
+            }
+        }
+    } else {
+        const s16 twoR = w16(-r * 2);
+        e.inc = twoR;
+        e.err = w16(twoR - dy - 1);
+        e.incAlt = w16(twoR - 2 * dy);
+        e.qAlt = w16(q - 1);
+        // Left edges moving left by >= 1 pixel per row take one step at once.
+        if (!rightSlot && q <= -1) e.step();
+    }
+    return EdgeSetup::Ok;
+}
+
+// gfx_poly_clip_top (140E): move the start (xs, ys) of an edge that crosses
+// the top clip row down to it by integer bisection (not by stepping the
+// edge), so the edge restarts from the cut point with a fresh set-up.
+void polyClipTop(s16& xs, s16& ys, s16 xe, s16 ye, s16 y0) {
+    const s16 hx = w16((xe >> 1) - (xs >> 1));
+    const bool negative = hx < 0;
+    s16 mx = w16(xs + hx);
+    s16 my = w16(ys + w16((ye >> 1) - (ys >> 1)));
+    for (int guard = 0; guard < 64; ++guard) {
+        if (my == y0) {
+            xs = mx;
+            ys = y0;
+            return;
+        }
+        if (my > y0) {
+            xe = mx;
+            ye = my;
+        } else {
+            xs = mx;
+            ys = my;
+        }
+        // A halving that gives 0 keeps the dropped bit (rcl at 1441 / 1484).
+        if (!negative) {
+            const s16 d = w16(xe - xs);
+            s16 h = s16(d >> 1);
+            if (h == 0) h = s16(d & 1);
+            mx = w16(xs + h);
+        } else {
+            const s16 d = w16(-(int(xe) - int(xs)));
+            s16 h = s16(d >> 1);
+            if (h == 0) h = s16(d & 1);
+            mx = w16(xs - h);
+        }
+        const s16 hy = s16(w16(ye - ys) >> 1);
+        if (hy == 0) return;  // 144F: keeps (xs, ys)
+        my = w16(ys + hy);
+    }
+}
+
 } // namespace
 
+// gfx_fill_polygon (2255:10FC). Faithful port including the chain start rules
+// for flat tops, the bisection top clip, the per-edge set-up quirks, span
+// joining with the previous row and the end-of-chain handling (the last row
+// is drawn without joining).
 void Gfx::fillPolygon(const s16* pts, int n, u16 c) {
     if (n <= 0) return;
     beginColor(c);
-    auto px = [&](int i) { return int(pts[2 * i]); };
-    auto py = [&](int i) { return int(pts[2 * i + 1]); };
-    auto wrap = [&](int i) { return (i % n + n) % n; };
+    auto X = [&](int i) { return pts[2 * i]; };
+    auto Y = [&](int i) { return pts[2 * i + 1]; };
+    const int last = n - 1;
+    auto fwd = [&](int i) { return i + 1 > last ? 0 : i + 1; };
+    auto back = [&](int i) { return i - 1 < 0 ? last : i - 1; };
+    // Vertex after `to` on a chain that came from `from` (130D, 1545, 15AA).
+    auto following = [&](int to, int from) {
+        const int b = fwd(to);
+        return b == from ? back(to) : b;
+    };
+    const s16 cy0 = s16(y0_), cy1 = s16(y1_);
 
-    int ymin = py(0), ymax = py(0), top = 0;
-    for (int i = 0; i < n; ++i) {
-        if (py(i) <= ymin) {
-            if (py(i) < ymin) ymin = py(i);
-            top = i;  // last index with y == ymin
+    // Topmost vertex (the last of equals), the previous topmost if the top
+    // is flat, and the bottom row (112E).
+    int top = 0, top2 = -1;
+    s16 ymin = Y(0), ymax = Y(0);
+    for (int i = 1; i < n; ++i) {
+        if (Y(i) <= ymin) {
+            top2 = Y(i) == ymin ? top : -1;
+            ymin = Y(i);
+            top = i;
         }
-        ymax = std::max(ymax, py(i));
+        if (Y(i) >= ymax) ymax = Y(i);
     }
-    if (ymax <= y0_) return;
+    if (ymax <= cy0) return;
 
-    // Start vertices of the two chains.
-    int lStart = top, rStart = top;
-    int flatCount = 0;
-    for (int i = 0; i < n; ++i) {
-        if (py(i) != ymin) continue;
-        ++flatCount;
-        if (px(i) < px(lStart)) lStart = i;
-        if (px(i) > px(rStart)) rStart = i;
-    }
-    if (flatCount == n) {
-        if (ymin <= y1_) {
-            int mn = px(0), mx = px(0);
-            for (int i = 1; i < n; ++i) {
-                mn = std::min(mn, px(i));
-                mx = std::max(mx, px(i));
+    PolyChain L, R;
+    s16 bp;
+    if (top2 != -1) {
+        // Flat top (117B): left start = leftmost top vertex (last of equals),
+        // right start = rightmost (first of equals).
+        s16 lx = X(top), rx = s16(-32768);
+        int lIdx = top, rIdx = top2, count = 0;
+        for (int i = 0; i < n; ++i) {
+            if (Y(i) != ymin) continue;
+            ++count;
+            if (lx >= X(i)) {
+                lx = X(i);
+                lIdx = i;
             }
-            rawSpan(mn, mx, ymin);
+            if (rx < X(i)) {
+                rx = X(i);
+                rIdx = i;
+            }
         }
-        return;
-    }
-
-    // Direction each chain walks. With a single top vertex the left chain goes
-    // to the neighbour with the smaller x (equal: index-1 is left).
-    int lDir, rDir;
-    if (flatCount > 1) {
-        // Walk away from the flat run: the left start's neighbour that is not on
-        // the top row is on its chain.
-        lDir = (py(wrap(lStart - 1)) != ymin) ? -1 : 1;
-        rDir = (py(wrap(rStart + 1)) != ymin) ? 1 : -1;
-        if (lDir == rDir) rDir = -lDir;
+        L.x = X(lIdx);
+        R.x = X(rIdx);
+        bp = Y(lIdx);
+        if (count == n) {  // the whole polygon is one row
+            if (bp <= cy1) rawSpan(std::min(L.x, R.x), std::max(L.x, R.x), bp);
+            return;
+        }
+        // The left chain leaves its start backwards if that neighbour is off
+        // the top row, else forwards, skipping identical points; if both
+        // neighbours are on the row the start moves on (11FE). The right
+        // chain tries forwards first (124D).
+        auto findChain = [&](int& startIdx, bool backFirst, PolyChain& ch) {
+            for (int guard = 0; guard <= n; ++guard) {
+                const s16 cx = X(startIdx);
+                int result = -1, s = startIdx;
+                for (int pass = 0; pass < 2 && result < 0; ++pass) {
+                    const bool backwards = (pass == 0) == backFirst;
+                    int d = startIdx;
+                    for (int k = 0; k <= n; ++k) {
+                        s = d;
+                        d = backwards ? back(d) : fwd(d);
+                        if (Y(d) != bp) {
+                            result = d;
+                            break;
+                        }
+                        if (cx != X(d)) break;
+                    }
+                }
+                if (result >= 0) {
+                    ch.cur = s;
+                    ch.end = result;
+                    return true;
+                }
+                startIdx = fwd(startIdx);
+            }
+            return false;
+        };
+        if (!findChain(lIdx, true, L) || !findChain(rIdx, false, R)) return;
     } else {
-        const int prev = wrap(top - 1), next = wrap(top + 1);
-        lDir = (px(prev) <= px(next)) ? -1 : 1;
-        rDir = -lDir;
-    }
-
-    struct Chain {
-        int cur, dir, nextY;
-        Edge e;
-        bool done = false;
-    };
-    auto advanceChain = [&](Chain& ch, bool isLeft) {
-        // Move to the next edge that spans at least one row.
-        for (int guard = 0; guard < n; ++guard) {
-            const int nxt = wrap(ch.cur + ch.dir);
-            if (py(nxt) < py(ch.cur)) {  // chain turned upwards: no vertex below
-                ch.done = true;
-                return;
-            }
-            if (py(nxt) == py(ch.cur)) {  // horizontal edge: skip
-                ch.cur = nxt;
-                continue;
-            }
-            ch.e.setup(px(ch.cur), py(ch.cur), px(nxt), py(nxt), isLeft);
-            ch.nextY = py(nxt);
-            ch.cur = nxt;
-            return;
-        }
-        ch.done = true;
-    };
-    Chain L{lStart, lDir, 0, {}}, R{rStart, rDir, 0, {}};
-    advanceChain(L, true);
-    advanceChain(R, false);
-    if (L.done || R.done) return;
-
-    int y = ymin;
-    // Advance both chains to the first visible row.
-    while (y < y0_) {
-        L.e.step();
-        R.e.step();
-        ++y;
-        if (y == L.nextY) {
-            L.e.x = px(L.cur);
-            advanceChain(L, true);
-            if (L.done) return;
-        }
-        if (y == R.nextY) {
-            R.e.x = px(R.cur);
-            advanceChain(R, false);
-            if (R.done) return;
+        // Single top vertex (129F): the left chain takes the neighbour with the
+        // smaller x (equal: the previous vertex).
+        L.cur = R.cur = top;
+        L.x = R.x = X(top);
+        bp = Y(top);
+        const int a = fwd(top), d = back(top);
+        if (X(a) < X(d)) {
+            L.end = a;
+            R.end = d;
+        } else {
+            L.end = d;
+            R.end = a;
         }
     }
 
-    int prevL = -32768, prevR = 32767;
-    const int yEnd = std::min(ymax, y1_);
-    while (y <= yEnd) {
-        if (L.e.x > R.e.x) std::swap(L, R);
-        const int a = std::min(L.e.x, prevR), b = std::max(R.e.x, prevL);
-        rawSpan(a, b, y);
-        prevL = L.e.x;
-        prevR = R.e.x;
-        L.e.step();
-        R.e.step();
-        ++y;
-        bool finished = false;
-        if (y == L.nextY) {
-            L.e.x = px(L.cur);
-            advanceChain(L, true);
-            finished |= L.done;
+    // Top clip (12F4): walk each chain to its first edge ending below the
+    // clip row and cut that edge there.
+    if (bp < cy0) {
+        const s16 topY = bp;
+        auto clipChain = [&](PolyChain& ch) {
+            for (int guard = 0; Y(ch.end) <= cy0; ++guard) {
+                if (guard > n) return false;
+                const int nb = following(ch.end, ch.cur);
+                ch.cur = ch.end;
+                ch.end = nb;
+                ch.x = X(ch.cur);
+                bp = Y(ch.cur);
+            }
+            polyClipTop(ch.x, bp, X(ch.end), Y(ch.end), cy0);
+            return true;
+        };
+        if (!clipChain(L)) return;
+        bp = topY;  // the left chain's cut row is dropped; the right one's is used
+        if (!clipChain(R)) return;
+    }
+
+    int edgesLeft = n;  // DS:508A: at most n edge set-ups
+    s16 prevL = s16(-32768), prevR = 32767;  // previous span (50DC / 50DE)
+    enum class St { Draw, RightAdvance, LeftCheck, LeftAdvance, Final };
+    St st = St::Draw;
+    switch (polySetupEdge(L, L.end, X(L.end), Y(L.end), bp, false, edgesLeft)) {
+    case EdgeSetup::Exhausted: st = St::Final; break;
+    case EdgeSetup::Flat: st = St::LeftAdvance; break;  // cannot happen here
+    case EdgeSetup::Ok:
+        switch (polySetupEdge(R, R.end, X(R.end), Y(R.end), bp, true, edgesLeft)) {
+        case EdgeSetup::Exhausted: st = St::Final; break;
+        case EdgeSetup::Flat: st = St::RightAdvance; break;  // cannot happen here
+        case EdgeSetup::Ok:
+            if (bp > cy1) return;
+            break;
         }
-        if (y == R.nextY) {
-            R.e.x = px(R.cur);
-            advanceChain(R, false);
-            finished |= R.done;
+        break;
+    }
+
+    for (int guard = 0; guard < 0x10000; ++guard) {
+        switch (st) {
+        case St::Draw: {  // 14C3
+            if (L.x > R.x) std::swap(L, R);
+            // Join with the previous row so steep edges leave no gaps; the
+            // joined span is what the next row joins to.
+            s16 a = L.x, b = R.x;
+            if (a > prevR) a = prevR;
+            if (b < prevL) b = prevL;
+            prevL = a;
+            prevR = b;
+            rawSpan(a, b, bp);
+            L.step();
+            R.step();
+            bp = w16(bp + 1);
+            if (bp > cy1) return;
+            if (bp >= R.endY) {
+                prevR = R.x;
+                st = St::RightAdvance;
+            } else {
+                st = St::LeftCheck;
+            }
+            break;
         }
-        if (finished) {
-            if (y <= yEnd) rawSpan(std::min(L.e.x, R.e.x), std::max(L.e.x, R.e.x), y);
+        case St::RightAdvance: {  // 1545
+            const int nb = following(R.end, R.cur);
+            R.cur = R.end;
+            R.end = nb;
+            if (bp > Y(nb)) {  // chain turns upwards: last row
+                R.x = prevR;
+                st = St::Final;
+                break;
+            }
+            R.x = R.endX;
+            bp = R.endY;
+            switch (polySetupEdge(R, nb, X(nb), Y(nb), bp, true, edgesLeft)) {
+            case EdgeSetup::Exhausted: st = St::Final; break;
+            case EdgeSetup::Flat: st = St::RightAdvance; break;
+            case EdgeSetup::Ok: st = St::LeftCheck; break;
+            }
+            break;
+        }
+        case St::LeftCheck:  // 1535
+            if (bp >= L.endY) {
+                prevL = L.x;
+                st = St::LeftAdvance;
+            } else {
+                st = St::Draw;
+            }
+            break;
+        case St::LeftAdvance: {  // 15AA
+            const int nb = following(L.end, L.cur);
+            L.cur = L.end;
+            L.end = nb;
+            if (bp > Y(nb)) {
+                L.x = prevL;
+                st = St::Final;
+                break;
+            }
+            L.x = L.endX;
+            bp = L.endY;
+            switch (polySetupEdge(L, nb, X(nb), Y(nb), bp, false, edgesLeft)) {
+            case EdgeSetup::Exhausted: st = St::Final; break;
+            case EdgeSetup::Flat: st = St::LeftAdvance; break;
+            case EdgeSetup::Ok: st = St::Draw; break;
+            }
+            break;
+        }
+        case St::Final: {  // 15E6: last row, not joined
+            if (bp > cy1) return;
+            s16 a = L.x, b = R.x;
+            if (!(a < b)) std::swap(a, b);
+            rawSpan(a, b, bp);
             return;
+        }
         }
     }
 }
@@ -404,7 +639,10 @@ void Gfx::fillPolygon(const s16* pts, int n, u16 c) {
 void Gfx::pixel(int x, int y, u16 c) {
     beginColor(c);
     if (x < x0_ || x > x1_ || y < y0_ || y > y1_) return;
-    if (patternAllows(x, y, true)) screen().row(y)[x] = color_;
+    if (patternAllows(x, y, true)) {
+        surf().row(y)[x] = color_;
+        touch(x, x, y);
+    }
 }
 
 // ---------------------------------------------------------------- lines
@@ -583,7 +821,8 @@ void Gfx::spriteScaled(int x, int y, int w, int h, const u8* spr) {
     int dy = y + skipRows;
     for (;;) {
         // draw_row
-        u8* out = screen().row(dy);
+        u8* out = surf().row(dy);
+        touch(x + skipCols, x + skipCols + visW - 1, dy);
         const int len = rd16(src);
         const u8* p = src + 2;
         const u8* end = p + len;
@@ -645,6 +884,32 @@ bool Gfx::createBitmap(Bitmap& b, int w, int h) {
 // Latched copies move whole 4-pixel groups.
 void Gfx::blit(const Bitmap& src, int sx, int sy, Bitmap& dst, int dx, int dy, int w, int h) {
     const int groups = w >> 2;
+    if (u8* cov = coverageOf(dst)) {
+        // Page to page: the high-resolution layer travels with the pixels.
+        HiResLayer* sl = nullptr;
+        HiResLayer* dl = nullptr;
+        for (int p = 0; p < 2; ++p) {
+            if (&src == &pages_[p] || src.data == pages_[p].data) sl = sys().video().hiResLayer(p);
+            if (&dst == &pages_[p] || dst.data == pages_[p].data) dl = sys().video().hiResLayer(p);
+        }
+        const u8* scov = (sl && dl && sl->scale == dl->scale) ? sl->coverage.data() : nullptr;
+        for (int r = 0; r < h; ++r) {
+            const int yd = dy + r, ys = sy + r;
+            if (yd < 0 || yd >= 200) continue;
+            const int a = std::max(dx & ~3, 0), b = std::min((dx & ~3) + groups * 4, 320);
+            if (b <= a) continue;
+            if (!scov || ys < 0 || ys >= 200) {
+                std::memset(cov + yd * 320 + a, 0, size_t(b - a));
+                continue;
+            }
+            const int xs0 = (sx & ~3) + (a - (dx & ~3));
+            std::memcpy(cov + yd * 320 + a, scov + ys * 320 + xs0, size_t(b - a));
+            const int N = sl->scale;
+            for (int j = 0; j < N; ++j)
+                std::memcpy(&dl->pixels[size_t(yd * N + j) * size_t(dl->w) + size_t(a * N)],
+                            &sl->pixels[size_t(ys * N + j) * size_t(sl->w) + size_t(xs0 * N)], size_t((b - a) * N));
+        }
+    }
     for (int r = 0; r < h; ++r) {
         const u8* s = src.data + (sy + r) * src.stride() + (sx & ~3);
         u8* d = dst.data + (dy + r) * dst.stride() + (dx & ~3);
@@ -655,6 +920,12 @@ void Gfx::blit(const Bitmap& src, int sx, int sy, Bitmap& dst, int dx, int dy, i
 void Gfx::blitMasked(const Bitmap& src, int sx, int sy, Bitmap& dst, int dx, int dy, int w, int h,
                      const u8* mask) {
     const int pairs = w >> 3;
+    if (u8* cov = coverageOf(dst))
+        for (int r = 0; r < h; ++r)
+            if (dy + r >= 0 && dy + r < 200) {
+                const int a = std::max(dx & ~3, 0), b = std::min((dx & ~3) + pairs * 8, 320);
+                if (b > a) std::memset(cov + (dy + r) * 320 + a, 0, size_t(b - a));
+            }
     for (int r = 0; r < h; ++r) {
         for (int k = 0; k < pairs; ++k) {
             const int o = (sy + r) * src.bpr + (sx >> 2) + 2 * k;  // planar byte offset
@@ -675,8 +946,9 @@ void Gfx::drawImage(const Image& img, int x, int y) {
     const int ya = std::max(y, y0_), yb = std::min(y + img.h - 1, y1_);
     for (int yy = ya; yy <= yb; ++yy) {
         const u8* s = img.row(yy - y);
-        u8* d = screen().row(yy);
+        u8* d = surf().row(yy);
         for (int xx = xa; xx <= xb; ++xx) d[xx] = s[xx - x];
+        touch(xa, xb, yy);
     }
 }
 
@@ -685,9 +957,10 @@ void Gfx::drawImageMasked(const Image& img, const Mask& mask, int x, int y) {
     const int ya = std::max(y, y0_), yb = std::min(y + img.h - 1, y1_);
     for (int yy = ya; yy <= yb; ++yy) {
         const u8* s = img.row(yy - y);
-        u8* d = screen().row(yy);
+        u8* d = surf().row(yy);
         for (int xx = xa; xx <= xb; ++xx)
             if (mask.opaque(xx - x, yy - y)) d[xx] = s[xx - x];
+        touch(xa, xb, yy);
     }
 }
 
@@ -701,9 +974,10 @@ int Gfx::drawChar(u8 c, int x, int y) {
     // No partial clipping: the whole glyph box must be inside the clip.
     if (x < x0_ || x + w - 1 > x1_ || y < y0_ || y + h - 1 > y1_) return w;
     for (int r = 0; r < h; ++r) {
-        u8* row = screen().row(y + r);
+        u8* row = surf().row(y + r);
         for (int i = 0; i < w; ++i)
             if (font_->pixel(c, i, r)) row[x + i] = textFg_;
+        touch(x, x + w - 1, y + r);
     }
     return w;
 }
@@ -718,12 +992,13 @@ void Gfx::draw4x6String(const Font& f, std::string_view s, int x, int y) {
     for (char ch : s) {
         for (int r = 0; r < 6; ++r) {
             const int yy = y + r;
-            if (yy < 0 || yy >= 200) continue;
-            u8* row = screen().row(yy);
+            if (yy < 0 || yy >= surfH()) continue;
+            u8* row = surf().row(yy);
             for (int i = 0; i < 4; ++i) {
                 const int xx = x + i;
-                if (xx >= 0 && xx < 320 && f.pixel(u8(ch), i, r)) row[xx] = textFg_;
+                if (xx >= 0 && xx < surfW() && f.pixel(u8(ch), i, r)) row[xx] = textFg_;
             }
+            touch(x, x + 3, yy);
         }
         x += 4;
     }

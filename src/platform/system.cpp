@@ -56,27 +56,8 @@ void System::scheduleScreenshot(const std::string& path, double afterSeconds) {
 }
 
 bool System::saveScreenshot(const std::string& path) {
-    SDL_Surface* s = SDL_CreateSurface(kScreenW, kScreenH, SDL_PIXELFORMAT_INDEX8);
-    if (!s) return false;
-    SDL_Palette* palette = SDL_CreateSurfacePalette(s);
-    SDL_Color colors[256];
-    const u8* dac = video_.palette();
-    for (int i = 0; i < 256; ++i) {
-        colors[i].r = u8((dac[i * 3] << 2) | (dac[i * 3] >> 4));
-        colors[i].g = u8((dac[i * 3 + 1] << 2) | (dac[i * 3 + 1] >> 4));
-        colors[i].b = u8((dac[i * 3 + 2] << 2) | (dac[i * 3 + 2] >> 4));
-        colors[i].a = 255;
-    }
-    if (palette) SDL_SetPaletteColors(palette, colors, 0, 256);
-    const u8* vram = video_.vram();
-    for (int y = 0; y < kScreenH; ++y) {
-        u8* dst = static_cast<u8*>(s->pixels) + y * s->pitch;
-        for (int x = 0; x < kScreenW; ++x) dst[x] = vram[(video_.scanoutStart() + u32(y * kScreenW + x)) % kVramSize];
-    }
-    const bool ok = SDL_SaveBMP(s, path.c_str());
-    SDL_DestroySurface(s);
-    logInfo("screenshot %s: %s", path.c_str(), ok ? "saved" : SDL_GetError());
-    return ok;
+    // Video composes the frame as shown (including a high-resolution layer).
+    return video_.saveScreenshot(path);
 }
 
 void System::waitRetrace() {

@@ -67,6 +67,16 @@ public:
     Bitmap& screen() { return pages_[drawPage_]; }
     Bitmap& page(int n) { return pages_[n]; }
 
+    // --- render target (Enhanced 3D): all primitives draw into `t` instead of
+    // the draw page until reset with nullptr. Coordinates and the clip box are
+    // then in the target's pixels.
+    void setTarget(Bitmap* t) { target_ = t; }
+    Bitmap* target() const { return target_; }
+    // Re-read the draw page's high-resolution layer coverage (platform/video):
+    // every 2D write to a page clears the coverage of the pixels it touches so
+    // it shows on top of the high-resolution 3D view.
+    void refreshCoverage();
+
     // --- clip box (0FD0), inclusive; (cx, cy) is also the 3D projection centre
     void setClip(int x, int y, int w, int h);
     void clipFull() { setClip(0, 0, 320, 200); }
@@ -75,6 +85,8 @@ public:
     int clipX1() const { return x1_; }
     int clipY1() const { return y1_; }
     int clipCx() const { return cx_; }
+    // Move only the bottom edge (the soldier sprite code writes DS:F242 directly).
+    void setClipBottom(int y1) { y1_ = y1; }
     int clipCy() const { return cy_; }
 
     // --- colour and filled primitives
@@ -116,6 +128,15 @@ public:
     void draw4x6String(const Font& f4x6, std::string_view s, int x, int y);
 
 private:
+    Bitmap& surf() { return target_ ? *target_ : pages_[drawPage_]; }
+    int surfW() { return target_ ? target_->w : 320; }
+    int surfH() { return target_ ? target_->h : 200; }
+    // Clear high-resolution coverage for pixels x0..x1 of row y of the draw page.
+    void touch(int x0, int x1, int y) {
+        if (cov_ && !target_) touchSlow(x0, x1, y);
+    }
+    void touchSlow(int x0, int x1, int y);
+    u8* coverageOf(const Bitmap& b) const;
     bool patternAllows(int x, int y, bool pixelQuirk) const;
     void plot(int x, int y);                // span-convention pattern, no clip
     void rawSpan(int x0, int x1, int y);    // clipped span with current colour
@@ -123,6 +144,8 @@ private:
     void lineYMajor(int x0, int y0, int x1, int y1);
 
     Bitmap pages_[2];
+    Bitmap* target_ = nullptr;
+    u8* cov_ = nullptr;  // coverage mask of the draw page's layer (nullptr: none)
     int drawPage_ = 0, displayPage_ = 0;
     int x0_ = 0, y0_ = 0, x1_ = 319, y1_ = 199, cw_ = 320, ch_ = 200, cx_ = 159, cy_ = 99;
     u8 color_ = 0;
