@@ -237,6 +237,16 @@ reference only afterwards).
   redrawn after every render, and the HUD elements of `hud.cpp` get a dark
   backing strip in the layer and a drop shadow at their original positions;
   `hudDrawClockBox` draws the strip instead of its black box.
+* Enhanced "Impact effects" (`settings().effectiveImpactFx()`,
+  docs/render.md): `prjUpdate` classifies the surface of every impact
+  (port-only `Projectile::impact_surface`); a human hit whose one-in-three
+  roll failed gets a visual-only puff of `render/impactfx` (the roll and
+  `prj_start_impact` are untouched, so the simulation is the original's);
+  `prjStartImpact` and the visual-only puff spawn the particles from a
+  private generator; `drawExplosion` draws the original's puff through the
+  surface's remap table; `viewRenderFrame` advances the effects with
+  `ms().frameTicks` and installs the renderer's post-draw hook around
+  `renderView` for the field views only. Original: no change.
 
 ## Open issues
 

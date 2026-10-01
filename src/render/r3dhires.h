@@ -74,6 +74,9 @@ HiResLayer* hiResLayerForDrawPage();
 // false (nothing changed) without a layer. Undo with layerTargetEnd().
 bool layerTargetBegin(HiResLayer& l, Bitmap& bmp);
 void layerTargetEnd();
+// Show the layer over the whole page (every page pixel covered, as after a
+// full-page 3D frame): for dev screens drawn straight into the layer.
+void layerShowPage(HiResLayer& l);
 
 // Full-screen 3D HUD backing: darken the draw page's layer under the page
 // rectangle (x, y, w, h) so a HUD element drawn on top of it reads over the

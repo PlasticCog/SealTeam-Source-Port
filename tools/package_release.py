@@ -51,11 +51,13 @@ The start menu offers:
   Original Game  - plays 1:1 like the DOS version (320x200, original rules)
   Enhanced Game  - same game, 3D view at your screen's native resolution
                    (4K, 1080p, ...) filling the window, draw distance up to
-                   the whole world
+                   the whole world, impact effects (blood, sparks, splashes
+                   and chips where shots hit)
   Setup          - window size, fullscreen, aspect, 3D resolution, wide
                    view, full-screen 3D (the mission view fills the whole
-                   screen, HUD over it), draw distance, music device (AdLib
-                   / Sound Blaster Pro 2), digital or FM effects, volumes
+                   screen, HUD over it), draw distance, impact effects,
+                   music device (AdLib / Sound Blaster Pro 2), digital or
+                   FM effects, volumes
   Controller     - game controller layout (Xbox-style default) and
                    remapping; controllers are detected when plugged in
 

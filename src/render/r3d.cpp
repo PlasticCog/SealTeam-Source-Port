@@ -155,6 +155,9 @@ RenderRec* g_drawList = nullptr;
 // High-resolution frame (Enhanced).
 HiFrame g_hi;
 
+// Port only: drawn after the objects of a high-resolution frame (r3d.h).
+PostDrawHook g_postDrawHook = nullptr;
+
 // ============================================================ integer helpers
 
 inline s32 add32(s32 a, s32 b) { return s32(u32(a) + u32(b)); }
@@ -1942,6 +1945,32 @@ double frameScaleX() { return g_hi.on ? g_hi.kx : 1.0; }
 double frameScaleY() { return g_hi.on ? g_hi.ky : 1.0; }
 int projectionCentreX() { return g_hi.on ? g_hi.cx : g_clipCx; }
 
+void setPostDrawHook(PostDrawHook fn) { g_postDrawHook = fn; }
+
+int frameZoom() { return g_zoom; }
+
+bool projectWorld(const game::Vec3& p, double& sx, double& sy, double* depth) {
+    // Camera space in game units: the 1.14 camera matrix of cameraMatrix()
+    // applied to the offset from the camera (the y row carries the aspect
+    // scale, as for every vertex).
+    const double r[3] = {sub32(p.x, g_camX) / 256.0, sub32(p.y, g_camY) / 256.0, sub32(p.z, g_camZ) / 256.0};
+    const Mat3& m = xform().cam;
+    double c[3];
+    for (int i = 0; i < 3; ++i)
+        c[i] = (m.m[3 * i] * r[0] + m.m[3 * i + 1] * r[1] + m.m[3 * i + 2] * r[2]) / 16384.0;
+    if (c[2] < 1e-3) return false;
+    if (depth) *depth = c[2];
+    const double f = double(1 << g_zoom);
+    if (g_hi.on) {
+        sx = g_hi.cxd + g_hi.kx * f * c[0] / c[2];
+        sy = g_hi.cyd - g_hi.ky * f * c[1] / c[2];
+    } else {
+        sx = g_clipCx + f * c[0] / c[2];
+        sy = g_clipCy - f * c[1] / c[2];
+    }
+    return true;
+}
+
 void project(const s32 v[3], s16& sx, s16& sy) { projectVert(v[0], v[1], v[2], sx, sy); }
 
 void projectPage(const s32 v[3], s16& sx, s16& sy) { projectNormal(v[0], v[1], v[2], sx, sy); }
@@ -2067,6 +2096,7 @@ int renderView(s32 x, s32 y, s32 z, int heading, int pitch, int roll, int rx, in
     drawSkyGround(w.groundColor, w.skyColor);
     for (RenderRec* r = g_drawList; r; r = r->next) drawObject(*r);
     updateReticle();
+    if (g_hi.on && g_postDrawHook) g_postDrawHook();  // port: Enhanced overlays inside the frame
 
     // Rebuild the view list from the draw list.
     std::vector<ViewEntry> list;

@@ -69,6 +69,23 @@ void project(const s32 v[3], s16& sx, s16& sy);
 // projection of the last renderView (the map markers of 19ac:2F47).
 void projectPage(const s32 v[3], s16& sx, s16& sy);
 
+// Port only: project a world position (24.8 game units, like Obj3D::pos)
+// with the camera of the frame being drawn, in the pixels of that frame
+// (layer pixels in a high-resolution frame); `depth` receives the
+// camera-space z in game units. Returns false for a point on or behind the
+// camera plane. Valid during renderView (the post-draw hook).
+bool projectWorld(const game::Vec3& p, double& sx, double& sy, double* depth = nullptr);
+// Zoom shift of the frame being drawn (Camera::zoom, 8 in the game).
+int frameZoom();
+
+// Port only: a hook run at the end of renderView after the objects, while
+// the frame's render target and clip are still active, so the mission can
+// draw at layer resolution inside the 3D view (the impact particles of
+// render/impactfx). Only called in a high-resolution frame (Enhanced);
+// nullptr removes it.
+using PostDrawHook = void (*)();
+void setPostDrawHook(PostDrawHook fn);
+
 // x of the projection centre (the clip centre) in the pixels of the frame
 // being drawn (DS:F248).
 int projectionCentreX();

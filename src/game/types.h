@@ -852,7 +852,14 @@ struct Projectile {
     Obj3D* fx_explosion;     // +0x44 far explosion
     Obj3D* fx_cloud;         // +0x48 far smoke/gas cloud
     Obj3D* fx_impact;        // +0x4C far impact puff
+    u8 impact_surface;       // port: Enhanced impact effects (ImpactSurface of the last impact; not in the original record)
+    u8 impact_shown;         // port: Enhanced impact effects (a visual-only puff was shown for this round's human hit)
 };
+
+// Port only (Enhanced "Impact effects", render/impactfx.h): what a bullet
+// hit, chosen by the ordnance code from the terrain kind / model at the
+// impact site; selects the colour remap of the impact puff and the particles.
+enum class ImpactSurface : u8 { None = 0, Dust, Water, Wood, Stone, Foliage, Metal, Blood };
 
 // Shot (combat) record: 0x3C bytes, 32 at far 53BA:28BA.
 struct ShotRec {

@@ -5,6 +5,7 @@
 // the scenery hook (veg_update / veg_reset with the current camera).
 #include "game/mission/loop.h"
 
+#include "core/settings.h"
 #include "engine/rng.h"
 #include "engine/sound.h"
 #include "engine/ticker.h"
@@ -24,6 +25,7 @@
 #include "game/screens.h"
 #include "game/ui.h"
 #include "gfx/gfx.h"
+#include "render/impactfx.h"
 #include "render/r3d.h"
 #include "render/sky.h"
 #include "render/sprites.h"
@@ -92,7 +94,11 @@ void drawExplosion(int x, int y, int scale, bool impact, const Projectile* p) {
     }
     if (!draw) return;
     const int w = mul88(img->w(), e), h = mul88(img->h(), e);
+    // Port: Enhanced impact effects tint the puff by the surface that was hit.
+    if (impact && settings().effectiveImpactFx())
+        gfx().setSpriteRemap(render::impactRemap(ImpactSurface(p->impact_surface)));
     gfx().spriteScaled(x - (w >> 1), y - (h >> (impact ? 1 : 0)), w, h, img->rle.data());
+    gfx().setSpriteRemap(nullptr);
 }
 
 void drawProjectile(int x, int y, int scale, const Projectile* p) {
@@ -511,6 +517,7 @@ void viewInstallRenderHooks() {
     render::setAnimUpdate(sprUpdateAnim);
     render::setBlockerProbe(blockerProbe);
     g_vegPoolMark = nullptr;
+    render::impactFxReset();  // port: Enhanced impact effects
 }
 
 void viewUpdateRenderContext() {
@@ -596,7 +603,17 @@ void viewRenderFrame() {
         gx.setClip(cam.rect_x, cam.rect_y, cam.rect_w, cam.rect_h);
         render::todDrawSkyGround(cam, g().detailLevel, S.time, S.todHour);
     }
+    // Port: Enhanced impact effects. The particles move with the mission's
+    // frame ticks and are drawn, with the visual-only puffs, inside the frame
+    // of the field views only (the hook is removed again so the front end's
+    // views never see it).
+    const bool impactFx = settings().effectiveImpactFx();
+    if (impactFx) {
+        render::impactFxUpdate(S.frameTicks, S.time);
+        if (!mapMode) render::setPostDrawHook(render::impactFxDraw);
+    }
     const int r = render::renderView(cam, true);
+    if (impactFx) render::setPostDrawHook(nullptr);
     L.renderResult = r & 0xFF;
     if (L.renderResult == render::kViewBufferTooSmall) fatal("%s", dsText(kViewBufferSmall).c_str());
     if (L.renderResult == render::kObjectListTooSmall) fatal("%s", dsText(kObjectListSmall).c_str());

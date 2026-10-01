@@ -3,22 +3,30 @@
 //                [fill|4:3] [size WxH] [detail D] [hour H] [chase]
 //   --view-model <table index 0..96> [enhanced [native|N]]
 //   --bench-view <mission 1..80> [the same options] [frames N]
+//   --impact-test [hour H]: every "impc" puff frame at 3x through each
+//                surface remap of the Enhanced impact effects (render/impactfx)
 // The viewers render until Esc/Enter (arrows turn/move, PgUp/PgDn height,
-// Home/End pitch, +/- speed, 1..6 detail level). Combine with --shot FILE
-// --shot-after S. `size WxH` renders native-resolution frames at that size
-// whatever the window (a 4K frame on a smaller monitor). --bench-view prints
-// the average and worst frame times over a full turn of the camera.
+// Home/End pitch, +/- speed, 1..6 detail level; `b` in --view-world fires a
+// fake impact of each surface in turn, puff and particles, 40 units ahead
+// every half second until pressed again, Enhanced only). Combine with --shot FILE
+// --shot-after S and --keys SPEC (scripted keys, game/front/common.h). `size
+// WxH` renders native-resolution frames at that size whatever the window (a
+// 4K frame on a smaller monitor). --bench-view prints the average and worst
+// frame times over a full turn of the camera.
 #include "core/settings.h"
 #include "data/ealib.h"
 #include "engine/palette_fade.h"
 #include "engine/ticker.h"
 #include "game/devtools.h"
+#include "game/front/common.h"
 #include "gfx/font.h"
 #include "gfx/gfx.h"
 #include "gfx/image.h"
 #include "platform/system.h"
+#include "render/impactfx.h"
 #include "render/model.h"
 #include "render/r3d.h"
+#include "render/r3dhires.h"
 #include "render/r3dmath.h"
 #include "render/sky.h"
 #include "render/sprites.h"
@@ -26,6 +34,7 @@
 #include "render/world.h"
 
 #include <algorithm>
+#include <cctype>
 #include <cstdio>
 #include <cstdlib>
 #include <string>
@@ -106,6 +115,8 @@ void parseOptions(const game::DevArgs& a, size_t i, ViewOpts& o) {
             o.rawCam = true;
             for (int j = 0; j < 5; ++j) o.raw[j] = s32(std::strtol(a[i + size_t(j)].c_str(), nullptr, 0));
             i += 5;
+        } else if (k == "--keys" && i < a.size()) {
+            game::front::setKeyScript(a[i++]);
         } else if (k.rfind("--", 0) == 0) {
             break;  // next port option (--shot ...)
         }
@@ -174,6 +185,31 @@ void setupFakeUnit(game::Obj3D* body, const std::string& pose) {
     setUnitLookup(fakeLookup);
 }
 
+// A fake impact for --view-world ('b'): a visual-only puff of render/impactfx
+// (the frame of the hit kind through the surface remap) with its particles,
+// 40 units ahead of the camera. Every half second the next surface fires.
+// Drawn by the post-draw hook, so only in Enhanced.
+struct FakeImpact {
+    bool running = false;
+    s32 nextAt = 0;
+    int surface = 0;
+};
+FakeImpact g_fake;
+
+void fakeImpactFire(const game::Camera& cam, s32 time) {
+    g_fake.surface = g_fake.surface % 7 + 1;  // Dust .. Blood
+    const auto s = game::ImpactSurface(g_fake.surface);
+    const game::Vec3 pos{s32(cam.pos.x - ((s32(mathSin(cam.yaw)) * 40) >> 6)), std::max<s32>(0, cam.pos.y - 0x600),
+                         s32(cam.pos.z + ((s32(mathCos(cam.yaw)) * 40) >> 6))};
+    int frame = 2;  // obstacle
+    if (s == game::ImpactSurface::Dust || s == game::ImpactSurface::Water) frame = 0;
+    else if (s == game::ImpactSurface::Blood) frame = 1;
+    else if (s == game::ImpactSurface::Metal) frame = 4;
+    g_fake.nextAt = time + 0x80;
+    impactPuffAdd(pos, frame, s, time);
+    impactParticlesSpawn(pos, s, time);
+}
+
 void runView(game::Camera& cam, ViewOpts& o, const std::string& title, Obj3D* spin = nullptr) {
     Font f4;
     const bool haveFont = f4.load("4x6.fnt");
@@ -185,6 +221,8 @@ void runView(game::Camera& cam, ViewOpts& o, const std::string& title, Obj3D* sp
     sys().input().flushKeys();
     int speed = 64;
     RenderContext& ctx = renderContext();
+    impactFxReset();
+    g_fake = FakeImpact{};
     for (;;) {
         clock.updateGameTime();
         ctx.frameTicks = clock.frameDt();
@@ -192,9 +230,7 @@ void runView(game::Camera& cam, ViewOpts& o, const std::string& title, Obj3D* sp
         ctx.detail = o.detail;
         Input& in = sys().input();
         bool quit = false;
-        while (in.keyAvailable()) {
-            const u16 k = in.readKey();
-            const u8 ascii = u8(k & 0xFF);
+        auto onKey = [&](u8 ascii) {
             if (ascii == 0x1B || ascii == 0x0D || ascii == 'q') quit = true;
             else if (ascii == '+' || ascii == '=') speed = std::min(speed * 2, 0x4000);
             else if (ascii == '-') speed = std::max(speed / 2, 4);
@@ -203,9 +239,18 @@ void runView(game::Camera& cam, ViewOpts& o, const std::string& title, Obj3D* sp
             else if (ascii == 'r' && spin) spin->heading = s16(angleWrap(spin->heading + 8 * 15));
             else if (ascii == 'e') {
                 settings().preset = settings().original() ? Preset::Enhanced : Preset::Original;
+            } else if (ascii == 'b') {
+                g_fake.running = !g_fake.running;
+                if (g_fake.running) fakeImpactFire(cam, clock.time());
             }
-        }
+        };
+        while (in.keyAvailable()) onKey(u8(in.readKey() & 0xFF));
+        // Scripted keys (--keys) by their ASCII code.
+        for (int k = game::front::scriptedBiosKey(); k; k = game::front::scriptedBiosKey())
+            if (k & 0xFF) onKey(u8(k & 0xFF));
         if (quit) break;
+        if (g_fake.running && clock.time() >= g_fake.nextAt) fakeImpactFire(cam, clock.time());
+        impactFxUpdate(clock.frameDt(), clock.time());
         const int step = speed * clock.frameDt() / 4 + 1;
         if (in.keyDown(sc::Left)) cam.yaw = s16(angleWrap(cam.yaw + 4 * clock.frameDt()));
         if (in.keyDown(sc::Right)) cam.yaw = s16(angleWrap(cam.yaw - 4 * clock.frameDt()));
@@ -226,7 +271,9 @@ void runView(game::Camera& cam, ViewOpts& o, const std::string& title, Obj3D* sp
         vegUpdate(cam, false);
         if (o.gradient) todDrawSkyGround(cam, o.detail, clock.time(), o.hour);
         g_fakeAnim.clock += clock.frameDt();
+        setPostDrawHook(impactFxDraw);
         const int r = renderView(cam, true);
+        setPostDrawHook(nullptr);
         if (r) std::fprintf(stderr, "renderView status %d\n", r);
         if (o.hud && haveFont) {
             gx.clipFull();
@@ -341,6 +388,80 @@ int viewWorld(const game::DevArgs& a) {
     runView(cam, o, worldName(worldIdx));
     worldFree();
     wldFree();
+    sys().video().dropHiResLayers();
+    return 0;
+}
+
+// --impact-test [hour H]: the "impc" frames at 3x through every surface
+// remap, drawn into a 960x600 layer (3D resolution 3) with the mission
+// palette of the hour, labelled on the page; Esc / Enter / q leave.
+int impactTest(const game::DevArgs& a) {
+    ViewOpts o;
+    o.hour = 12;
+    parseOptions(a, 0, o);
+    settings().preset = Preset::Enhanced;
+    settings().renderScale = 3;
+    settings().wideView = false;
+    if (!initRenderer()) return 1;
+    setPalette(o.hour, 0);
+    Font f4;
+    const bool haveFont = f4.load("4x6.fnt");
+    Gfx& gx = gfx();
+    gx.setDrawPage(0);
+    gx.setDisplayPage(0);
+    gx.clipFull();
+    gx.clear(0);
+    HiResLayer* l = hiResLayerForDrawPage();
+    if (!l) return 1;
+    Bitmap bmp;
+    if (!layerTargetBegin(*l, bmp)) return 1;
+    gx.fillRect(0, 0, l->w, l->h, u16(Gfx::kSolid | 0));
+    static const int kFrames[] = {0, 1, 2, 4};  // 3, 5, 6, 7 are 1x1 placeholders
+    const int rowH = 78, top = 24, left = 96;
+    for (int s = 1; s < 8; ++s) {
+        const auto surf = game::ImpactSurface(s);
+        const int y = top + (s - 1) * rowH;
+        int x = left;
+        gx.setSpriteRemap(impactRemap(surf));
+        for (const int f : kFrames) {
+            const SpriteImage* img = spriteFrame("impc", 0, f);
+            if (!img) continue;
+            const int w = img->w() * 3, h = img->h() * 3;
+            gx.spriteScaled(x, y + (rowH - 6 - h) / 2, w, h, img->rle.data());
+            x += w + 24;
+        }
+        gx.setSpriteRemap(nullptr);
+    }
+    layerTargetEnd();
+    layerShowPage(*l);
+    if (haveFont) {
+        // Labels on the page (shown 3x by the presenter), uncovering the layer there.
+        gx.setTextColors(15, 0);
+        char line[80];
+        std::snprintf(line, sizeof line, "IMPC FRAMES 0 1 2 4 AT 3X, HOUR %d, PALETTE %s", o.hour,
+                      todPaletteName(todPaletteIndex(o.hour, 0)).c_str());
+        gx.draw4x6String(f4, line, 2, 2);
+        for (int s = 1; s < 8; ++s) {
+            std::string name = impactSurfaceName(game::ImpactSurface(s));
+            for (char& c : name) c = char(std::toupper(u8(c)));
+            if (s == 1) name += " (ORIG)";
+            gx.draw4x6String(f4, name, 2, (top + (s - 1) * rowH + rowH / 2 - 6) / 3);
+        }
+    }
+    sys().input().flushKeys();
+    for (;;) {
+        sys().video().markDirty();
+        sys().pump();
+        engine::ticker().frameLimitReset();
+        engine::ticker().frameLimitWait();
+        Input& in = sys().input();
+        bool quit = false;
+        while (in.keyAvailable()) {
+            const u8 ascii = u8(in.readKey() & 0xFF);
+            if (ascii == 0x1B || ascii == 0x0D || ascii == 'q') quit = true;
+        }
+        if (quit) break;
+    }
     sys().video().dropHiResLayers();
     return 0;
 }
@@ -480,5 +601,7 @@ const game::DevCommand kBenchView("--bench-view",
                                   "frame times of a mission's world: <1..80> [enhanced [native|N [dist%|max]]] "
                                   "[fill|4:3] [size WxH] [frames N]",
                                   benchView);
+const game::DevCommand kImpactTest("--impact-test", "the impact puff frames through every surface remap: [hour H]",
+                                   impactTest);
 
 }  // namespace st::render

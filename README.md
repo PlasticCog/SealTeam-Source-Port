@@ -106,11 +106,14 @@ When the port starts it shows a start menu:
   window's own resolution (any size up to 4K and beyond, or a fixed multiple
   of 320x200 for weaker machines), fills a wide screen with a wider field of
   view (or keeps 4:3), can let the mission view fill the whole screen with
-  the HUD drawn over it (Full-screen 3D), and draws much farther, up to the
-  whole world; the 2D screens, HUD and fonts stay pixel-art on top.
+  the HUD drawn over it (Full-screen 3D), draws much farther, up to the
+  whole world, and shows what a shot hit (Impact effects: blood, sparks,
+  splashes, wood and stone chips, leaves, with a small particle burst); the
+  2D screens, HUD and fonts stay pixel-art on top.
 * **Setup** changes window size, fullscreen, 4:3 aspect, smooth scaling, the
-  Enhanced options (3D resolution, wide view, full-screen 3D, draw distance) and sound (AdLib
-  or Sound Blaster Pro 2 music, digital or FM effects, volumes).
+  Enhanced options (3D resolution, wide view, full-screen 3D, draw distance,
+  impact effects) and sound (AdLib or Sound Blaster Pro 2 music, digital or
+  FM effects, volumes).
 * **Controller** shows the game controller layout (Xbox-style default: left
   stick moves and turns, right stick is the camera, A fires / selects, B
   cancels, LB / RB hold the view and order layers) and remaps every action;
