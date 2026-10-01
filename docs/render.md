@@ -255,6 +255,78 @@ fixed-scale layer and the plain page are stretched over the page rectangle
 the layer's size, i.e. the full window at native resolution. In the Original
 preset no layer exists and nothing changes. `worldFree()` drops the layers.
 
+**Impact effects** (`impactFx`, cfg `impact_fx`, Setup "Impact effects",
+default on; `render/impactfx.h`) — the original marks where a bullet hits
+with one "impc" puff frame in fixed colours (frame by `Projectile::hit`:
+0 ground, 1 unit, 2 obstacle, 4 craft; `spr_draw_explosion` 1000:6DD5)
+and shows a puff on only one human hit in three. With the option on, the
+ordnance code (`prjUpdate`) classifies the surface of every impact site
+and stores it in the port-only `Projectile::impact_surface`
+(`game::ImpactSurface`): the ground is Water if `wld_probe_kind` finds a
+water / shallow / deep-water object under the point, else Dust; a human
+is Blood, a craft Metal; a solid world object by its terrain kind and
+model name — vegetation, trees and brush Foliage, the "rock" prop Stone
+and the other props Wood, the stone structures (bldgston, well, church,
+pagoda) Stone, the bunker Dust and the other structures Wood, a dock Wood,
+a helicopter pad Stone, anything else Dust. The original's puffs are then
+drawn through a colour remap of the surface: a table per surface is built at run time from the current base
+palette (rebuilt when its 768 bytes change), mapping every source index by
+its luminance Y to the palette entry nearest to the surface's tint (blood
+0.9Y+8 / 0.12Y / 0.12Y, sparks 1.3Y+16 / 1.15Y+10 / 0.5Y, wood 0.75Y+6 /
+0.5Y+3 / 0.25Y, stone Y / Y / Y, foliage 0.35Y / 0.8Y+4 / 0.3Y, water
+0.55Y+8 / 0.75Y+10 / 1.1Y+16, 6-bit RGB, nearest by squared distance over
+all 256 entries); Dust keeps the original colours. The frame choice is the
+original's.
+
+A human hit shows a puff every time instead of one time in three. The
+original's roll (`rng_range(3)`, repeated every frame while the stopped
+round keeps probing its victim) is left exactly as it is, because
+`prj_start_impact` also resets the round's lifetime and timer (which
+decides when its slot is free again) and plays a sound: the headless
+`--sim-mission` logs diverged when the puff was started on the first hit
+frame. A hit whose roll failed therefore gets a *visual-only* puff: the
+unit frame through the Blood remap, kept in a pool of 16 by
+`render/impactfx` and drawn by the post-draw hook with
+`spr_draw_explosion`'s growth rule (8.8 scale `e = 4 * elapsed`, at least
+0x40, shown while `e < 3 * (billboard scale / 4)`, the billboard scale
+being the projected width of 0x60 model units of the burst shape at the
+puff's depth); nothing of the projectile changes (port-only
+`Projectile::impact_shown` keeps it to one per round, and the original's
+puff may still start on a later successful roll).
+
+Every impact that starts, and every visual-only puff, also spawns 6-10 particles at the impact point
+(world space, an upward and outward velocity, gravity, 0x60-0xA0 ticks of
+life, a pool of 64 whose oldest entries are replaced), drawn from a private
+linear congruential generator seeded with the impact time, never from the
+game RNG. The mission loop advances them with its frame ticks before every
+render (`viewRenderFrame`, so the pause and time compression behave) and
+draws them through the renderer's post-draw hook (`setPostDrawHook`,
+called at the end of `renderView` after the objects while the frame's
+render target and clip are active, only in a high-resolution frame) as
+filled squares of about `frameScaleX() / 2` layer pixels (at least 1) in
+one of three shades of the surface (white, yellow and grey through the
+remap; a sandy tone for dust), projected with `projectWorld` (the camera
+matrix in double precision, no depth test). The hook is set for the field
+views only (never for the map, and the briefing, debriefing and cut-scene
+views of the front end never see it). In the Original preset and with the
+option off (`effectiveImpactFx()`) nothing changes: no classification, the
+original puff colours and the one-in-three rule. The simulation is the
+same either way: `--sim-mission 1 --ticks 30000 --script walk` logs are
+identical with `--original` and `--enhanced`.
+
+`--impact-test [hour H]` draws the four non-empty "impc" frames at 3x
+through every surface remap with the mission palette of the hour into a
+960x600 layer (labels on the page), and `b` in `--view-world` fires a fake
+impact of each surface in turn 40 units ahead of the camera every half
+second (a visual-only puff and particles; `--keys b@1` scripts it).
+Verified with `re/scratch_impact/` captures: the day (hour 12) and night
+(hour 2) grids, puffs and particles mid-flight in `--view-world 1 enhanced
+native max fill size 1920x1080`, the Original preset's `--view-world 3`
+frame and the Enhanced `--view-world 1` frame bit-identical to the
+previous build's, identical `--sim-mission` logs, and `--enhanced
+--window 1920x1080 --play-mission 1` (the preset flag goes before the dev
+command) running normally with and without the option.
+
 **Draw distance** — the original renderer is 16-bit in three places that
 limit how far it can see: the LOD thresholds (`u16`, units of 65536 world
 units), the world-box size class (the view-pyramid boxes reach depth

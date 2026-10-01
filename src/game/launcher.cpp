@@ -138,7 +138,8 @@ Result runOptions() {
         list.push_back(makeButton(164, 112, 150, 'i', buf, false));
         std::snprintf(buf, sizeof buf, "Effects: %s %d%%", st.digitalSfx ? "Digital" : "FM", st.sfxVolume);
         list.push_back(makeButton(164, 132, 150, 'j', buf, false));
-        list.push_back(makeButton(112, 152, 96, engine::key::Esc, "Back", false));
+        list.push_back(makeButton(6, 152, 150, 'n', "Impact effects: " + onOff(st.impactFx), false));
+        list.push_back(makeButton(164, 152, 150, engine::key::Esc, "Back", false));
     };
     rebuild();
     const Result r = runScreen(
@@ -158,6 +159,7 @@ Result runOptions() {
             case 'k': st.wideView = !st.wideView; help = "Native 3D resolution: fill a wide window or keep the 4:3 view."; break;
             case 'l': st.fullScreen3d = !st.fullScreen3d; help = "Native 3D resolution: the mission view fills the screen, HUD over it."; break;
             case 'g': st.drawDistancePct = cycle(st.drawDistancePct, kDrawDistances); help = "Enhanced game only: how far you can see (Max: the whole world)."; break;
+            case 'n': st.impactFx = !st.impactFx; help = "Enhanced game only: blood, sparks, splashes and chips where shots hit."; break;
             case 'h':
                 st.musicDevice = st.musicDevice == MusicDevice::AdLib ? MusicDevice::SoundBlasterPro2 : MusicDevice::AdLib;
                 help = "AdLib (OPL2) or Sound Blaster Pro 2 (OPL3) music.";

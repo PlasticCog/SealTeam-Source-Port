@@ -9,6 +9,7 @@
 // object (pool DS:2F70).
 #include "game/mission/craft.h"
 
+#include "core/settings.h"
 #include "data/exeimage.h"
 #include "engine/rng.h"
 #include "game/mission/entity.h"
@@ -20,6 +21,9 @@
 #include "game/mission/state.h"
 #include "game/mission/world.h"
 #include "game/mission/wquery.h"
+#include "render/impactfx.h"
+
+#include <cstring>
 
 namespace st::game::mission {
 
@@ -78,6 +82,50 @@ Obj3D* burstShapeOn(Obj3D* o) {
         o->model = model(kBurstModel);
     }
     return o;
+}
+
+// ---------------------------------------------------------------------------
+// Port: Enhanced "Impact effects" (render/impactfx.h). The surface of an
+// impact site is classified here, next to the original's puff-kind flags,
+// and kept in Projectile::impact_surface for the painter. Only called with
+// settings().effectiveImpactFx(); none of it touches the game RNG.
+// ---------------------------------------------------------------------------
+
+bool impactFxOn() { return settings().effectiveImpactFx(); }
+
+// Ground contact: water if a water / shallow / deep-water object covers the
+// point (wld_probe_kind clears the altitude of its argument: pass a copy).
+ImpactSurface groundSurface(const Vec3& at) {
+    for (const int kind : {int(TerrainKind::Water), int(TerrainKind::Shallow), int(TerrainKind::DeepWater)}) {
+        Vec3 probe = at;
+        if (wldProbeKind(probe, kind)) return ImpactSurface::Water;
+    }
+    return ImpactSurface::Dust;
+}
+
+// A solid world object by its terrain kind and model.
+ImpactSurface obstacleSurface(const WorldObject* w) {
+    if (!w) return ImpactSurface::Dust;
+    const char* name = modelName(w->model);
+    auto is = [&](const char* n) { return std::strcmp(name, n) == 0; };
+    switch (w->kind) {
+    case TerrainKind::Vegetation:
+    case TerrainKind::Tree:
+    case TerrainKind::Brush:
+        return ImpactSurface::Foliage;
+    case TerrainKind::Prop:
+        return is("rock") ? ImpactSurface::Stone : ImpactSurface::Wood;
+    case TerrainKind::Structure:
+        if (is("bldgston") || is("well") || is("church") || is("pagoda")) return ImpactSurface::Stone;
+        if (is("bunker")) return ImpactSurface::Dust;
+        return ImpactSurface::Wood;
+    case TerrainKind::BoatPad:
+        return ImpactSurface::Wood;
+    case TerrainKind::HeloPad:
+        return ImpactSurface::Stone;
+    default:
+        return ImpactSurface::Dust;
+    }
 }
 
 } // namespace
@@ -282,6 +330,7 @@ void evtUpdateOrdnance(Projectile* p) {
                 if (!(p->state & prj_state::kDud) && explodesOnLanding(p)) {
                     prjStartBurst(p, 0);
                 } else {
+                    if (impactFxOn()) p->impact_surface = u8(groundSurface(b->pos));
                     prjStartImpact(p, 0, 0x10);
                     p->state |= prj_state::kExpired;
                 }
@@ -314,8 +363,27 @@ void evtUpdateOrdnance(Projectile* p) {
                     b->pos.x = victim->body->pos.x;
                     b->pos.z = victim->body->pos.z;
                     const Team* vt = victim->team;
-                    if (vt && int(vt->type) != 0 && int(vt->type) < 4) prjStartImpact(p, 0, 0x80);
-                    else if (engine::rng().range(3) == 0) prjStartImpact(p, 0, 0x20);
+                    if (vt && int(vt->type) != 0 && int(vt->type) < 4) {
+                        if (impactFxOn()) p->impact_surface = u8(ImpactSurface::Metal);
+                        prjStartImpact(p, 0, 0x80);
+                    } else {
+                        // One puff in three on a human (the round keeps probing
+                        // its victim every frame, so the roll repeats until it
+                        // succeeds or the round expires).
+                        if (impactFxOn()) p->impact_surface = u8(ImpactSurface::Blood);
+                        if (engine::rng().range(3) == 0) {
+                            prjStartImpact(p, 0, 0x20);
+                        } else if (impactFxOn() && !p->fx_impact && !p->impact_shown) {
+                            // Port: the Enhanced impact effects show every hit.
+                            // Starting the puff here would reset the round's
+                            // lifetime (prj_start_impact), so a visual-only
+                            // puff and the particles are drawn by render/impactfx
+                            // instead; the game state is the original's.
+                            p->impact_shown = 1;
+                            render::impactPuffAdd(b->pos, 1, ImpactSurface::Blood, S.time);
+                            render::impactParticlesSpawn(b->pos, ImpactSurface::Blood, S.time);
+                        }
+                    }
                     victim->mover->impact_bearing = s16(b->heading >> 3);
                 }
             } else {
@@ -325,6 +393,7 @@ void evtUpdateOrdnance(Projectile* p) {
                     if (f->bounces == 0) {
                         p->impact_time = S.time;
                         f->speed = 0;
+                        if (impactFxOn()) p->impact_surface = u8(obstacleSurface(w));
                         prjStartImpact(p, 0, 0x40);
                         p->hit |= prj_hit::kObstacle;
                     } else if (p->weapon != 0xC) {
@@ -357,6 +426,7 @@ void prjResetAll() {
     for (Projectile* p : ms().projectiles) {
         if (!p) continue;
         p->hit = 0;
+        p->impact_surface = p->impact_shown = 0;  // port: Enhanced impact effects
         p->state = 0;
         p->owner = nullptr;
         p->weapon_node = nullptr;
@@ -470,6 +540,7 @@ Projectile* prjFire(Unit* shooter, WeaponNode* w, const Vec3& targetPos, Unit* t
     if (slot >= kProjectiles) return nullptr;
     Projectile* p = S.projectiles[slot];
     p->hit = 0;
+    p->impact_surface = p->impact_shown = 0;  // port: Enhanced impact effects
     p->state = prj_state::kInUse;
     if (w->jammed) {
         p->state |= prj_state::kDud;
@@ -731,6 +802,10 @@ void prjStartImpact(Projectile* p, int n, u8 flags) {
     p->lifetime = 0x100;
     p->timer_base = ms().time;
     sfxPlay(0xA, 0x80, &s->pos, 1, nullptr);
+    // Port: the particle burst of the Enhanced impact effects (its own RNG;
+    // not again for a human hit whose visual-only puff already spawned one).
+    if (impactFxOn() && !p->impact_shown)
+        render::impactParticlesSpawn(s->pos, ImpactSurface(p->impact_surface), p->impact_time);
 }
 
 // Smoke / gas cloud: burst shape without sound; n < 0 restores the normal shape.

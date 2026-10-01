@@ -76,6 +76,17 @@ void layerTargetEnd() {
     gx.setClip(g_saveX0, g_saveY0, g_saveW, g_saveH);
 }
 
+void layerShowPage(HiResLayer& l) {
+    std::fill(l.coverage.begin(), l.coverage.end(), u8(1));
+    std::fill(l.extRows.begin(), l.extRows.end(), u8(1));
+    l.extX0 = 0;
+    l.extY0 = 0;
+    l.extX1 = l.w - 1;
+    l.extY1 = l.h - 1;
+    gfx().refreshCoverage();
+    sys().video().markDirty();
+}
+
 void HiFrame::begin(int rx, int ry, int rw, int rh, int ccx, int ccy, int zoomShift, s32 cx32, s32 cy32,
                     s32 cz32, bool fullScreen) {
     const Settings& s = settings();

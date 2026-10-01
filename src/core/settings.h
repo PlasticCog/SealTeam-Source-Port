@@ -28,6 +28,7 @@ struct Settings {
     bool wideView = true;         // native only: widen the field of view to fill a wide window (else 4:3)
     bool fullScreen3d = false;    // native only: the field views fill the window height, the HUD drawn over the scene
     int drawDistancePct = 400;    // view distance in percent of the original; kDrawDistanceMax = whole world
+    bool impactFx = true;         // surface-coloured impact puffs and a particle burst where shots hit
 
     // Audio.
     MusicDevice musicDevice = MusicDevice::AdLib;
@@ -60,6 +61,9 @@ struct Settings {
     bool effectiveFullScreen3d() const { return !original() && renderScale == 0 && fullScreen3d; }
     // Percent of the original view distance; kDrawDistanceMax = the whole world.
     int effectiveDrawDistancePct() const { return original() ? 100 : drawDistancePct; }
+    // Impact sprites remapped by the surface hit plus a particle burst
+    // (render/impactfx.h); the Original preset keeps the plain puffs.
+    bool effectiveImpactFx() const { return !original() && impactFx; }
 };
 
 Settings& settings();
