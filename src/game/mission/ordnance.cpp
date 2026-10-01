@@ -103,6 +103,14 @@ ImpactSurface groundSurface(const Vec3& at) {
     return ImpactSurface::Dust;
 }
 
+// Where a round hits a man, by posture (standing, crouching, prone), in
+// world units: about chest height, between the game's eye heights
+// {15, 9, 3} (Mover::target_height) and muzzle heights {12, 7, 0}.
+s32 torsoHeight(int posture) {
+    static const s32 kTorso[3] = {9, 5, 2};
+    return kTorso[(posture < 0 || posture > 2) ? 0 : posture];
+}
+
 // A solid world object by its terrain kind and model.
 ImpactSurface obstacleSurface(const WorldObject* w) {
     if (!w) return ImpactSurface::Dust;
@@ -370,19 +378,26 @@ void evtUpdateOrdnance(Projectile* p) {
                         // One puff in three on a human (the round keeps probing
                         // its victim every frame, so the roll repeats until it
                         // succeeds or the round expires).
-                        if (impactFxOn()) p->impact_surface = u8(ImpactSurface::Blood);
-                        if (engine::rng().range(3) == 0) {
-                            prjStartImpact(p, 0, 0x20);
-                        } else if (impactFxOn() && !p->fx_impact && !p->impact_shown) {
-                            // Port: the Enhanced impact effects show every hit.
-                            // Starting the puff here would reset the round's
-                            // lifetime (prj_start_impact), so a visual-only
-                            // puff and the particles are drawn by render/impactfx
-                            // instead; the game state is the original's.
-                            p->impact_shown = 1;
-                            render::impactPuffAdd(b->pos, 1, ImpactSurface::Blood, S.time);
-                            render::impactParticlesSpawn(b->pos, ImpactSurface::Blood, S.time);
+                        if (impactFxOn()) {
+                            p->impact_surface = u8(ImpactSurface::Blood);
+                            // Port: the Enhanced impact effects show every hit,
+                            // once per round, at the victim's torso rather than
+                            // at bullet height (above a prone man's head): a
+                            // visual-only puff and the particles drawn by
+                            // render/impactfx. Starting the game's own puff here
+                            // would reset the round's lifetime (prj_start_impact),
+                            // so the roll below stays exactly the original's (its
+                            // puff is not drawn, see drawExplosion); the game
+                            // state is the original's.
+                            if (!p->impact_shown) {
+                                p->impact_shown = 1;
+                                Vec3 at = victim->body->pos;
+                                at.y = wrapAdd(at.y, shl8(torsoHeight(int(u8(victim->mover->posture)))));
+                                render::impactPuffAdd(at, 1, ImpactSurface::Blood, S.time);
+                                render::impactParticlesSpawn(at, ImpactSurface::Blood, S.time);
+                            }
                         }
+                        if (engine::rng().range(3) == 0) prjStartImpact(p, 0, 0x20);
                     }
                     victim->mover->impact_bearing = s16(b->heading >> 3);
                 }

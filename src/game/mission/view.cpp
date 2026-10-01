@@ -73,6 +73,10 @@ void drawExplosion(int x, int y, int scale, bool impact, const Projectile* p) {
     // and then reads the record through a NULL pointer; the game never calls
     // it that way (the painter always has the projectile).
     if (!p) return;
+    // Port: with the Enhanced impact effects a human hit's puff is the
+    // visual-only one at the victim's torso (render/impactfx), not the
+    // round's own at bullet height (above a prone man's head).
+    if (impact && settings().effectiveImpactFx() && ImpactSurface(p->impact_surface) == ImpactSurface::Blood) return;
     // 16-bit arithmetic: low word of (g_time - detonation time) times 4, at least 4.
     u16 e16 = u16(u16(u32(S.time) - u32(p->detonate_time)) * 4u);
     if (e16 < 4) e16 = 4;

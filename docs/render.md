@@ -284,15 +284,20 @@ round keeps probing its victim) is left exactly as it is, because
 `prj_start_impact` also resets the round's lifetime and timer (which
 decides when its slot is free again) and plays a sound: the headless
 `--sim-mission` logs diverged when the puff was started on the first hit
-frame. A hit whose roll failed therefore gets a *visual-only* puff: the
-unit frame through the Blood remap, kept in a pool of 16 by
+frame. Every human hit therefore gets a *visual-only* puff, whatever the
+roll: the unit frame through the Blood remap, kept in a pool of 16 by
 `render/impactfx` and drawn by the post-draw hook with
 `spr_draw_explosion`'s growth rule (8.8 scale `e = 4 * elapsed`, at least
 0x40, shown while `e < 3 * (billboard scale / 4)`, the billboard scale
 being the projected width of 0x60 model units of the burst shape at the
-puff's depth); nothing of the projectile changes (port-only
-`Projectile::impact_shown` keeps it to one per round, and the original's
-puff may still start on a later successful roll).
+puff's depth). It is placed at the victim's torso for his posture
+(`torsoHeight`: 9 / 5 / 2 world units standing / crouching / prone, between
+the game's eye heights {15, 9, 3} and muzzle heights {12, 7, 0}) rather
+than at the round's altitude, which sits above a prone man's head; the
+original's own puff, when its roll succeeds, still starts (sound, lifetime)
+but is not drawn for a Blood surface (`drawExplosion`). Nothing of the
+projectile changes (port-only `Projectile::impact_shown` keeps the effect
+to one per round).
 
 Every impact that starts, and every visual-only puff, also spawns 6-10 particles at the impact point
 (world space, an upward and outward velocity, gravity, 0x60-0xA0 ticks of
