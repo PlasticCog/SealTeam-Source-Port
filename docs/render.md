@@ -287,7 +287,8 @@ decides when its slot is free again) and plays a sound: the headless
 frame. Every human hit therefore gets a *visual-only* puff, whatever the
 roll: the unit frame through the Blood remap, kept in a pool of 16 by
 `render/impactfx` and drawn by the post-draw hook with
-`spr_draw_explosion`'s growth rule (8.8 scale `e = 4 * elapsed`, at least
+`spr_draw_explosion`'s growth rule (8.8 scale `e = 4 * elapsed`, three
+times that for Blood so the splash grows and goes quickly, at least
 0x40, shown while `e < 3 * (billboard scale / 4)`, the billboard scale
 being the projected width of 0x60 model units of the burst shape at the
 puff's depth). It is placed at the victim's torso for his posture

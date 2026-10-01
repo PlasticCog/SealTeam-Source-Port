@@ -185,7 +185,10 @@ void drawPuff(Puff& p) {
     const double unit = shift >= 0 ? double(1 << shift) : 1.0 / double(1 << -shift);  // game units per model unit
     const double width = frameScaleX() * double(1 << frameZoom()) * 0x60 * unit / depth;
     const int scale = std::min(int(width), 0x640 * frameScale()) >> 2;
-    int e = (g_time - p.start) * 4;
+    // Blood (the visual-only puff of a human hit) grows and goes three times
+    // as fast as the original's dust puff: a splash, not a drifting cloud.
+    const int rate = p.surface == ImpactSurface::Blood ? 12 : 4;
+    int e = (g_time - p.start) * rate;
     if (e < 0x40) e = 0x40;
     if (e >= scale * 3 || e > 0x7FFF) {
         p.serial = 0;
