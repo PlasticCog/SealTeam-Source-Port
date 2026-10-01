@@ -535,16 +535,23 @@ void pushScriptedPadEvent(int code) {
 // "CtrlH": a synthetic SDL keyboard press and release of Ctrl+H, so the
 // port's key reference is reached the way a real keyboard reaches it
 // (System::pump, Input::handleEvent, the BIOS queue, InputLayer::getKey).
+void pushKeyEvent(SDL_Scancode scancode, SDL_Keycode keycode, SDL_Keymod mod, bool down) {
+    SDL_Event ev{};
+    ev.type = down ? SDL_EVENT_KEY_DOWN : SDL_EVENT_KEY_UP;
+    ev.key.scancode = scancode;
+    ev.key.key = keycode;
+    ev.key.mod = mod;
+    ev.key.down = down;
+    SDL_PushEvent(&ev);
+}
+
+// Like a hand on the keyboard: the modifier goes down first (its own key
+// event, which a BIOS reports to nobody), then the letter, then both up.
 void pushScriptedKeyEvent(SDL_Scancode scancode, SDL_Keycode keycode, SDL_Keymod mod) {
-    for (const bool down : {true, false}) {
-        SDL_Event ev{};
-        ev.type = down ? SDL_EVENT_KEY_DOWN : SDL_EVENT_KEY_UP;
-        ev.key.scancode = scancode;
-        ev.key.key = keycode;
-        ev.key.mod = mod;
-        ev.key.down = down;
-        SDL_PushEvent(&ev);
-    }
+    pushKeyEvent(SDL_SCANCODE_LCTRL, SDLK_LCTRL, mod, true);
+    pushKeyEvent(scancode, keycode, mod, true);
+    pushKeyEvent(scancode, keycode, mod, false);
+    pushKeyEvent(SDL_SCANCODE_LCTRL, SDLK_LCTRL, SDL_KMOD_NONE, false);
 }
 
 int parseKey(const std::string& name) {

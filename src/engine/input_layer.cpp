@@ -71,6 +71,14 @@ int InputLayer::pollBiosKey() {
 
 int InputLayer::getKey() {
     sys().pump();
+    // Port: Ctrl+H, the key reference. Taken from anywhere in the queue,
+    // ahead of the keyboard throttle, so it is never flushed away with the
+    // repeats of a held key or a key typed just before it.
+    if (helpHook_ && sys().input().takeKey(u16(key::Help))) {
+        flushKeyboard();
+        helpHook_();
+        return 0;
+    }
     // 1. Joystick (a game controller): button 1 -> Enter, button 2 -> Space
     //    and the Y axis -> Down / Up with the original's timers. The mapping
     //    layer types every other bound action into the BIOS queue, so it is
@@ -107,10 +115,7 @@ int InputLayer::getKey() {
         int k = pollBiosKey();
         flushKeyboard();
         keyPollNow_ = (k == 0);
-        if (k == key::Help) {  // Port: Ctrl+H, the key reference
-            if (helpHook_) helpHook_();
-            return 0;
-        }
+        if (k == key::Help) return 0;  // without a hook installed
         if (k >= 'A' && k <= 'Z') k |= 0x60;
         if (mode_ != InputMode::Menu && k == key::Space) k = 'm';
         return k;

@@ -43,6 +43,8 @@ public:
     u16 readKey();          // pops; 0 if empty
     u16 peekKey() const { return queue_.empty() ? 0 : queue_.front(); }
     void flushKeys() { queue_.clear(); }
+    // Remove the first queued keystroke equal to `word`; false if there is none.
+    bool takeKey(u16 word);
     // Inject a keystroke (scancode << 8 | ascii) as if typed: used by the
     // controller mapping layer so pad buttons go through the same BIOS
     // queue and throttling as keyboard keys.

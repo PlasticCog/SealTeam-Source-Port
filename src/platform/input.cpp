@@ -121,7 +121,12 @@ void Input::handleEvent(const SDL_Event& ev, int logicalW, int logicalH) {
         const bool down = ev.type == SDL_EVENT_KEY_DOWN;
         keys_[code] = down;
         lastScancode_ = down ? code : u8(code | 0x80);
-        if (!down) break;
+        // The BIOS reports no keystroke for the modifier and lock keys
+        // themselves (a queued Ctrl would be read as a key of its own and
+        // the Ctrl+letter behind it flushed with it).
+        const bool modifier = code == sc::LShift || code == sc::RShift || code == sc::Ctrl || code == sc::Alt ||
+                              code == sc::CapsLock || code == sc::NumLock || code == sc::ScrollLock;
+        if (!down || modifier) break;
         const SDL_Keymod mod = ev.key.mod;
         u8 ascii = controlAscii(code);
         const SDL_Keycode kc = ev.key.key;  // unshifted, layout aware
@@ -130,9 +135,9 @@ void Input::handleEvent(const SDL_Event& ev, int logicalW, int logicalH) {
             const bool shift = (mod & SDL_KMOD_SHIFT) != 0;
             const bool caps = (mod & SDL_KMOD_CAPS) != 0;
             if (ascii >= 'a' && ascii <= 'z') {
-                if (shift != caps) ascii = u8(ascii - 32);
-                if (mod & SDL_KMOD_CTRL) ascii = u8(ascii - 'a' + 1);
                 if (mod & SDL_KMOD_ALT) ascii = 0;  // BIOS reports Alt+letter as scancode only
+                else if (mod & SDL_KMOD_CTRL) ascii = u8(ascii - 'a' + 1);  // control code, whatever Shift / Caps Lock
+                else if (shift != caps) ascii = u8(ascii - 32);
             } else if (shift) {
                 static const char* kPlain = "1234567890-=[];'`\\,./";
                 static const char* kShift = "!@#$%^&*()_+{}:\"~|<>?";
@@ -169,6 +174,13 @@ void Input::handleEvent(const SDL_Event& ev, int logicalW, int logicalH) {
 void Input::clearKeys() {
     keys_.fill(false);
     queue_.clear();
+}
+
+bool Input::takeKey(u16 word) {
+    const auto it = std::find(queue_.begin(), queue_.end(), word);
+    if (it == queue_.end()) return false;
+    queue_.erase(it);
+    return true;
 }
 
 u16 Input::readKey() {

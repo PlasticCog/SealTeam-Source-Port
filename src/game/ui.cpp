@@ -3,6 +3,7 @@
 #include "data/exeimage.h"
 #include "engine/controller.h"
 #include "engine/input_layer.h"
+#include "engine/palette_fade.h"
 #include "engine/ticker.h"
 #include "game/campaign.h"
 #include "game/front/common.h"
@@ -479,6 +480,17 @@ void uiShowKeyReference() {
     if (g_overlayHooks.before) g_overlayHooks.before();
     // Pad A / B close it like a key (other buttons are muted).
     engine::Controller::DialogScope padDialog(engine::Controller::Dialog::Enter);
+    // A palette fade in progress (the fade-in at a mission's start, a
+    // cut-scene's end) is driven by the frame loop that stops here: show the
+    // card under the normal palette and let the fade go on afterwards.
+    auto& fade = engine::paletteFade();
+    logInfo("key card: open (fade level %d, draw page %d, target %s)", fade.level(), gx.drawPage(),
+            gx.target() ? "bitmap" : "page");
+    fade.suspend();
+    fade.upload();
+    // Always on the page, whatever the caller was drawing into.
+    Bitmap* const target = gx.target();
+    gx.setTarget(nullptr);
     gx.setClip(0, 0, 320, 200);
     cursorEraseAll();  // no cursor image in the frame the pages keep
     gx.copyPage(gx.displayPage(), gx.drawPage());  // page_copy_full
@@ -515,10 +527,13 @@ void uiShowKeyReference() {
         clock.updateGameTime();
     }
     sys().input().flushKeys();  // repeats of the closing key do not reopen it
+    logInfo("key card: closed");
     // Both pages back to the frame that was up (the draw page still holds it
     // after the flip), so a screen that keeps state on its pages - the intel
     // screen's zoomed area map, say - continues as if nothing had happened.
     gx.copyPage(gx.drawPage(), gx.displayPage());
+    gx.setTarget(target);
+    fade.resume();
     if (g_overlayHooks.after) g_overlayHooks.after();
 }
 

@@ -228,7 +228,15 @@ reference only afterwards).
   screens that keep state on their pages (the intel screen's zoomed area
   map kept drawing its markers over the restored office picture). Keys
   typed while the H is still held are dropped and the queue is flushed at
-  close, so repeats neither close nor reopen it. Ctrl+Q throws
+  close, so repeats neither close nor reopen it. The Ctrl+H word is taken
+  from anywhere in the BIOS queue ahead of the keyboard throttle
+  (`Input::takeKey`), so a held or just-typed key cannot flush it away;
+  `Input::handleEvent` queues no word for the modifier and lock keys
+  themselves (a BIOS does not either; a queued Ctrl used to be read as a key
+  and the Ctrl+H behind it flushed), and Ctrl+letter gives the control code
+  whatever Shift / Caps Lock. The card suspends the palette fade (`upload`
+  of the normal palette; a fade in progress continues afterwards) and draws
+  on the page whatever target was set. Ctrl+Q throws
   `QuitRequested` from `System::pump` like closing the window. In `--keys`,
   "CtrlH" replays a synthetic SDL Ctrl+H (the real keyboard path) and "H"
   opens the card directly.
