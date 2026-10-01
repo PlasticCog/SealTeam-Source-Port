@@ -1,6 +1,7 @@
 // Procedural scenery (1000:70B3..784D, docs/re/seg_1000.md 15). See veg.h.
 #include "render/veg.h"
 
+#include "core/settings.h"
 #include "data/exeimage.h"
 #include "engine/rng.h"
 #include "render/r3d.h"
@@ -126,6 +127,12 @@ void placeGroundCover(const game::Vec3& pos, int detail) {
             w->cover = kind == 6 ? 0x32 : (modelDsOffset(w->model) == 0x9350 ? 99 : 100);
             w->height = 0x7F;
         }
+        // Port (Modern gameplay): the original probes the cell corner only,
+        // before the random offset of up to 128 units, so a plant can land
+        // inside a hut and is drawn through its wall (painter's order). Probe
+        // the final spot too, after the original's draws from the RNG, and
+        // keep the object hidden there (it also gave line-of-sight cover).
+        if (settings().effectiveModernGameplay() && probe(b->pos.x, b->pos.z)) b->flags &= u16(~0x2001);
     }
     for (WorldObject* w : spares) {
         game::Obj3D* b = w->body;

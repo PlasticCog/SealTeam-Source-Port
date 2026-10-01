@@ -377,6 +377,18 @@ counter is kept with the option off too (statistics only).
   mission + 50 s the Point Man reaches the market and acquires him: the HUD
   reads "Viet Cong (target)" over " Objective", and `m` then shows his map
   mark ringed with the "!" beside it.
+* **No ground cover inside buildings.** Mechanism (original):
+  `veg_place_ground_cover` (1000:7181, render/veg.cpp `placeGroundCover`)
+  probes `wld_probe_kind(cell, 5)` at the corner of a 256-unit cell and only
+  then places the plant at `cell + (rand(0x80) << 8)` in x and z, so a bush
+  can stand inside a hut and, the billboards being painted by object depth,
+  is drawn through its wall; as a world object it also gives line-of-sight
+  cover (0x19..0x64) to anyone inside. With the option on the final spot is
+  probed too (after the original's draws from the RNG, so the sequence is
+  unchanged) and a plant on a blocker is kept hidden like one whose cell
+  corner is blocked (the end of the function then hides and zeroes it).
+  Verified: `--original --sim-mission 1 --ticks 30000 --script walk --log`
+  byte-identical with and without the code.
 
 Verification of the identity: `--original --sim-mission N --ticks 60000
 --script walk --log` for N = 1, 21, 33 is byte-identical between the build

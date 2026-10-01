@@ -150,6 +150,10 @@ far:
   red, his mark on the map screen gets a light red ring and a "!" once the
   map shows him at all, and the HUD names him "(target)" when he is your
   target. Nothing else about him changes.
+* No bushes inside buildings: the original checks for a building at the
+  corner of a ground-cover cell and then shifts the plant by up to 128
+  units, so plants grow inside huts and show through the walls; the final
+  spot is checked too (such a plant also gave cover to anyone inside).
 
 The briefing's loadout screen shows and limits the magazines accordingly;
 `docs/mission.md` ("Modern gameplay") has the details.
