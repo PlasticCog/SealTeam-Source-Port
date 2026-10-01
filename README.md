@@ -66,13 +66,21 @@ The Linux release binary is built by GitHub Actions
 linked in and attached to each release as `SealTeam-<version>-linux-x64.tar.gz`;
 every push to `main` also runs that build as a check.
 
-**macOS** (not built for releases yet)
+**macOS**
 
 ```sh
 brew install cmake sdl3            # sdl3 optional
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build
+cmake --build build                # -> build/SealTeam.app
 ```
+
+The release build is one universal app (Apple Silicon and Intel, macOS 11+)
+built the same way with
+`-DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" -DCMAKE_DISABLE_FIND_PACKAGE_SDL3=ON`
+(SDL3 then comes from source for both architectures). It is built by the same
+workflow and attached as `SealTeam-<version>-macos-universal.zip`. It is
+ad-hoc signed only, not notarized, so the first launch needs *Open Anyway* in
+System Settings > Privacy & Security.
 
 **Visual Studio**: open the folder as a CMake project, or install SDL3 via
 vcpkg (`vcpkg install sdl3`) and configure with
@@ -119,7 +127,8 @@ When the port starts it shows a start menu:
   cancels, LB / RB hold the view and order layers) and remaps every action;
   see `docs/controller.md`.
 
-Settings are saved in `sealteam.cfg` next to the program. `--original` or
+Settings are saved in `sealteam.cfg` next to the program (macOS: in
+`~/Library/Application Support/SealTeam/`). `--original` or
 `--enhanced` skip the menu; the menu can be switched off in Setup and
 brought back with `--launcher`.
 

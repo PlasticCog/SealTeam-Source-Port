@@ -1,4 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
+# macOS: set before project(). Universal (arm64 + x86_64) release builds pass
+# -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" and need the fetched SDL3.
+set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0" CACHE STRING "Minimum macOS version")
 project(SealTeam VERSION 0.4.1 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -52,7 +55,37 @@ if(WIN32)
     list(APPEND SEALTEAM_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/assets/icon/sealteam.rc)
 endif()
 
-add_executable(sealteam WIN32 ${SEALTEAM_SOURCES})
+# macOS: SealTeam.app bundle with an .icns made from the 1024 px icon.
+if(APPLE)
+    set(SEALTEAM_ICNS ${CMAKE_CURRENT_BINARY_DIR}/sealteam.icns)
+    set(SEALTEAM_ICONSET ${CMAKE_CURRENT_BINARY_DIR}/sealteam.iconset)
+    add_custom_command(OUTPUT ${SEALTEAM_ICNS}
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${SEALTEAM_ICONSET}
+        COMMAND sips -z 16 16 ${CMAKE_CURRENT_SOURCE_DIR}/assets/icon/sealteam_1024.png --out ${SEALTEAM_ICONSET}/icon_16x16.png
+        COMMAND sips -z 32 32 ${CMAKE_CURRENT_SOURCE_DIR}/assets/icon/sealteam_1024.png --out ${SEALTEAM_ICONSET}/icon_16x16@2x.png
+        COMMAND sips -z 32 32 ${CMAKE_CURRENT_SOURCE_DIR}/assets/icon/sealteam_1024.png --out ${SEALTEAM_ICONSET}/icon_32x32.png
+        COMMAND sips -z 64 64 ${CMAKE_CURRENT_SOURCE_DIR}/assets/icon/sealteam_1024.png --out ${SEALTEAM_ICONSET}/icon_32x32@2x.png
+        COMMAND sips -z 128 128 ${CMAKE_CURRENT_SOURCE_DIR}/assets/icon/sealteam_1024.png --out ${SEALTEAM_ICONSET}/icon_128x128.png
+        COMMAND sips -z 256 256 ${CMAKE_CURRENT_SOURCE_DIR}/assets/icon/sealteam_1024.png --out ${SEALTEAM_ICONSET}/icon_128x128@2x.png
+        COMMAND sips -z 256 256 ${CMAKE_CURRENT_SOURCE_DIR}/assets/icon/sealteam_1024.png --out ${SEALTEAM_ICONSET}/icon_256x256.png
+        COMMAND sips -z 512 512 ${CMAKE_CURRENT_SOURCE_DIR}/assets/icon/sealteam_1024.png --out ${SEALTEAM_ICONSET}/icon_256x256@2x.png
+        COMMAND sips -z 512 512 ${CMAKE_CURRENT_SOURCE_DIR}/assets/icon/sealteam_1024.png --out ${SEALTEAM_ICONSET}/icon_512x512.png
+        COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/assets/icon/sealteam_1024.png ${SEALTEAM_ICONSET}/icon_512x512@2x.png
+        COMMAND iconutil -c icns ${SEALTEAM_ICONSET} -o ${SEALTEAM_ICNS}
+        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/assets/icon/sealteam_1024.png
+        VERBATIM)
+    set_source_files_properties(${SEALTEAM_ICNS} PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+    list(APPEND SEALTEAM_SOURCES ${SEALTEAM_ICNS})
+endif()
+
+add_executable(sealteam WIN32 MACOSX_BUNDLE ${SEALTEAM_SOURCES})
+if(APPLE)
+    configure_file(${CMAKE_CURRENT_SOURCE_DIR}/assets/macos/Info.plist.in
+                   ${CMAKE_CURRENT_BINARY_DIR}/Info.plist @ONLY)
+    set_target_properties(sealteam PROPERTIES
+        OUTPUT_NAME SealTeam
+        MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_BINARY_DIR}/Info.plist)
+endif()
 # Keep console output for developer commands and logs on Windows too.
 if(MSVC)
     target_link_options(sealteam PRIVATE /SUBSYSTEM:CONSOLE)

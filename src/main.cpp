@@ -22,6 +22,8 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <filesystem>
+#include <fstream>
 #include <string>
 #include <vector>
 
@@ -49,18 +51,52 @@ void usage() {
         "  --window WxH  window size in pixels instead of the scale factor\n"
         "  --fullscreen  start in fullscreen (Alt+Enter toggles)\n"
         "  --no-aspect   show square pixels instead of 4:3\n"
-        "Settings are stored in sealteam.cfg next to the program.\n"
+        "Settings are stored in sealteam.cfg next to the program\n"
+        "(macOS app: in ~/Library/Application Support/SealTeam).\n"
         "Original game options are passed through: ? h (help) d (no digital sound)\n"
         "t (no title screen) and a mission number.\n");
 }
+
+#if defined(__APPLE__)
+// Inside SealTeam.app the program folder is the read-only bundle (and
+// Gatekeeper may run it from a randomized copy), so settings, screenshots,
+// crash reports and the preferred Game folder live in
+// ~/Library/Application Support/SealTeam/ instead. Returns "" when not
+// running from a bundle; *appParent gets the folder holding the .app.
+std::string macBundleUserDir(const std::string& exeDir, std::string* appParent) {
+    namespace fs = std::filesystem;
+    const fs::path res = fs::path(exeDir).lexically_normal().parent_path();  // drop trailing '/'
+    const fs::path app = res.parent_path().parent_path();
+    if (res.filename() != "Resources" || app.extension() != ".app") return {};
+    *appParent = app.parent_path().string();
+    char* pref = SDL_GetPrefPath("", "SealTeam");
+    if (!pref) return {};
+    std::string dir = pref;
+    SDL_free(pref);
+    std::error_code ec;
+    const fs::path game = fs::path(dir) / "Game";
+    if (!fs::exists(game, ec)) {
+        fs::create_directories(game, ec);
+        std::ofstream(game / "PUT GAME FILES HERE.txt")
+            << "Copy ALL files from your original SEAL Team installation (st.exe, *.lib,\n"
+               "*.fnt, the sound drivers, ...) into this folder, then start SealTeam again.\n";
+    }
+    return dir;
+}
+#endif
 
 } // namespace
 
 int main(int argc, char** argv) {
     std::string exeDir;
     if (const char* base = SDL_GetBasePath()) exeDir = base;  // owned by SDL
-    setSettingsDir(exeDir);
-    installCrashHandler(exeDir);
+    std::string userDir = exeDir;  // settings, screenshots, crash reports
+    std::string appParent;
+#if defined(__APPLE__)
+    if (std::string d = macBundleUserDir(exeDir, &appParent); !d.empty()) userDir = d;
+#endif
+    setSettingsDir(userDir);
+    installCrashHandler(userDir);
     loadSettings();
     Settings& st = settings();
 
@@ -91,12 +127,23 @@ int main(int argc, char** argv) {
 
     g_interactive = shotPath.empty();
     st.scriptedRun = !g_interactive;
-    if (!gameFS().init(dataDir, exeDir)) {
-        startupError(dataDir.empty()
-            ? "Could not find the original SEAL Team files.\n\n"
-              "Copy all files from your SEAL Team installation (st.exe, *.lib, *.fnt, ...) "
-              "into a folder named \"Game\" next to sealteam.exe."
-            : "Could not find st.exe in the directory given with --data.");
+    bool found = gameFS().init(dataDir, userDir);
+    if (!found && !appParent.empty()) found = gameFS().init(dataDir, appParent);  // Game next to the .app
+    if (!found) {
+        if (!dataDir.empty()) {
+            startupError("Could not find st.exe in the directory given with --data.");
+        } else if (!appParent.empty()) {
+            const std::string msg =
+                "Could not find the original SEAL Team files.\n\n"
+                "Copy all files from your SEAL Team installation (st.exe, *.lib, *.fnt, ...) "
+                "into this folder, which opens in Finder now:\n\n" + userDir + "Game";
+            startupError(msg.c_str());
+            if (g_interactive) SDL_OpenURL(("file://" + userDir + "Game").c_str());
+        } else {
+            startupError("Could not find the original SEAL Team files.\n\n"
+                         "Copy all files from your SEAL Team installation (st.exe, *.lib, *.fnt, ...) "
+                         "into a folder named \"Game\" next to sealteam.exe.");
+        }
         return 1;
     }
     if (!exe().load("st.exe")) {
@@ -110,7 +157,7 @@ int main(int argc, char** argv) {
 
     int rc = 0;
     if (!sys().init(vcfg)) return 1;
-    sys().setScreenshotDir(exeDir);
+    sys().setScreenshotDir(userDir);
     if (!shotPath.empty()) sys().scheduleScreenshot(shotPath, shotAfter);
     try {
         rc = game::run(gameArgs);

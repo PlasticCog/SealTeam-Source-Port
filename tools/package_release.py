@@ -2,16 +2,19 @@
 """Package a release: the game binary, LICENSE, the player README and an
 empty "Game" folder (with a note) where the original files go.
 
-    python tools/package_release.py <version> <path/to/binary> [--platform windows|linux] [--out DIR]
+    python tools/package_release.py <version> <path/to/binary> [--platform windows|linux|macos] [--out DIR]
 
 Windows: <out>/SealTeam-<version>-windows-x64.zip  (sealteam.exe)
 Linux:   <out>/SealTeam-<version>-linux-x64.tar.gz (sealteam, executable)
-Default out: re/release. The Linux package is normally built by the GitHub
-Actions workflow (.github/workflows/release.yml).
+macOS:   <out>/SealTeam-<version>-macos-universal.zip (SealTeam.app; pass the
+         .app as <binary>; packaged on a Mac: ad-hoc signed, zipped by ditto)
+Default out: re/release. The Linux and macOS packages are normally built by
+the GitHub Actions workflow (.github/workflows/release.yml).
 """
 import argparse
 import os
 import shutil
+import subprocess
 import sys
 import tarfile
 
@@ -43,9 +46,7 @@ data.
 
 Setup
 -----
-1. Copy ALL files of your SEAL Team installation into the "Game" folder
-   next to {binary} (see the note inside that folder).
-2. {run}
+{setup}
 
 The start menu offers:
   Original Game  - plays 1:1 like the DOS version (320x200, original rules)
@@ -61,23 +62,27 @@ The start menu offers:
   Controller     - game controller layout (Xbox-style default) and
                    remapping; controllers are detected when plugged in
 
-Settings are saved in sealteam.cfg next to the program. On every screen:
+Settings are saved in sealteam.cfg {settings_where}. On every screen:
 Ctrl+H shows a reference card of the game's keys (any key closes it),
 Ctrl+Q quits to the desktop at once, Alt+Enter toggles fullscreen. The
 mouse is captured by the game window; Alt+Tab releases it and the next
 click takes it back.
 
-Command line: {binary} [--original | --enhanced | --launcher] [--data DIR]
-Original options still work, e.g. "{binary} 3 t" starts mission 3 without
+Command line: {cli} [--original | --enhanced | --launcher] [--data DIR]
+Original options still work, e.g. "{cli} 3 t" starts mission 3 without
 the title screen.
 
-Press F12 in the game to save a screenshot next to the program; a crash
+Press F12 in the game to save a screenshot {settings_where}; a crash
 writes sealteam-crash.txt there. The port has had little playtesting;
 please report problems on the project page.
 {platform_notes}
 License: the port's code is MIT licensed (see LICENSE.txt). It uses
 ymfm (BSD-3-Clause) and SDL3 (zlib).
 """
+
+SETUP = """1. Copy ALL files of your SEAL Team installation into the "Game" folder
+   next to {binary} (see the note inside that folder).
+2. {run}"""
 
 PLATFORMS = {
     'windows': dict(
@@ -96,6 +101,28 @@ from your system at run time. If the file manager refuses to run it, mark
 it executable: chmod +x sealteam. Settings and screenshots are written
 next to the binary, so keep it in a folder you can write to.
 """),
+    'macos': dict(
+        platform_name='macOS universal', binary='SealTeam.app', cli='SealTeam.app/Contents/MacOS/SealTeam', suffix='macos-universal', archive='ditto',
+        settings_where='in\n~/Library/Application Support/SealTeam',
+        setup="""1. Move SealTeam.app to your Applications folder (or anywhere you like).
+2. Open it once. It creates the folder
+       ~/Library/Application Support/SealTeam/Game
+   and opens it in Finder. Copy ALL files of your SEAL Team installation
+   into that folder (st.exe, *.lib, *.fnt, the sound drivers, ...).
+3. Open SealTeam.app again.
+   A folder named "Game" next to SealTeam.app works too.""",
+        notes="""
+macOS notes
+-----------
+One universal app for Apple Silicon and Intel Macs, macOS 11 or newer.
+SDL3 is built in. The app is not signed with an Apple Developer ID, so
+the first time macOS says it cannot verify the app. Then open System
+Settings > Privacy & Security, scroll down and click "Open Anyway" (on
+macOS 14 and older, Control-click the app and choose Open). Or, in
+Terminal:  xattr -dr com.apple.quarantine /Applications/SealTeam.app
+On a Mac keyboard Alt is the Option key (Option+Return toggles
+fullscreen); Cmd+Q also quits.
+"""),
 }
 
 
@@ -110,21 +137,32 @@ def main():
     name = f'SealTeam-{args.version}'
     stage = os.path.join(args.out, name)
     shutil.rmtree(stage, ignore_errors=True)
-    os.makedirs(os.path.join(stage, 'Game'))
     binary = os.path.join(stage, p['binary'])
-    shutil.copy(args.binary, binary)
-    os.chmod(binary, 0o755)
+    if args.platform == 'macos':
+        # The app keeps its Game folder in Application Support (see main.cpp).
+        os.makedirs(stage)
+        shutil.copytree(args.binary, binary, symlinks=True)
+        subprocess.run(['codesign', '--force', '--deep', '--sign', '-', binary], check=True)
+    else:
+        os.makedirs(os.path.join(stage, 'Game'))
+        shutil.copy(args.binary, binary)
+        os.chmod(binary, 0o755)
+        with open(os.path.join(stage, 'Game', 'PUT GAME FILES HERE.txt'), 'w', newline='\n') as f:
+            f.write(GAME_NOTE)
     shutil.copy(os.path.join(ROOT, 'LICENSE'), os.path.join(stage, 'LICENSE.txt'))
     with open(os.path.join(stage, 'README.txt'), 'w', newline='\n') as f:
-        f.write(README.format(version=args.version, platform_name=p['platform_name'], binary=p['binary'],
-                              run=p['run'], platform_notes=p['notes']))
-    with open(os.path.join(stage, 'Game', 'PUT GAME FILES HERE.txt'), 'w', newline='\n') as f:
-        f.write(GAME_NOTE)
+        setup = p.get('setup') or SETUP.format(binary=p['binary'], run=p['run'])
+        f.write(README.format(version=args.version, platform_name=p['platform_name'], binary=p['binary'], cli=p.get('cli', p['binary']),
+                              setup=setup, platform_notes=p['notes'],
+                              settings_where=p.get('settings_where', 'next to the program')))
     base = os.path.join(args.out, f'{name}-{p["suffix"]}')
-    ext = '.zip' if p['archive'] == 'zip' else '.tar.gz'
+    ext = '.tar.gz' if p['archive'] == 'gztar' else '.zip'
     if os.path.exists(base + ext):
         os.remove(base + ext)
-    if p['archive'] == 'zip':
+    if p['archive'] == 'ditto':
+        # ditto keeps the bundle's symlinks, modes and signature intact.
+        subprocess.run(['ditto', '-c', '-k', '--norsrc', '--noextattr', '--keepParent', stage, base + ext], check=True)
+    elif p['archive'] == 'zip':
         shutil.make_archive(base, 'zip', args.out, name)
     else:
         # Explicit modes: the host may be Windows, where chmod means nothing.
