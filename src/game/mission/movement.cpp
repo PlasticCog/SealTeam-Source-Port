@@ -12,6 +12,7 @@
 #include "game/mission/entity.h"
 #include "game/mission/exedata.h"
 #include "game/mission/geo.h"
+#include "game/mission/modern.h"
 #include "game/mission/msg.h"
 #include "game/mission/sfx.h"
 #include "game/mission/state.h"
@@ -503,6 +504,7 @@ void moveOtherUnit(Team* t, int slot, Unit* u, bool tick, bool& changed) {
     if (!(m->flags2 & mover_flag2::kInBoat)) fxUnitGroundFx(u, groundFxArg(body));
     approachSpeed(m);
     if (m->height != m->target_height) evtApproachValue(m->height, m->target_height, m->climb_rate);
+    modernDetourUpdate(u);  // port: Modern gameplay detour heading (no-op while off)
     // Living units turn, and dead ones that are being carried.
     if ((unitAlive(u) || u->buddy) && m->heading != m->desired_heading)
         evtApproachAngle(m->heading, m->desired_heading, s16(m->turn_rate >> (u8(m->posture) & 0x1F)));
@@ -540,6 +542,8 @@ void moveOtherUnit(Team* t, int slot, Unit* u, bool tick, bool& changed) {
             m->flags &= 0xF3;
             m->flags |= mover_flag::kBlocked;
             evtUnitBounceOffObstacle(u);
+            ++ms().portStats.bounces;  // port: --sim-mission statistics only
+            modernNoteBounce(u, w);    // port: Modern gameplay detours (no-op while off)
         }
     }
     if (tick || changed) {

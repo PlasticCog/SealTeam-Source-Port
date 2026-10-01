@@ -15,6 +15,7 @@
 #include "game/mission/entity.h"
 #include "game/mission/exedata.h"
 #include "game/mission/geo.h"
+#include "game/mission/modern.h"
 #include "game/mission/msg.h"
 #include "game/mission/people.h"
 #include "game/mission/sfx.h"
@@ -23,6 +24,7 @@
 #include "game/mission/wquery.h"
 
 #include <array>
+#include <functional>
 
 namespace st::game::mission {
 
@@ -289,6 +291,13 @@ void damageOther(const ShotVictim& e, int damage) {
     else dmgApply(e.who.unit, nullptr, 0, damage, e.kind);
 }
 
+std::function<void(const ShotRec&, const Unit*, int)> g_hitObserver;
+
+// Port: tells the --sim-mission log who wounded whom (no effect on the game).
+void noteHit(const ShotRec& s, const Unit* u, int wound) {
+    if (g_hitObserver && wound > 0 && !isDead(u)) g_hitObserver(s, u, wound);
+}
+
 // 19ac:7FFC shot_apply_damage.
 void shotApplyDamage(const ShotRec& s, Victims& v) {
     MissionState& S = ms();
@@ -318,6 +327,7 @@ void shotApplyDamage(const ShotRec& s, Victims& v) {
                 if (enemy && o.enemy_wounds == 0) wound = 0x4000;
                 if (wound != -1 && wound > 0 && sealShooter && s.rounds != 0 && !isDead(u))
                     S.stats.roundsHit = s16(S.stats.roundsHit + rnd(s.rounds) + 1);
+                noteHit(s, u, wound);
                 dmgApply(u, nullptr, wound, 0, e.kind);
             } else if (e.kind != u8(TargetKind::AimPoint) && e.who.unit) {
                 damageOther(e, s.rounds * 2);
@@ -347,6 +357,7 @@ void shotApplyDamage(const ShotRec& s, Victims& v) {
                 S.stats.grenadeHits = s16(S.stats.grenadeHits + 1);
             if (u == pm && o.player_wounds == 0 && wound != -1) wound = 0;
             if (enemy && o.enemy_wounds == 0) wound = 0x4000;
+            noteHit(s, u, wound);
             dmgApply(u, nullptr, wound, 0, e.kind);
         } else if (e.kind != u8(TargetKind::AimPoint) && e.who.unit) {
             damageOther(e, u8(weaponDef(s.weapon).structure_damage));
@@ -551,6 +562,7 @@ bool wpnSelectLongest(Unit* u) {
     int best = 0;
     WeaponNode* sel = nullptr;
     for (WeaponNode* w = u->loadout->list; w; w = w->next) {
+        if (modernSkipThrownForLongest(w)) continue;  // port: Modern gameplay (no-op while off)
         if (s16(w->rounds + w->reloads) != 0 && best < wdef(w).range_max && w != u->loadout->secondary) {
             best = wdef(w).range_max;
             sel = w;
@@ -752,6 +764,8 @@ void combatRandomWound(Unit* u) {
     if (u == pointMan() && ms().opt.player_wounds == 0 && wound != -1) wound = 0;
     dmgApply(u, nullptr, wound, 0, 0);
 }
+
+void setShotHitObserver(std::function<void(const ShotRec&, const Unit*, int)> fn) { g_hitObserver = std::move(fn); }
 
 void shotUpdateAll(int elapsed) {
     (void)elapsed;  // the original takes no argument

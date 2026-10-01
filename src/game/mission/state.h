@@ -18,6 +18,7 @@
 #include <array>
 #include <deque>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace st::game::mission {
@@ -53,6 +54,32 @@ struct MissionStats {
     s16 bonusCounter = 0;       // 53BA:3042
     s16 missionScore = 0;       // 53BA:3044
     s16 teamSize = 0;           // 53BA:3046
+};
+
+// Port-only per-unit state of the Enhanced "Modern gameplay" rules
+// (modern.h, docs/mission.md): obstacle detours and grenade timing. Written
+// only while the option is on.
+struct PortUnitState {
+    const WorldObject* bounce_obj = nullptr;  // obstacle of the last bounce
+    int bounce_count = 0;                     // consecutive bounces against it
+    Ticks bounce_time = 0;                    // g_time of the last bounce
+    bool detour = false;                      // detour heading in force
+    s16 detour_heading = 0;                   // deg
+    Ticks detour_start = 0;
+    const WorldObject* detour_obj = nullptr;  // obstacle being walked around
+    Vec3 detour_last_pos{};                   // position at the last bounce of the detour
+    int detour_pinned = 0;                    // bounces of the detour without progress
+    bool thrown = false;                      // has thrown a grenade (last_throw valid)
+    Ticks last_throw = 0;
+};
+
+// Port-only counters read by the --sim-mission summary (no effect on the
+// simulation; the bounce count is kept with the option off too).
+struct PortStats {
+    int bounces = 0;       // evt_unit_bounce_off_obstacle calls of foot units
+    int detours = 0;       // detours started (Modern gameplay)
+    int craftHolds = 0;    // support-craft shots held near friendlies (Modern gameplay)
+    int grenadeHolds = 0;  // enemy grenade throws held by the discipline rule (Modern gameplay)
 };
 
 struct MissionState {
@@ -200,6 +227,10 @@ struct MissionState {
     // ---- LOS (4ff8) -------------------------------------------------------
     Vec3 losHit{};               // g_los_hit DS:ECFE (also the collision contact point)
     s16 losCalls = 0;            // DS:D80C
+
+    // ---- Port only (no original counterpart) ------------------------------
+    std::unordered_map<const Unit*, PortUnitState> portUnits;  // Modern gameplay side table
+    PortStats portStats;
 };
 
 MissionState& ms();

@@ -33,6 +33,7 @@ The original code lives in segments 2dbd, 348e, 365e (0000-29C5), 4a37,
 | `orders.cpp` | 19ac:52A1, 19ac:5C8E | map orders (waypoints, craft attack/cease/loiter/extract/emergency), re-insertion |
 | `camp.cpp` | 19ac:64D4..6B07 | world alone for the briefing/debriefing, SEAL camp cut-scene worlds |
 | `campaign_link.h/.cpp` | 19ac:00B6, 365e:1D1F | mission set-up from the campaign state, hand-over of the results |
+| `modern.h/.cpp` | — | the Enhanced "Modern gameplay" rules that change the simulation (below); no-ops while the option is off |
 | `sim_cmd.cpp` | — | `--sim-mission` developer command |
 
 Records are the canonical structs of `game/types.h`. They are allocated from
@@ -120,7 +121,8 @@ digital-effects switch of the port settings are honoured there
 
 ```
 sealteam --sim-mission <1..80> [--ticks N] [--seed-skip K] [--dt D]
-         [--script idle|walk] [--log FILE] [--quiet-snapshots]
+         [--script idle|walk|hold|attack] [--craft b|u|a] [--summary]
+         [--log FILE] [--quiet-snapshots]
 ```
 
 Builds the mission headlessly (no audio output) with a test team (SE 1, 10,
@@ -132,6 +134,23 @@ signals, sound effects, team orders, AI flags, visibility, postures, wounds,
 deaths, shots and their resolution, objectives, and the end of the mission.
 `--seed-skip K` advances the game RNG K steps first. Two runs with the same
 arguments produce identical logs.
+
+Two scripts exercise the combat rules for longer: `hold` runs the Point Man
+at the first enemy (VC / NVA) team of the mission table whose leader is
+visible, stops about 250 units from it and holds there facing it, so that
+the squad and the enemy exchange fire for the rest of the run; `attack` does
+the same and, once the insertion is over (about tick 2500), gives the map's
+Attack order of the first support craft (`--craft b` boat, the default, `u`
+helicopter, `a` aircraft; `mapOrderKey`) at the position of the nearest enemy
+team, logging the order and its result. With these two scripts (or
+`--summary` with any script) the log gains a `hit:` line for every wound a
+shot inflicts, naming the shooter and his team type, and a three-line
+`summary:` at the end: enemy shots by weapon class (bullets, thrown, other
+explosives), support-craft shots and those held back near friendlies, SEAL
+wounds and deaths by the shooter's team type, enemy grenade throws held by
+the discipline rule, and the number of unit bounces off obstacles and of
+detours started. The `walk` and `idle` logs are unchanged by these
+additions, so they remain comparable across builds.
 
 ## Deviations
 
@@ -160,10 +179,15 @@ arguments produce identical logs.
 The Enhanced option "Modern gameplay" (`settings().effectiveModernGameplay()`,
 cfg `modern_gameplay`, Setup "Modern gameplay"; always off with the Original
 preset) is the one Enhanced option that changes gameplay rules, not the
-presentation. Every rule applies to the SEAL team only; enemy units, craft
-and NPCs keep the original tables. With the option off nothing changes: the
-`--sim-mission` logs of the Original and of the Enhanced preset are
-byte-identical to those of the build without the code.
+presentation. The loadout rules apply to the SEAL team only; the three
+simulation rules (support craft, obstacle detours, enemy grenades) change
+what the AI of craft, squad mates and enemy soldiers does, as described
+below; all other tables and code paths stay the original's. With the option
+off nothing changes: the `--sim-mission` logs of the Original and of the
+Enhanced preset are byte-identical to those of the build without the code,
+and none of the new code touches `engine::rng()` in either state (every
+choice is made from the unit's own state), so enabling the option changes
+only what it is meant to change.
 
 * **CAR-15 Commando ammunition like the M16's.** The weapon table (DS:48FE)
   gives both rifles 8 magazines, but the Commando's hold 20 rounds against
@@ -195,6 +219,117 @@ Commando); `--play-mission` logs the team's loadout (`CAR15 x12` with the
 option, `x8` without), the first-person weapon line and the map's Team Info
 show the magazines, and the Setup page fits eight rows per column with the
 new entry.
+
+The three simulation rules live in `modern.h/.cpp`; their per-unit state is
+the side table `ms().portUnits` (released with the mission) and the
+`--sim-mission` summary reads the counters `ms().portStats`. The bounce
+counter is kept with the option off too (statistics only).
+
+* **Support craft hold fire near friendlies.** Mechanism (original bug):
+  `ai_group_support_fire` (ai.cpp `aiGroupSupportFire`) gives a craft
+  member without a real contact a 50 % synthetic contact at the aim point
+  (the leader's destination, the map's support waypoint) whose `target` is
+  the Point Man, team 0 member 0; `evt_execute_ai_commands` (teams.cpp) then
+  fires with target kind 0 and `shot_aimed_hit_roll` (combat.cpp) resolves
+  aimed bullets against that target unit wherever he is, so the Point Man
+  can be hit from across the map; blast weapons (`shot_blast_victims`:
+  Minigun radius 270, rocket 48, M79 and the boat's grenades) hit anything
+  within the radius of the scattered aim point, and borrowed contacts keep
+  the old `target`, so the Point Man stays the target later. With the option
+  on, in the craft branch of `evtExecuteAiCommands` before `shotFire`: a
+  target that is a SEAL is replaced by `nullptr` with target kind 3 (aim
+  point), so bullets resolve through the line / cone victims
+  (`shot_line_victims`) like the player's untargeted shots; and the shot is
+  held (`modernCraftHoldsFire`, counter `craftHolds`) when a living member
+  of a SEAL or Friendly team who is not aboard the craft lies within
+  blast radius + 60 units of the target or within 90 units of the line of
+  fire craft -> target (perpendicular distance from `geoDistance`,
+  `geoBearing` and the 1.14 sine table; units behind the craft or beyond the
+  target are not on the line). Verification (`--script attack`, 60000 ticks,
+  the boat ordered to attack the nearest VC team at about tick 2500, option
+  off = `--original`, on = `--enhanced` with `modern_gameplay = 1`): mission
+  1, off: 4 boat shots, the boat wounds and kills one SEAL; on: 11 boat
+  shots, no SEAL hit by the boat (the squad's 1 KIA is by the VC). Mission 5,
+  off: 5 boat shots, 2 SEAL wounds and 1 KIA by the boat; on: 22 boat
+  shots, none. Mission 21 `--script hold` (helicopters only): on, 3 of 8
+  craft shots held near friendlies. In every run the shots held or redirected
+  are the ones the summary attributes to the craft; enemy shots and SEAL
+  casualties by the enemy vary because the runs diverge.
+* **Squad mates work around obstacles ("unstick").** Mechanism (original):
+  a foot unit whose 6-unit probe (`wld_probe_solid`, a short ray to +x +z)
+  hits a solid gets `impact_bearing` (bearing to the object's centre), the
+  blocked flag and `evt_unit_bounce_off_obstacle` (position reset to the
+  probe's hit point, pushed 4 units back, desired heading = impact +-100
+  degrees when within 100 degrees); the flag is cleared only on the 0x500
+  fatigue tick when the unit is off the solid; `evt_team_formation_update`
+  then steers straight back at the formation slot through the same obstacle,
+  `evt_split_teams_update` rewrites a split-team leader's heading toward the
+  waypoint / structure regardless of the flag, and a unit whose heading leads
+  into the object's outline is reset to the same spot every few frames
+  ("pinned") because the 4-unit push does not clear the probe's reach. With
+  the option on (`modernNoteBounce`, called after the bounce in
+  `moveOtherUnit`, SEAL teams only): three bounces against the same world
+  object within 0x500 ticks of each other start a detour, desired heading =
+  impact bearing +-90 degrees on the side nearer the unit's destination
+  (its formation slot; ties go right); `modernDetourUpdate`, run every frame
+  before the unit turns, keeps that heading until the unit is radius + 20
+  units from the object (`objRadiusOrDefault`) or 0x300 ticks passed; three
+  bounces at the same spot (within 1 unit, with the unit already on the
+  detour heading) show the heading leads into the outline and turn it 90
+  degrees to the side farther from the impact bearing, restarting the
+  timer. While a detour is active the formation update treats the unit like
+  a blocked one (no heading rewrite, mode left alone, no facing of the aim
+  heading when stopped) and the two heading rewrites of the split-team
+  update (toward the waypoint, toward the demolition structure) are
+  skipped. `evtUnitBounceOffObstacle` and the flag clearing are unchanged.
+  Verification: in the mission-1 walk run with the option on the squad's
+  three members hit the same palm (kind 6, "radius" 2, outline about 14
+  units) one after the other at (12540,13589); without the turn-away rule
+  (first implementation) T0.3 sat there for 10000 ticks bouncing every 7
+  frames with 18 detours started, with it the run shows 2 detours (T0.1
+  released at radius + 20 after 310 ticks, T0.2 turned south after 125
+  ticks and was released 185 ticks later) and the squad moved on. Over
+  missions 1-20 (walk, 30000 ticks) and ten hold runs the SEAL squad is
+  rarely stuck in these scripts (detours: mission 1 walk 2, missions 8 and
+  12 hold 1 each); the large bounce counts of some runs (mission 3 hold
+  16425, mission 5 attack 946, mission 9 walk 1039) are enemy or civilian
+  units ping-ponging against an obstacle, which this rule leaves alone.
+* **Enemy grenade discipline.** Mechanism (original): enemies whose SE
+  loadout lists a grenade first have it as primary and `ai_group_combat`
+  throws one per AI decision (every 0x140 ticks) at any contact within the
+  grenade's maximum range (600-720 units), because the range check of the
+  primary is the full range (`wpn_in_range`) and `wpn_select_for_range`
+  skips thrown items; and when a rifle runs dry with Ammo = Real,
+  `wpn_select_longest` picks the longest-range item including grenades and
+  the unit lobs one every 1.25 s until they are gone. The secondary (grenade)
+  roll is only 40 % / 65 % and only when the maximum range is at least four
+  times the distance (150-180 units). With the option on
+  (`modernGrenadeAllowed`, in `aiGroupCombat` after the weapon choice and
+  before the fire command is pushed): a thrown item chosen as the primary is
+  thrown only when four times the distance is within its maximum range (the
+  secondary roll's rule) and 0x400 ticks (4 s) passed since the unit's last
+  throw (recorded for every throw, including the secondary roll's); otherwise
+  the shot is skipped (counter `grenadeHolds`) and the unit keeps the turn it
+  made and its posture. `wpnSelectLongest` skips thrown items
+  (`modernSkipThrownForLongest`), so a dry rifleman without magazines falls
+  through to the original no-ammo rules: with the secondary also empty he
+  flees when more than 210 units from the player, else surrenders; with only
+  the primary dry (mask 1) he flees. Verification (`--script hold`, 60000
+  ticks, off vs on): mission 21 thrown 3 -> 1 (47 held), mission 23 2 -> 0
+  (71 held), mission 24 14 -> 4 (36 held, SEAL KIA by the VC 3 -> 1);
+  `--script walk` 30000 ticks: mission 10 thrown 8 -> 0 (107 held, SEAL KIA
+  3 -> 0), mission 20 9 -> 0 (33 held), mission 14 3 -> 1, missions 7, 18
+  and 19 1 -> 0. Missions 33 and 1-6 hold runs engage no grenade-first unit
+  and are identical with the option on and off.
+
+Verification of the identity: `--original --sim-mission N --ticks 60000
+--script walk --log` for N = 1, 21, 33 is byte-identical between the build
+without this code and with it, and so is `--enhanced` with a cfg
+`modern_gameplay = 0` (also identical to the `--original` logs);
+`--original --view-world 3 --shot` is bit-identical; `--enhanced --window
+1920x1080 --play-mission 1 --keys "Enter@mission+1,F1@mission+2.5" --shot
+... --shot-after 8` runs normally with the option on (`CAR15 x12` in the
+loadout line).
 
 ## Corrections to the RE notes found while porting
 

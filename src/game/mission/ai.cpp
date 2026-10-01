@@ -15,6 +15,7 @@
 #include "game/mission/entity.h"
 #include "game/mission/exedata.h"
 #include "game/mission/geo.h"
+#include "game/mission/modern.h"
 #include "game/mission/state.h"
 #include "game/mission/teams.h"
 #include "game/mission/wquery.h"
@@ -1332,6 +1333,10 @@ void aiGroupCombat(Team* t) {
             }
         }
         if (!w) continue;
+        // Port (Modern gameplay, docs/mission.md): a grenade chosen as the
+        // primary is thrown only at close range and 4 s after the last one;
+        // the unit keeps the turn it made and its posture. No-op while off.
+        if (!modernGrenadeAllowed(m, w, dist, !(cmdWord(cmd) == 1 && w == primaryOf(m)))) continue;
         TargetRec& c = b->contacts[ci];
         if (needsScatter(w)) {
             Vec3 p = cpos;

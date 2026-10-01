@@ -2,12 +2,16 @@
 // the simulation with a scripted player, printing a readable event log.
 //
 //   sealteam --sim-mission <1..80> [--ticks N] [--seed-skip K] [--dt D]
-//            [--script idle|walk] [--log FILE] [--quiet-snapshots]
+//            [--script idle|walk|hold|attack] [--craft b|u|a] [--summary]
+//            [--log FILE] [--quiet-snapshots]
 //
 // The log lists the spawned teams and units, then every change the frame
 // loop observes: messages, sound effects, AI flag / order changes, postures,
 // wounds and deaths, shots and their resolution, objectives and the end of
 // the mission. Two runs with the same arguments must give identical logs.
+// The hold and attack scripts (and --summary) add "hit:" lines naming the
+// shooter of every wound and a summary at the end; walk and idle do not, so
+// their logs stay comparable across builds.
 #include "engine/rng.h"
 #include "engine/sound.h"
 #include "game/campaign.h"
@@ -26,6 +30,7 @@
 #include "game/mission/teams.h"
 #include "game/mission/world.h"
 
+#include <algorithm>
 #include <cstdarg>
 #include <cstdio>
 #include <cstdlib>
@@ -146,6 +151,67 @@ std::map<const Team*, TeamSnap> g_teams;
 ShotRec g_shots[kShots];
 bool g_objDone[3];
 
+// Extended log (hold / attack scripts, --summary): hit attribution lines and
+// the end summary. Off for walk / idle so their logs stay identical.
+bool g_extended = false;
+struct Tally {
+    int enemyBullets = 0, enemyThrown = 0, enemyOther = 0;  // enemy shots by weapon class
+    int craftShots = 0;                                     // shots fired by support craft
+    int sealWounds[8] = {};                                 // SEAL wounds by shooter team type
+    int sealKia[9] = {};                                    // SEAL deaths by the last shooter's team type (8 = none)
+};
+Tally g_tally;
+std::map<const Unit*, int> g_lastShooterType;  // last team type that wounded a unit
+
+bool isEnemyTeam(const Team* t) { return t && (t->type == TeamType::VietCong || t->type == TeamType::NvArmy); }
+bool leaderPresent(const Team* t) {
+    return t && t->members[0] && unitAlive(t->members[0]) && (t->members[0]->body->flags & 1);
+}
+
+// First enemy (VC / NVA) team of the mission table with a living, visible leader.
+int firstEnemyTeam() {
+    const MissionState& S = ms();
+    for (int i = S.firstMtmGroup; i < kMaxTeams && S.teams[i]; ++i)
+        if (isEnemyTeam(S.teams[i]) && leaderPresent(S.teams[i])) return i;
+    return -1;
+}
+
+// Such a team with the leader nearest to pos.
+int nearestEnemyTeam(const Vec3& pos) {
+    const MissionState& S = ms();
+    int best = -1, bestD = 0x7FFF;
+    for (int i = S.firstMtmGroup; i < kMaxTeams && S.teams[i]; ++i) {
+        if (!isEnemyTeam(S.teams[i]) || !leaderPresent(S.teams[i])) continue;
+        const int d = geoDistance(pos, S.teams[i]->members[0]->body->pos);
+        if (d < bestD) {
+            bestD = d;
+            best = i;
+        }
+    }
+    return best;
+}
+
+int firstTeamOfType(TeamType type) {
+    const MissionState& S = ms();
+    for (int i = 0; i < kMaxTeams && S.teams[i]; ++i)
+        if (S.teams[i]->type == type) return i;
+    return -1;
+}
+
+void logSummary() {
+    const MissionState& S = ms();
+    const Tally& t = g_tally;
+    logf("summary: enemy shots %d (bullets %d, thrown %d, other %d); craft shots %d, held near friendlies %d",
+         t.enemyBullets + t.enemyThrown + t.enemyOther, t.enemyBullets, t.enemyThrown, t.enemyOther, t.craftShots,
+         S.portStats.craftHolds);
+    logf("summary: SEAL wounds by shooter: SEAL %d Boat %d Helo %d Aircraft %d VC %d NVA %d; SEAL KIA by last shooter: "
+         "SEAL %d Boat %d Helo %d Aircraft %d VC %d NVA %d none %d",
+         t.sealWounds[0], t.sealWounds[1], t.sealWounds[2], t.sealWounds[3], t.sealWounds[4], t.sealWounds[5],
+         t.sealKia[0], t.sealKia[1], t.sealKia[2], t.sealKia[3], t.sealKia[4], t.sealKia[5], t.sealKia[8]);
+    logf("summary: enemy grenade throws held %d; unit bounces %d, detours %d", S.portStats.grenadeHolds,
+         S.portStats.bounces, S.portStats.detours);
+}
+
 void dumpWorld() {
     const MissionState& S = ms();
     const MciHeader& h = S.mci;
@@ -220,6 +286,10 @@ void trackChanges() {
                 logf("%s %s hit mask 0x%04X -> 0x%04X%s (light %d heavy %d bleeding %d)", label(u).c_str(),
                      teamTypeName(t->type), us.hit, now.hit, (now.hit & hit_bit::kKilled) ? " KILLED" : "",
                      u->status->light_wounds, u->status->heavy_wounds, u->status->bleeding);
+                if (t->type == TeamType::Seal && (now.hit & hit_bit::kKilled) && !(us.hit & hit_bit::kKilled)) {
+                    const auto it = g_lastShooterType.find(u);
+                    ++g_tally.sealKia[it == g_lastShooterType.end() ? 8 : it->second];
+                }
             }
             if (now.brainFlags != us.brainFlags || now.surrendered != us.surrendered)
                 logf("%s ai flags 0x%02X -> 0x%02X%s at %s", label(u).c_str(), us.brainFlags, now.brainFlags,
@@ -241,6 +311,15 @@ void trackChanges() {
             logf("shot %d: %s fires %s x%d at %s range %d (target %s)", i, label(s.shooter).c_str(),
                  weaponDef(s.weapon).short_name, s.rounds, posStr(s.target_pos).c_str(), s.range,
                  label(s.target).c_str());
+            const Team* st = s.shooter->team;
+            const WeaponDef& wd = weaponDef(s.weapon);
+            if (isEnemyTeam(st)) {
+                if (u8(wd.fire_modes) & fire_mode::kThrow) ++g_tally.enemyThrown;
+                else if (wd.blast_radius <= 0) ++g_tally.enemyBullets;
+                else ++g_tally.enemyOther;
+            } else if (st && int(st->type) >= 1 && int(st->type) <= 3) {
+                ++g_tally.craftShots;
+            }
         } else if (s.state != 0 && old.state == 0 && old.shooter) {
             logf("shot %d resolved", i);
         }
@@ -266,7 +345,8 @@ void snapshot() {
 
 int simMissionCommand(const DevArgs& args) {
     if (args.empty()) {
-        std::printf("usage: --sim-mission <1..80> [--ticks N] [--seed-skip K] [--dt D] [--script idle|walk] [--log FILE]\n");
+        std::printf("usage: --sim-mission <1..80> [--ticks N] [--seed-skip K] [--dt D] [--script idle|walk|hold|attack] "
+                    "[--craft b|u|a] [--summary] [--log FILE]\n");
         return 2;
     }
     const int mission = std::atoi(args[0].c_str());
@@ -277,7 +357,10 @@ int simMissionCommand(const DevArgs& args) {
     int ticks = 0x3C00 * 3;
     int seedSkip = 0;
     int dt = 5;
-    bool walk = false;
+    enum class Script { Idle, Walk, Hold, Attack };
+    Script script = Script::Idle;
+    int craftKey = 'b';  // attack script: the map order key of the craft ('b' boat, 'u' helicopter, 'a' aircraft)
+    bool summary = false;
     bool snapshots = true;
     std::string logFile;
     for (size_t i = 1; i < args.size(); ++i) {
@@ -286,10 +369,23 @@ int simMissionCommand(const DevArgs& args) {
         if (a == "--ticks") ticks = std::atoi(next().c_str());
         else if (a == "--seed-skip") seedSkip = std::atoi(next().c_str());
         else if (a == "--dt") dt = std::max(1, std::atoi(next().c_str()));
-        else if (a == "--script") walk = next() == "walk";
+        else if (a == "--script") {
+            const std::string s = next();
+            script = s == "walk" ? Script::Walk : s == "hold" ? Script::Hold : s == "attack" ? Script::Attack : Script::Idle;
+        }
+        else if (a == "--craft") {
+            const std::string s = next();
+            craftKey = s == "u" ? 'u' : s == "a" ? 'a' : 'b';
+        }
+        else if (a == "--summary") summary = true;
         else if (a == "--log") logFile = next();
         else if (a == "--quiet-snapshots") snapshots = false;
     }
+    const bool walk = script == Script::Walk;
+    const bool hold = script == Script::Hold || script == Script::Attack;
+    g_extended = summary || hold;
+    g_tally = Tally{};
+    g_lastShooterType.clear();
     if (!logFile.empty()) {
         g_out = std::fopen(logFile.c_str(), "w");
         if (!g_out) {
@@ -322,6 +418,18 @@ int simMissionCommand(const DevArgs& args) {
     setSfxObserver([](int id, s32 lifetime, const Vec3* pos, int ch) {
         if (ch >= 0) logf("sfx %d (0x%X ticks) at %s ch %d", id, lifetime, pos ? posStr(*pos).c_str() : "-", ch);
     });
+    setShotHitObserver([](const ShotRec& s, const Unit* u, int wound) {
+        const Team* st = s.shooter ? s.shooter->team : nullptr;
+        const int stt = st ? int(st->type) : -1;
+        if (u->team && u->team->type == TeamType::Seal && stt >= 0 && stt < 8) {
+            ++g_tally.sealWounds[stt];
+            g_lastShooterType[u] = stt;
+        }
+        if (g_extended)
+            logf("hit: %s %s wounds %s %s with %s, bits 0x%04X%s", label(s.shooter).c_str(),
+                 st ? teamTypeName(st->type) : "?", label(u).c_str(), u->team ? teamTypeName(u->team->type) : "?",
+                 weaponDef(s.weapon).short_name, wound, (wound & hit_bit::kKilled) ? " KILLED" : "");
+    });
 
     if (!simInit(setup)) return 1;
     dumpWorld();
@@ -329,8 +437,23 @@ int simMissionCommand(const DevArgs& args) {
 
     int stepsSinceTurn = 0;
     bool running = false;
+    int holdTeam = -1;        // hold / attack: the enemy team approached
+    bool holding = false;     // stopped at ~250 units from it
+    bool attackDone = false;  // attack: the craft order was given
     Ticks now = 0;
     Ticks nextSnap = 0x800;
+    // Turn the Point Man toward a position, 3 degrees every 4th frame.
+    auto steerToward = [&](const Unit* pm, const Vec3& goal) {
+        const int want = geoBearing(pm->body->pos, goal);
+        const int have = (pm->body->heading >> 3);
+        int diff = want - have;
+        while (diff > 180) diff -= 360;
+        while (diff < -180) diff += 360;
+        if (++stepsSinceTurn >= 4 && (diff > 3 || diff < -3)) {
+            playerTurn(diff > 0 ? 3 : -3);
+            stepsSinceTurn = 0;
+        }
+    };
     while (now < ticks && !ms().misDone) {
         MissionState& S = ms();
         Unit* pm = pointMan();
@@ -347,19 +470,54 @@ int simMissionCommand(const DevArgs& args) {
             playerViewPrologue(0);
             if (walk && pm && unitAlive(pm)) {
                 // Face the first objective and run to it.
-                const int want = geoBearing(pm->body->pos, S.mci.objective[0].pos);
-                const int have = (pm->body->heading >> 3);
-                int diff = want - have;
-                while (diff > 180) diff -= 360;
-                while (diff < -180) diff += 360;
-                if (++stepsSinceTurn >= 4 && (diff > 3 || diff < -3)) {
-                    playerTurn(diff > 0 ? 3 : -3);
-                    stepsSinceTurn = 0;
-                }
+                steerToward(pm, S.mci.objective[0].pos);
                 if (!running) {
                     evtPlayerSpeedStep(0xC00);
                     evtPlayerSpeedStep(0xC00);
                     running = true;
+                }
+            } else if (hold && pm && unitAlive(pm)) {
+                // Run at the first enemy team, stop about 250 units from it and
+                // hold there (facing it) so that it engages for a long time.
+                if (holdTeam < 0) {
+                    holdTeam = firstEnemyTeam();
+                    if (holdTeam >= 0)
+                        logf("script: approaching team %d at %s", holdTeam,
+                             posStr(S.teams[holdTeam]->members[0]->body->pos).c_str());
+                }
+                const Unit* enemy = holdTeam >= 0 ? S.teams[holdTeam]->members[0] : nullptr;
+                if (enemy) {
+                    steerToward(pm, enemy->body->pos);
+                    const int d = geoDistance(pm->body->pos, enemy->body->pos);
+                    if (!holding && d <= 250) {
+                        evtPlayerSpeedStep(0);
+                        holding = true;
+                        logf("script: holding %d units from team %d", d, holdTeam);
+                    } else if (!holding && !running) {
+                        evtPlayerSpeedStep(0xC00);
+                        evtPlayerSpeedStep(0xC00);
+                        running = true;
+                    }
+                }
+                if (script == Script::Attack && !attackDone && S.time >= 2000) {
+                    // The map's attack order of the support craft at the nearest enemy team.
+                    attackDone = true;
+                    const TeamType want = craftKey == 'u' ? TeamType::Helicopter
+                                        : craftKey == 'a' ? TeamType::Aircraft : TeamType::Boat;
+                    const int craft = firstTeamOfType(want);
+                    const int target = nearestEnemyTeam(pm->body->pos);
+                    if (craft < 0 || target < 0) {
+                        logf("script: no attack order (craft team %d, enemy team %d)", craft, target);
+                    } else {
+                        const int sel = S.mapSelTeam;
+                        S.mapSelTeam = craft;
+                        S.wpSupport = S.teams[target]->members[0]->body->pos;
+                        const int r = mapOrderKey(craftKey);
+                        S.mapSelTeam = sel;
+                        logf("script: attack order '%c' to team %d %s at %s (team %d): result %d, order %d", craftKey,
+                             craft, teamTypeName(S.teams[craft]->type), posStr(S.wpSupport).c_str(), target, r,
+                             S.teams[craft]->order);
+                    }
                 }
             }
         }
@@ -374,15 +532,19 @@ int simMissionCommand(const DevArgs& args) {
     logf("end: mission done %d, extraction end %d, SEALs alive %d, enemy dead %d, rounds fired %d hit %d",
          ms().misDone ? 1 : 0, ms().extractionEnd, sealCountAlive(), statCountDead(4) + statCountDead(5),
          ms().stats.roundsFired, ms().stats.roundsHit);
+    if (g_extended) logSummary();
     simShutdown();
     setMessageObserver(nullptr);
     setSfxObserver(nullptr);
+    setShotHitObserver(nullptr);
     if (g_out != stdout) std::fclose(g_out);
     g_out = stdout;
     return 0;
 }
 
-const DevCommand g_cmd("--sim-mission", "<1..80> [--ticks N] [--seed-skip K] [--dt D] [--script idle|walk]: headless mission simulation log",
+const DevCommand g_cmd("--sim-mission",
+                       "<1..80> [--ticks N] [--seed-skip K] [--dt D] [--script idle|walk|hold|attack] [--craft b|u|a] "
+                       "[--summary]: headless mission simulation log",
                        simMissionCommand);
 
 } // namespace

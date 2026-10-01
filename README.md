@@ -130,11 +130,21 @@ When the port starts it shows a start menu:
 
 **Modern gameplay** (Setup; Enhanced game only, off by default) is the one
 option that changes gameplay rules rather than the presentation: more
-realistic loadouts and fixes, for the SEAL team only. The rules so far:
+realistic loadouts and fixes of the original's rougher edges. The rules so
+far:
 
 * The CAR-15 Commando carries as much ammunition as the M16: 12 magazines of
   20 rounds (240) instead of 8 (160). The extra magazines weigh their share.
 * The M79 grenadier carries a full vest of 40 mm rounds: 20 instead of 5.
+* Support craft hold their fire near friendlies: an attacking boat,
+  helicopter or aircraft no longer rolls its bursts against the Point Man
+  (the original aims every "area" shot at him, wherever he is) and does not
+  fire while a SEAL stands near the target or the line of fire.
+* Squad mates work around obstacles: a SEAL who keeps bouncing off the same
+  tree or hut walks around it instead of being steered back into it.
+* Enemy grenade discipline: enemy soldiers throw grenades only at close
+  range and at most one every four seconds, and a rifleman who runs dry no
+  longer turns into a grenade machine.
 
 The briefing's loadout screen shows and limits the magazines accordingly;
 `docs/mission.md` ("Modern gameplay") has the details.

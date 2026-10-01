@@ -16,6 +16,8 @@
 
 #include "game/types.h"
 
+#include <functional>
+
 namespace st::game::mission {
 
 void combatReset();
@@ -55,6 +57,10 @@ int aiTargetPriority(const Unit* shooter, const Unit* target, int cover);   // 1
 void shotScatter(Vec3& pos, const Unit* u);
 void combatRandomWound(Unit* u);                     // 19ac:7F58 (pit trap)
 void shotUpdateAll(int elapsed);                     // 19ac:8556 every 0x40 ticks
+// Port: observer called by shot_apply_damage for every wound a shot inflicts
+// on a unit (shot, victim, wound bits), before dmg_apply; the --sim-mission
+// log attributes casualties with it. No effect on the game.
+void setShotHitObserver(std::function<void(const ShotRec&, const Unit*, int)> fn);
 
 // ---- Wounds and medical (19ac) ---------------------------------------------
 int medTreat(Unit* medic, Unit* patient);            // 19ac:86B3 treatments 0..2

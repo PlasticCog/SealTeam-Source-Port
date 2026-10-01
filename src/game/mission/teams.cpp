@@ -17,6 +17,7 @@
 #include "game/mission/entity.h"
 #include "game/mission/exedata.h"
 #include "game/mission/geo.h"
+#include "game/mission/modern.h"
 #include "game/mission/msg.h"
 #include "game/mission/people.h"
 #include "game/mission/sfx.h"
@@ -94,7 +95,8 @@ void evtSplitTeamsUpdate() {
         // Waypoint B only for the last team of the table while two teams are split.
         const bool useB = (u8(S.teamCount) - idx - 1) == 0 && u8(S.splitGroups) > 1;
         const Vec3& wp = useB ? S.wpSplitB : S.wpSplitA;
-        mv->desired_heading = s16(geoBearing(l->body->pos, wp));
+        // Port: not while a Modern-gameplay detour steers the leader around an obstacle.
+        if (!modernDetourActive(l)) mv->desired_heading = s16(geoBearing(l->body->pos, wp));
 
         if (moveMode(l) == 0) {
             if (!unitInContact(l)) {
@@ -132,7 +134,7 @@ void evtSplitTeamsUpdate() {
             WeaponNode* w = evtUnitFindWeapon(l, kSatchel);
             if (!w) continue;
             if (d < 0x258 && w->rounds != 0) {
-                mv->desired_heading = s16(geoBearing(l->body->pos, s->body->pos));
+                if (!modernDetourActive(l)) mv->desired_heading = s16(geoBearing(l->body->pos, s->body->pos));
                 if (s16(objRadiusOrDefault(s->model) + 0x5A) > d && w->rounds != 0) {
                     // The structure goes into the shot's target slot with target kind 1.
                     shotFire(l, reinterpret_cast<Unit*>(s), s->body->pos, 0, w, d, 1);
@@ -538,11 +540,13 @@ void evtTeamFormationUpdate(int teamIndex) {
         const int dist = geoDistance(m->body->pos, mv->destination);
         const int brg = geoBearing(m->body->pos, mv->destination);
         const int type = teamType(t);
+        // Port: a Modern-gameplay detour is honoured like the blocked flag.
+        const bool detour = modernDetourActive(m);
         if (type == 0) {
             const Unit* pm = pointMan();
             bool steer = true;
             if (!pointManAboard() && pm && m->team == pm->team && moveMode(m) != 2) steer = false;
-            if (steer && !(mv->flags & mover_flag::kBlocked)) mv->desired_heading = s16(brg);
+            if (steer && !(mv->flags & mover_flag::kBlocked) && !detour) mv->desired_heading = s16(brg);
         } else if (isEnemyType(type)) {
             if (moveMode(m) != 0) mv->desired_heading = s16(brg);
         } else {
@@ -568,7 +572,7 @@ void evtTeamFormationUpdate(int teamIndex) {
             if (moveMode(leader) == 0 && !(mv->flags2 & mover_flag2::kFetchBuddy) &&
                 t->order != s16(TeamOrder::Search) && !pointManAboard() && dist <= 0x54) {
                 mode = 0;
-            } else if (mv->flags & mover_flag::kBlocked) {
+            } else if ((mv->flags & mover_flag::kBlocked) || detour) {
                 // detour active: leave the mode alone
             } else if (dist >= 0x24) {
                 int mm;
@@ -591,7 +595,7 @@ void evtTeamFormationUpdate(int teamIndex) {
 
             if (t->order != s16(TeamOrder::Search) && !pointManAboard()) {
                 if (tickB && moveMode(m) != 2 && dist < 0x24) evtSetMoveMode(m, 0);
-                if (moveMode(m) == 0) mv->desired_heading = mv->aim_heading;
+                if (moveMode(m) == 0 && !detour) mv->desired_heading = mv->aim_heading;
             }
         }
 
@@ -758,7 +762,24 @@ void evtExecuteAiCommands() {
                     else if (t->order == 4) continue;
                     else if (type == 1) fire = true;
                     else if ((mv->height_high >> 2) < mv->height) fire = true;
-                    if (fire) shotFire(m, tgt, *pos, cover, w, range, 0);
+                    int kind = 0;
+                    if (fire && modernGameplayOn()) {
+                        // Port (Modern gameplay, docs/mission.md): the synthetic
+                        // contact of ai_group_support_fire names the Point Man as
+                        // its target, so aimed bullets would be rolled against
+                        // him wherever he is; fire at the aim point instead, and
+                        // not at all with friendlies near the target or the line
+                        // of fire.
+                        if (modernCraftHoldsFire(m, *pos, w)) {
+                            ++S.portStats.craftHolds;
+                            continue;
+                        }
+                        if (tgt && tgt->team && tgt->team->type == TeamType::Seal) {
+                            tgt = nullptr;
+                            kind = int(TargetKind::AimPoint);
+                        }
+                    }
+                    if (fire) shotFire(m, tgt, *pos, cover, w, range, kind);
                     continue;
                 }
                 if (m->team->type != TeamType::Seal) {
