@@ -28,7 +28,7 @@ constexpr int kShades = 3;
 // remapped pixel should have. Dust / None keep the original colours.
 void surfaceTint(ImpactSurface s, double Y, double& r, double& g, double& b) {
     switch (s) {
-    case ImpactSurface::Blood: r = 0.9 * Y + 8, g = 0.12 * Y, b = 0.12 * Y; break;
+    case ImpactSurface::Blood: r = 0.7 * Y + 24, g = 0.1 * Y, b = 0.1 * Y; break;  // red floor: dark pixels stay red, not brown
     case ImpactSurface::Metal: r = 1.3 * Y + 16, g = 1.15 * Y + 10, b = 0.5 * Y; break;
     case ImpactSurface::Wood: r = 0.75 * Y + 6, g = 0.5 * Y + 3, b = 0.25 * Y; break;
     case ImpactSurface::Stone: r = Y, g = Y, b = Y; break;
