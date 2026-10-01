@@ -181,6 +181,12 @@ python tools/ealib.py Game/*.lib -x re/assets
 
 Conventions for addresses, names and notes are in `docs/re/CONVENTIONS.md`.
 
+## Credits
+
+* **PlasticCog** — project lead, reverse engineering, port
+* **Witchiewoman** — game testing (the bug reports and gameplay feedback
+  behind many of the fixes and the Modern Gameplay option)
+
 ## Legal
 
 SEAL Team is © 1993 Andre Gagnon and Electronic Arts. This project is an
