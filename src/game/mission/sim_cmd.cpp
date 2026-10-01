@@ -89,7 +89,7 @@ void buildTestTeam(MissionSetup& setup) {
         ambush |= o.kind == ObjectiveKind::Ambush;
     }
     for (int k = 0; k < 4; ++k) {
-        char name[16];
+        char name[32];
         std::snprintf(name, sizeof name, "seal%02d.se", kSe[k] + 1);
         SeRecord& se = g_roster.se[size_t(k)];
         if (!loadSeFile(name, se)) logWarn("sim: %s missing", name);

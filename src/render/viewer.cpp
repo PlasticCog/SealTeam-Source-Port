@@ -263,7 +263,7 @@ int setupWorldView(const game::DevArgs& a, int mission, ViewOpts& o, game::Camer
     if (!initRenderer()) return -1;
 
     const int y = (mission - 1) / 20 + 1, n = (mission - 1) % 20 + 1;
-    char name[16];
+    char name[32];
     std::snprintf(name, sizeof name, "c%dm%02d.mci", y, n);
     std::vector<u8> mci;
     if (!resources().read(name, mci) || mci.size() < 0x176) {
