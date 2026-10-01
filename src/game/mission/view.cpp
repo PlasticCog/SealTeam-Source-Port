@@ -347,6 +347,14 @@ void viewUpdateCamera(int mode) {
         c.pos.x = wrapSub(target.x, mulShr8(d, mathSinFx(a8)));
         c.pos.z = wrapAdd(target.z, mulShr8(d, mathCosFx(a8)));
     };
+    // Port (Enhanced): an orbit view looks back at its target along the orbit
+    // angle exactly. The original re-derives the yaw from the two positions
+    // through its heading tables (whole degrees for geo_bearing, 1/8 degree
+    // with up to 3/8 degree of rounding sawtooth for math_heading as the
+    // camera dollies in): a pixel at 320 wide, a visible lurch at 1080p wide
+    // view. Original keeps the original's yaw.
+    const bool exactYaw = !settings().original();
+    auto lookBack = [&](int a8, int originalYaw) { c.yaw = exactYaw ? s16(angleWrap(a8 + 0x5A0)) : s16(originalYaw); };
     switch (mode) {
     case 0:
         c.pos.x = pmPos.x;
@@ -383,7 +391,7 @@ void viewUpdateCamera(int mode) {
         viewInitOrbitAngle(t);
         const Vec3& l = t->members[0]->body->pos;
         orbit(l, s32(t->view_distance), t->view_heading);
-        c.yaw = s16(geoBearing(c.pos, l) << 3);
+        lookBack(t->view_heading, geoBearing(c.pos, l) << 3);
         c.pos.y = 0x1800;
         if (entTeamAllExtracted())
             if (const Vec3* craft = leaderPos(S.extractingGroup)) c.pos.y = wrapAdd(c.pos.y, craft->y);
@@ -421,7 +429,7 @@ void viewUpdateCamera(int mode) {
         viewInitOrbitAngle(t);
         const Vec3& l = t->members[0]->body->pos;
         orbit(l, s32(t->view_distance) << shift, t->view_heading);
-        c.yaw = s16(geoBearing(c.pos, l) << 3);
+        lookBack(t->view_heading, geoBearing(c.pos, l) << 3);
         c.pos.y = orbitAltitude(l);
         break;
     }
@@ -438,7 +446,7 @@ void viewUpdateCamera(int mode) {
             L.orbitAngle = s16(angleWrap(L.orbitAngle + ((15 - r) << 3)));
         }
         orbit(l, L.orbitDistCraft, L.orbitAngle);
-        c.yaw = s16(mathHeading(c.pos.x, c.pos.z, l.x, l.z));
+        lookBack(L.orbitAngle, mathHeading(c.pos.x, c.pos.z, l.x, l.z));
         c.pos.y = orbitAltitude(l);
         break;
     }
@@ -460,7 +468,7 @@ void viewUpdateCamera(int mode) {
             L.orbitDist = wrapSub(L.orbitDist, (0x33 * S.frameTicks) >> 8);
         }
         orbit(*target, L.orbitDist, L.orbitHeading);
-        c.yaw = s16(mathHeading(c.pos.x, c.pos.z, target->x, target->z));
+        lookBack(L.orbitHeading, mathHeading(c.pos.x, c.pos.z, target->x, target->z));
         c.pos.y = (mode != 7 && target->y > 0x1800) ? target->y : 0x1800;
         break;
     }

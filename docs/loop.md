@@ -217,6 +217,16 @@ reference only afterwards).
 * Enhanced: `view_clear_map_ground` also fills the high-resolution layer so
   the map view starts from the ground colour; the map markers project with
   the normal page projection (`render::projectPage`).
+* Enhanced: the orbit views (chase, team, target, enemy, insertion,
+  extraction, camp) look back at their target along the orbit angle exactly
+  (`lookBack` in `viewUpdateCamera`: yaw = angle + 180 degrees). The
+  original re-derives the yaw from the camera and target positions through
+  its heading tables - `geo_bearing` in whole degrees for the chase / team
+  views, `math_heading` in 1/8 degree with a rounding sawtooth of up to 3/8
+  degree as the insertion camera dollies in - a pixel at 320 wide but a
+  visible lurch in a wide 1080p view (measured per frame: yaw deltas of
+  0 / +1 / -3 in Original, all 0 in Enhanced). Original keeps the
+  original's yaw.
 * Port: the mouse wheel (`Input::takeWheel`, read once per frame in
   `frame()` after the key) zooms: on the map screen a notch is one Zoom /
   Expand press (`mapWheelZoom` -> `map_zoom_keys`), in the chase / team /
