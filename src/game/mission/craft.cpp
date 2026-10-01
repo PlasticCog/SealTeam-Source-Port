@@ -10,6 +10,7 @@
 #include "game/mission/combat.h"
 #include "game/mission/entity.h"
 #include "game/mission/geo.h"
+#include "game/mission/modern.h"
 #include "game/mission/msg.h"
 #include "game/mission/people.h"
 #include "game/mission/sfx.h"
@@ -343,6 +344,9 @@ void evtPlayCraftEngineSounds() {
         const Team* t = S.teams[ti];
         const Unit* leader = t->members[0];
         if (!leader) continue;
+        // Port (Modern gameplay): the parked Phantom flight is off-map and
+        // silent (its engine sound would only hold one of the six channels).
+        if (modernIsPhantomGroup(ti) && modernPhantomPhase() == 0) continue;
         int id = -1;
         if (t->type == TeamType::Helicopter) {
             id = 0x17;

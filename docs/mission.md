@@ -33,7 +33,7 @@ The original code lives in segments 2dbd, 348e, 365e (0000-29C5), 4a37,
 | `orders.cpp` | 19ac:52A1, 19ac:5C8E | map orders (waypoints, craft attack/cease/loiter/extract/emergency), re-insertion |
 | `camp.cpp` | 19ac:64D4..6B07 | world alone for the briefing/debriefing, SEAL camp cut-scene worlds |
 | `campaign_link.h/.cpp` | 19ac:00B6, 365e:1D1F | mission set-up from the campaign state, hand-over of the results |
-| `modern.h/.cpp` | — | the Enhanced "Modern gameplay" rules that change the simulation (below); no-ops while the option is off |
+| `modern.h/.cpp` | — | the Enhanced "Modern gameplay" rules that change the simulation (below), including the callable Phantom flight; no-ops while the option is off |
 | `sim_cmd.cpp` | — | `--sim-mission` developer command |
 
 Records are the canonical structs of `game/types.h`. They are allocated from
@@ -121,7 +121,7 @@ digital-effects switch of the port settings are honoured there
 
 ```
 sealteam --sim-mission <1..80> [--ticks N] [--seed-skip K] [--dt D]
-         [--script idle|walk|hold|attack] [--craft b|u|a] [--summary]
+         [--script idle|walk|hold|attack] [--craft b|u|a|g|G] [--summary]
          [--log FILE] [--quiet-snapshots]
 ```
 
@@ -142,15 +142,25 @@ the squad and the enemy exchange fire for the rest of the run; `attack` does
 the same and, once the insertion is over (about tick 2500), gives the map's
 Attack order of the first support craft (`--craft b` boat, the default, `u`
 helicopter, `a` aircraft; `mapOrderKey`) at the position of the nearest enemy
-team, logging the order and its result. With these two scripts (or
-`--summary` with any script) the log gains a `hit:` line for every wound a
-shot inflicts, naming the shooter and his team type, and a three-line
-`summary:` at the end: enemy shots by weapon class (bullets, thrown, other
-explosives), support-craft shots and those held back near friendlies, SEAL
-wounds and deaths by the shooter's team type, enemy grenade throws held by
-the discipline rule, and the number of unit bounces off obstacles and of
-detours started. The `walk` and `idle` logs are unchanged by these
-additions, so they remain comparable across builds.
+team, logging the order and its result. `--craft g` (Modern gameplay only)
+gives the map's `g` order instead, a Phantom strike at the nearest enemy
+team's leader, again whenever the flight is back in its holding pattern
+(0x1000 ticks apart at least) until the fourth order is answered with
+"Winchester"; the squad holds 450 units from the enemy it approaches (outside
+the bombs' danger-close distance), the log gets a `phantom:` line every 0x400
+ticks with both aircraft's positions, heading, speed and altitude and one for
+every order, release, impact and hold, and the summary a line with the bombs
+released, the releases held and the strikes left. `--craft G` orders the
+strikes 400 units ahead of the running squad, which has closed in by the time
+the flight arrives, so that the danger-close rule holds the releases. With
+these scripts (or `--summary` with any script) the log gains a `hit:` line
+for every wound a shot inflicts, naming the shooter and his team type, and a
+three-line `summary:` at the end: enemy shots by weapon class (bullets,
+thrown, other explosives), support-craft shots and those held back near
+friendlies, SEAL wounds and deaths by the shooter's team type, enemy grenade
+throws held by the discipline rule, and the number of unit bounces off
+obstacles and of detours started. The `walk` and `idle` logs are unchanged
+by these additions, so they remain comparable across builds.
 
 ## Deviations
 
@@ -182,12 +192,13 @@ preset) is the one Enhanced option that changes gameplay rules, not the
 presentation. The loadout rules apply to the SEAL team only; the three
 simulation rules (support craft, obstacle detours, enemy grenades) change
 what the AI of craft, squad mates and enemy soldiers does, as described
-below; all other tables and code paths stay the original's. With the option
-off nothing changes: the `--sim-mission` logs of the Original and of the
-Enhanced preset are byte-identical to those of the build without the code,
-and none of the new code touches `engine::rng()` in either state (every
-choice is made from the unit's own state), so enabling the option changes
-only what it is meant to change.
+below, and the fourth adds a callable flight of two F-4 Phantoms; all other
+tables and code paths stay the original's. With the option off nothing
+changes: the `--sim-mission` logs of the Original and of the Enhanced preset
+are byte-identical to those of the build without the code, and none of the
+new code touches `engine::rng()` in either state (every choice is made from
+the unit's own state; the Phantom crews' scatter comes from a private
+generator), so enabling the option changes only what it is meant to change.
 
 * **CAR-15 Commando ammunition like the M16's.** The weapon table (DS:48FE)
   gives both rifles 8 magazines, but the Commando's hold 20 rounds against
@@ -220,10 +231,11 @@ option, `x8` without), the first-person weapon line and the map's Team Info
 show the magazines, and the Setup page fits eight rows per column with the
 new entry.
 
-The three simulation rules live in `modern.h/.cpp`; their per-unit state is
-the side table `ms().portUnits` (released with the mission) and the
-`--sim-mission` summary reads the counters `ms().portStats`. The bounce
-counter is kept with the option off too (statistics only).
+The simulation rules live in `modern.h/.cpp`; their per-unit state is the
+side table `ms().portUnits`, the Phantom flight's `ms().portPhantom` (both
+released with the mission) and the `--sim-mission` summary reads the
+counters `ms().portStats`. The bounce counter is kept with the option off
+too (statistics only).
 
 * **Support craft hold fire near friendlies.** Mechanism (original bug):
   `ai_group_support_fire` (ai.cpp `aiGroupSupportFire`) gives a craft
@@ -321,15 +333,119 @@ counter is kept with the option off too (statistics only).
   3 -> 0), mission 20 9 -> 0 (33 held), mission 14 3 -> 1, missions 7, 18
   and 19 1 -> 0. Missions 33 and 1-6 hold runs engage no grenade-first unit
   and are identical with the option on and off.
+* **Callable F-4 Phantom air strikes.** Original: the F-4 (model table entry
+  0x37 `f4`, the second "high" flyer 0x38 is the light-bullet shape `bltlt`)
+  exists only as an ambient fly-over placed far behind the camera
+  (`setupFlyer`, veg.cpp) and flown level at 1560 units/s by
+  `evt_update_ambient_flyer`; the manual promises air support, but the only
+  callable aircraft are the MCI's OV-10 pair. With the option on,
+  `msn_build_world` spawns one more support group after the original's craft
+  (`modernSpawnPhantomFlight`, build.cpp): `TeamType::Aircraft`, two
+  `UnitClass::Aircraft` units whose body model is swapped for the F-4,
+  status and mover only (no anim, no brain, no loadout) and no AI record, so
+  `ai_update` skips the team, `evt_execute_ai_commands` and
+  `ai_group_support_fire` skip the members, and the enemy AI never gets a
+  contact on them; `ms().portPhantomGroup` names the team, which is created
+  before `firstMtmGroup` is fixed and therefore sits at index 3..5 (the
+  map's 1..6 keys, Tab and the team list reach it; the list shows it as
+  "Phantom Flight"). `S.fireSupportGroup`, `airGroup` and the other group
+  indices are untouched; extraction (`entTeamAllExtracted` walks team 0,
+  `entAnyCraftMoving` and the pickup only boats and helicopters), the
+  casualty tally (`statCountDead` by type: the jets cannot be hurt, unit
+  class 7), `copyMissionStats` and the scoring ignore it. The mover: base
+  speed 0x5A0 (twice the OV-10's 0x2D0), Run mode set through
+  `evtSetMoveMode` (the formation update copies the leader's mode to the
+  wingman every frame and `prj_fire` re-applies the shooter's), turn rate
+  0x30, altitude 1500 (the ambient F-4's 0x5DC00 >> 8) with 480 (the OV-10's
+  cruise) as the run altitude and 0x100 units/s climb and descent, Column
+  formation (slot 1 = 384 units in trail at the Bronco's scale 16); craft
+  order `CraftOrder::PortPhantom` (7), which the original craft update treats
+  like -1: it only steers at the destination, moves and banks. The flight is
+  parked 9000 units from the insertion point away from objective 1
+  (`entUnitPushBackFromObjective`) and circles that point while idle; its
+  engine sound is skipped while parked (`evtPlayCraftEngineSounds`) and the
+  craft engine sounds restart with an order (`evtForceCraftEngineSound`).
+  Order: map key `g` ("Phantom strike", `modernPhantomStrikeOrder`; with the
+  flight selected also `a` / the attack button, which `drawButton` labels
+  " F-4 Phantom Strike Go" with the G underlined, the only order button
+  shown for it; `k` and `o` are refused for it) sends the flight at
+  `wpSupport`, the red X of any selected craft: refused with "Phantoms are
+  Winchester." after three strikes, "Phantoms off target, stand by." during
+  an egress and "Danger close, negative strike." with a SEAL or Friendly
+  within blast radius 180 + 90 = 270 units of the marker; otherwise
+  `radioCall("Phantom flight inbound.")` to the group (for an aircraft only
+  a damaged radio fails it), each crew's aim point = marker + a scatter of
+  +-30 units per axis from a private LCG, descent to 480, radio ack 0x31,
+  button 0x19 shown pressed when the flight is selected. Run
+  (`modernPhantomUpdate`, every frame at the end of `evtMissionTick` after
+  the ordnance update): the leader steers at its aim point, the wingman at
+  its formation slot; an aircraft within 150 units of its aim point (or at
+  its closest approach inside 600) releases: with a living SEAL / Friendly
+  not aboard a craft within 270 units of the expected impact point (the
+  aircraft's position plus the bomb's forward travel, 32 units/s for the
+  fall time sqrt(2 h / 60) s, 128 units from 480) the release is held
+  ("Danger close, Phantoms abort.", counter `phantomHolds`, the wingman keeps
+  its bomb too and the strike is not counted), else the strike is counted
+  and `shotFire(aircraft, nullptr, aim, 0, bomb, range, AimPoint)` fires
+  the bomb: a private `WeaponNode` of the T.31 mortar round (weapon 0x1C,
+  class 20: blast radius 180, structure damage 40, the LAAW / mortar
+  explosion sound 0x10, `explodesOnLanding`), so the shot record, the
+  projectile, the launch sound and the noise event are the original's; the
+  flight record is then set to a level release at the aircraft's heading
+  (`muzzle_phase` 0, forward speed 0x20, vertical speed 0, gravity on, the
+  rocket shape 0xB552 as the bomb) and `evt_update_ordnance` flies it down
+  under the original's gravity to the burst on landing. When a bomb has
+  come down, its shot's `target_pos` (the blast centre of
+  `shot_blast_victims`) is moved to the impact point, so the damage is
+  where the explosion is (a round stopped by a solid feature above the
+  ground is given its burst there). After both aircraft passed, the flight
+  climbs to 1500 towards a point 6000 units beyond the marker; 1500 units
+  from the marker, 0x600 ticks later and with both bombs down, "Strike
+  complete." (no message after an aborted run) and it returns to the
+  parking point. While parked the flight makes no engine sound and no noise
+  event (`evtPlayCraftEngineSounds`, `noiseFromTeam` skip it: the original
+  rolls `rng(100)` for every team's noise, so the parked flight would shift
+  the random sequence of the whole mission); the craft engine sounds restart
+  with an order (`evtForceCraftEngineSound`). Map: the orders menu and the
+  team list name, the hit test and the focus chain skip the hidden cease /
+  loiter buttons for the flight, the destination triangle is drawn during a
+  run; the key card lists `g`. Verification (`--enhanced`,
+  `modern_gameplay = 1`, `--script attack --craft g`, 60000 ticks):
+  mission 1 (flight = team 3, orders at ticks 2570, 6990, 11090; releases
+  at 5270 / 5445, 8395 / 8560, 12140 / 12290 from altitude 480, impacts
+  within 15 units of the aim points, e.g. aim (11501, 13045) impact (11479,
+  13052)): 6 bombs, 6 explosion sounds, 5 bomb wounds including the kills
+  of T7.0 and T6.0, no SEAL wound by the flight, the fourth order answered
+  "Phantoms are Winchester." (result -1, strikes left 0); mission 5 (flight
+  = team 4): 6 bombs, 6 explosion sounds, 3 bomb wounds including the kills
+  of T7.0 and T5.0, no SEAL casualty by the flight, then Winchester (the
+  third run was ordered while the flight was still returning and released
+  from 1185 / 1020 units, impacts 10 / 13 units from the altitude-corrected
+  expected points). `--craft G` on mission 1 (30000 ticks): the first two
+  runs held ("Danger close, Phantoms abort.", SEALs within 270 units of the
+  expected impact, strikes left still 3), the third and fourth released and
+  impacted within 25 units of their aim points, summary 4 bombs, 2 releases
+  held, 1 strike left. The parked flight has no effect on the rest of a
+  mission: the option-on mission-1 walk logs (60000 ticks) of the build
+  without the flight and with it differ only in the header line once the
+  teams are renumbered (re/scratch_f4/norm_diff.py). Visual
+  (`--enhanced --window 1920x1080 --play-mission 1`, the strike ordered on
+  the map 560 units west of the boat with the pointer, then F5 = the team
+  camera on the flight / F2 chase): the F-4 pair in flight and over the
+  village (F5 at 14, 17, 20 s), the pair passing the squad and the two
+  bombs falling (F2 at 22, 25 s), the burst at the shoreline with the jets
+  climbing away (F1 at 26.3 s) and "Strike complete." (F2 at 29 s).
 
 Verification of the identity: `--original --sim-mission N --ticks 60000
---script walk --log` for N = 1, 21, 33 is byte-identical between the build
-without this code and with it, and so is `--enhanced` with a cfg
-`modern_gameplay = 0` (also identical to the `--original` logs);
-`--original --view-world 3 --shot` is bit-identical; `--enhanced --window
-1920x1080 --play-mission 1 --keys "Enter@mission+1,F1@mission+2.5" --shot
-... --shot-after 8` runs normally with the option on (`CAR15 x12` in the
-loadout line).
+--script walk --log` for N = 1, 21 (33 for the earlier rules) is
+byte-identical between the build without this code and with it, and so is
+`--enhanced` with a cfg `modern_gameplay = 0` (also identical to the
+`--original` logs); `--original --view-world 3 --shot` is bit-identical (two
+runs of either build alternate between the same two frames, five pixels of
+an animated detail at (166..169, 181..185), and each build produced both);
+`--enhanced --window 1920x1080 --play-mission 1 --keys "Enter@mission+1,
+F1@mission+2.5" --shot ... --shot-after 8` runs normally with the option on
+(`CAR15 x12` in the loadout line).
 
 ## Corrections to the RE notes found while porting
 

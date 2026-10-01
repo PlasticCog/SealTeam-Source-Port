@@ -61,6 +61,7 @@ The start menu offers:
                    e.g. 240 rounds for the CAR-15 and 20 x 40 mm for the
                    M79; support craft hold fire near friendlies; squad
                    mates walk around obstacles; enemy grenade discipline;
+                   F-4 Phantom air strikes callable from the map ('g');
                    see the project README),
                    music device (AdLib / Sound Blaster Pro 2), digital or
                    FM effects, volumes

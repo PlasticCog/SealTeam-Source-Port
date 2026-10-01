@@ -139,6 +139,8 @@ enum class CraftOrder : s16 {
     Loiter = 4,            // initial state of every craft
     Attack = 5,
     CeaseAttack = 6,       // also set when out of ammunition
+    PortPhantom = 7,       // port only: the Modern-gameplay Phantom flight (mission/modern.h); the
+                           // original craft update treats it like -1 (steering only)
 };
 
 // Mover::move_mode (+0x24). Names at DS:1D9C.

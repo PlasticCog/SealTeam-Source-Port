@@ -1,15 +1,21 @@
 // Port addition: the Enhanced "Modern gameplay" rules that change the
 // simulation itself (docs/mission.md "Modern gameplay"): support craft hold
-// their fire near friendlies, squad mates work around obstacles and enemy
-// soldiers throw grenades with discipline. Every entry point does nothing
-// while the option is off, so the original code paths stay byte-for-byte;
-// with it on none of them draws from engine::rng() (deterministic choices
-// only), so enabling the option changes just what it is meant to change.
+// their fire near friendlies, squad mates work around obstacles, enemy
+// soldiers throw grenades with discipline and a flight of two F-4 Phantoms
+// can be called in for bomb strikes. Every entry point does nothing while
+// the option is off, so the original code paths stay byte-for-byte; with it
+// on none of them draws from engine::rng() (deterministic choices and a
+// private generator only), so enabling the option changes just what it is
+// meant to change.
 //
-// Per-unit state lives in ms().portUnits (released by resetMission()).
+// Per-unit state lives in ms().portUnits, the Phantom flight's in
+// ms().portPhantom (both released by resetMission()).
 #pragma once
 
 #include "game/types.h"
+
+#include <functional>
+#include <string>
 
 namespace st::game::mission {
 
@@ -43,5 +49,36 @@ bool modernDetourActive(const Unit* u);
 bool modernGrenadeAllowed(Unit* u, const WeaponNode* w, int dist, bool secondaryRoll);
 // wpn_select_longest skips thrown items while the option is on.
 bool modernSkipThrownForLongest(const WeaponNode* w);
+
+// Rule 6: callable F-4 Phantom air strikes. msn_build_world adds one extra
+// support group "Phantom Flight" (TeamType::Aircraft, two units with the F-4
+// model, no AI record, no brains and no loadout, parked far off-map behind
+// the insertion point at high altitude) while the option is on; the map's
+// 'g' order sends it over the support waypoint, where each aircraft drops
+// one bomb (a T.31 round fired through shot_fire / prj_fire: the mortar
+// class's blast, sound and structure damage), three strikes per mission.
+constexpr int kPhantomStrikes = 3;
+constexpr int kPhantomButton = 0x19;    // the map button it shares with the OV-10 attack
+// The flight exists (option on and the mission world built with it).
+bool modernPhantomAvailable();
+bool modernIsPhantomGroup(int teamIndex);
+bool modernIsPhantomTeam(const Team* t);
+// msn_build_world, after the original's craft groups: spawn the flight at
+// the insertion point (x / z in map units) and park it. No-op while off.
+void modernSpawnPhantomFlight(s32 ix, s32 iz);
+// Map order 'g' (also 'a' / the attack button with the flight selected):
+// the strike at ms().wpSupport. Returns the map button to show pressed
+// (kPhantomButton with the flight selected) or -1 (refused / nothing).
+int modernPhantomStrikeOrder();
+// Every frame at the end of evt_mission_tick (after the ordnance update):
+// the run, the bomb releases, the egress and the return to the parking
+// point. No-op while off.
+void modernPhantomUpdate();
+// For the map screen and the test log.
+int modernPhantomStrikesLeft();
+int modernPhantomPhase();  // PortPhantomState::Phase as int (0 idle, 1 inbound, 2 egress)
+// Observer for the --sim-mission log: one line per event (order, release,
+// hold, strike complete). No effect on the game.
+void setPhantomObserver(std::function<void(const std::string&)> fn);
 
 } // namespace st::game::mission

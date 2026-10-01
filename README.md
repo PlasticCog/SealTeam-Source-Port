@@ -145,6 +145,12 @@ far:
 * Enemy grenade discipline: enemy soldiers throw grenades only at close
   range and at most one every four seconds, and a rifleman who runs dry no
   longer turns into a grenade machine.
+* Callable F-4 Phantom air strikes: a flight of two Phantoms (the jets the
+  original only shows as fly-overs) waits off-map behind the insertion
+  point. On the map, `g` (or the flight's attack button) sends it over the
+  support waypoint, where each aircraft drops one bomb with the game's
+  biggest blast; three strikes per mission, then "Phantoms are Winchester."
+  The flight holds its bombs when a SEAL is close to the impact point.
 
 The briefing's loadout screen shows and limits the magazines accordingly;
 `docs/mission.md` ("Modern gameplay") has the details.

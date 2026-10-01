@@ -448,8 +448,8 @@ const KeyRow kOrderKeys[] = {
     {"", "at target, at will"},
     {"d i v", "demolish/snipe/cover"},
     {"a b u", "air/boat/heli attack"},
-    {"k / o", "cease attack, loiter"},
-    {"e", "extract at pointer"},
+    {"k o e", "cease/loiter/extract"},
+    {"g", "Phantom strike"},
 };
 
 const char* const kGeneralKeys[] = {
