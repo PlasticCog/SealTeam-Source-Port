@@ -51,11 +51,25 @@ cmake -S . -B build -G Ninja                   # or -G "MinGW Makefiles" with mi
 cmake --build build
 ```
 
-**Linux / macOS**
+**Linux**
 
 ```sh
-# Debian/Ubuntu: sudo apt install cmake g++ libsdl3-dev   (libsdl3-dev optional)
-# macOS:         brew install cmake sdl3                  (sdl3 optional)
+# Debian/Ubuntu: sudo apt install cmake g++ ninja-build libsdl3-dev
+# (without libsdl3-dev CMake builds SDL3 from source: install the X11 /
+#  Wayland / ALSA / PulseAudio -dev packages listed in .github/workflows/release.yml)
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+```
+
+The Linux release binary is built by GitHub Actions
+([release.yml](.github/workflows/release.yml)) on Ubuntu 22.04 with SDL3
+linked in and attached to each release as `SealTeam-<version>-linux-x64.tar.gz`;
+every push to `main` also runs that build as a check.
+
+**macOS** (not built for releases yet)
+
+```sh
+brew install cmake sdl3            # sdl3 optional
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ```
@@ -78,7 +92,9 @@ Game/
 
 The `Game` folder is looked up next to the executable, one or two directories
 above it (so `build/sealteam.exe` finds `Game/` in the repository root), and in
-the current directory.
+the current directory. File names may be upper or lower case (Linux). On
+Linux run `./sealteam`; settings and screenshots are written next to the
+binary.
 
 ### Original and Enhanced
 

@@ -1,0 +1,68 @@
+# Linux release build. Runs as a build check on every push to main, and on a
+# published release (or a manual run with a tag) it packages the binary and
+# attaches SealTeam-<version>-linux-x64.tar.gz to that release. The Windows
+# build is made locally (see README); macOS is not built here yet.
+name: Release builds
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['docs/**', '*.md', 'assets/icon/DESIGN.md']
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to upload the build to (leave empty to only build)"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+jobs:
+  linux:
+    name: Linux x86-64
+    runs-on: ubuntu-22.04   # oldest glibc of the current runners: the binary runs on most distributions
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies (SDL3 is built from source by CMake)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build pkg-config python3 \
+            libasound2-dev libpulse-dev libpipewire-0.3-dev libdbus-1-dev libudev-dev libibus-1.0-dev \
+            libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxfixes-dev libxi-dev libxss-dev libxtst-dev \
+            libxkbcommon-dev libwayland-dev libdecor-0-dev \
+            libegl1-mesa-dev libgl1-mesa-dev libgles2-mesa-dev libdrm-dev libgbm-dev
+
+      - name: Configure
+        run: >
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_EXE_LINKER_FLAGS="-static-libgcc -static-libstdc++"
+
+      - name: Build
+        run: cmake --build build --target sealteam
+
+      - name: Smoke test (no game data; the usage text must print)
+        run: ./build/sealteam --help
+
+      - name: Version from CMakeLists.txt
+        id: ver
+        run: echo "version=$(sed -n 's/^project(SealTeam VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)" >> "$GITHUB_OUTPUT"
+
+      - name: Package
+        run: python3 tools/package_release.py "${{ steps.ver.outputs.version }}" build/sealteam --platform linux --out dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SealTeam-${{ steps.ver.outputs.version }}-linux-x64
+          path: dist/*.tar.gz
+
+      - name: Attach to the release
+        if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.tag != '')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.tag }}
+        run: gh release upload "$TAG" dist/*.tar.gz --clobber
