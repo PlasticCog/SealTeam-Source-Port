@@ -117,15 +117,27 @@ When the port starts it shows a start menu:
   the HUD drawn over it (Full-screen 3D), draws much farther, up to the
   whole world, and shows what a shot hit (Impact effects: blood, sparks,
   splashes, wood and stone chips, leaves, with a small particle burst); the
-  2D screens, HUD and fonts stay pixel-art on top.
+  2D screens, HUD and fonts stay pixel-art on top. It can also play with a
+  few changed rules (Modern gameplay, below).
 * **Setup** changes window size, fullscreen, 4:3 aspect, smooth scaling, the
   Enhanced options (3D resolution, wide view, full-screen 3D, draw distance,
-  impact effects) and sound (AdLib or Sound Blaster Pro 2 music, digital or
-  FM effects, volumes).
+  impact effects, modern gameplay) and sound (AdLib or Sound Blaster Pro 2
+  music, digital or FM effects, volumes).
 * **Controller** shows the game controller layout (Xbox-style default: left
   stick moves and turns, right stick is the camera, A fires / selects, B
   cancels, LB / RB hold the view and order layers) and remaps every action;
   see `docs/controller.md`.
+
+**Modern gameplay** (Setup; Enhanced game only, off by default) is the one
+option that changes gameplay rules rather than the presentation: more
+realistic loadouts and fixes, for the SEAL team only. The rules so far:
+
+* The CAR-15 Commando carries as much ammunition as the M16: 12 magazines of
+  20 rounds (240) instead of 8 (160). The extra magazines weigh their share.
+* The M79 grenadier carries a full vest of 40 mm rounds: 20 instead of 5.
+
+The briefing's loadout screen shows and limits the magazines accordingly;
+`docs/mission.md` ("Modern gameplay") has the details.
 
 Settings are saved in `sealteam.cfg` next to the program (macOS: in
 `~/Library/Application Support/SealTeam/`). `--original` or

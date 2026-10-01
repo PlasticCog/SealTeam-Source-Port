@@ -80,6 +80,7 @@ bool loadSettings() {
         else if (k == "full_screen_3d") s.fullScreen3d = parseBool(v);
         else if (k == "draw_distance") s.drawDistancePct = (v == "max") ? kDrawDistanceMax : nearestAllowed(std::max(n, 100), kDrawDistances);
         else if (k == "impact_fx") s.impactFx = parseBool(v);
+        else if (k == "modern_gameplay") s.modernGameplay = parseBool(v);
         else if (k == "music_device") s.musicDevice = (v == "opl3") ? MusicDevice::SoundBlasterPro2 : MusicDevice::AdLib;
         else if (k == "digital_sfx") s.digitalSfx = parseBool(v);
         else if (k == "music_volume") s.musicVolume = std::clamp(n, 0, 100);
@@ -110,6 +111,7 @@ bool saveSettings() {
       << "full_screen_3d = " << s.fullScreen3d << "\n"
       << "draw_distance = " << (s.drawDistancePct == kDrawDistanceMax ? std::string("max") : std::to_string(s.drawDistancePct)) << "\n"
       << "impact_fx = " << s.impactFx << "\n"
+      << "modern_gameplay = " << s.modernGameplay << "\n"
       << "music_device = " << (s.musicDevice == MusicDevice::SoundBlasterPro2 ? "opl3" : "opl2") << "\n"
       << "digital_sfx = " << s.digitalSfx << "\n"
       << "music_volume = " << s.musicVolume << "\n"

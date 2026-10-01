@@ -10,6 +10,7 @@
 // the mission. Two runs with the same arguments must give identical logs.
 #include "engine/rng.h"
 #include "engine/sound.h"
+#include "game/campaign.h"
 #include "game/devtools.h"
 #include "game/mission/ai.h"
 #include "game/mission/build.h"
@@ -119,7 +120,7 @@ void buildTestTeam(MissionSetup& setup) {
             if (k == 2) l.tools[0] = 2;
         }
         for (int i = 0; i < 4; ++i)
-            l.reloads[i] = l.weapons[i] >= 0 ? u8(weaponDef(l.weapons[i]).default_reloads) : 0;
+            l.reloads[i] = l.weapons[i] >= 0 ? campaign::sealWeaponReloads(l.weapons[i]) : 0;
     }
     setup.rosterFind = [](int se) -> RosterEntry* {
         for (RosterEntry& r : g_roster.entries)

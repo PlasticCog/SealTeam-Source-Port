@@ -29,6 +29,10 @@ struct Settings {
     bool fullScreen3d = false;    // native only: the field views fill the window height, the HUD drawn over the scene
     int drawDistancePct = 400;    // view distance in percent of the original; kDrawDistanceMax = whole world
     bool impactFx = true;         // surface-coloured impact puffs and a particle burst where shots hit
+    // Unlike the options above, this one changes gameplay rules, not the
+    // presentation: realistic SEAL loadouts and gameplay fixes (docs/mission.md,
+    // "Modern gameplay"). The simulation is the original's while it is off.
+    bool modernGameplay = false;
 
     // Audio.
     MusicDevice musicDevice = MusicDevice::AdLib;
@@ -64,6 +68,8 @@ struct Settings {
     // Impact sprites remapped by the surface hit plus a particle burst
     // (render/impactfx.h); the Original preset keeps the plain puffs.
     bool effectiveImpactFx() const { return !original() && impactFx; }
+    // Gameplay rules of docs/mission.md "Modern gameplay" (loadouts, fixes).
+    bool effectiveModernGameplay() const { return !original() && modernGameplay; }
 };
 
 Settings& settings();

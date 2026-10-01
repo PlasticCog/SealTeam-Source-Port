@@ -6,6 +6,7 @@
 #include "engine/palette_fade.h"
 #include "engine/ticker.h"
 #include "game/devtools.h"
+#include "game/front/common.h"
 #include "game/screens.h"
 #include "game/ui.h"
 #include "gfx/gfx.h"
@@ -64,7 +65,7 @@ Result runScreen(ButtonList& list, Draw draw, Handle handle) {
         present();
         clock.updateGameTime();
 
-        int key = in.getKey();
+        int key = front::getKey();  // the input layer, after any scripted key (--keys)
         int dx = 0, dy = 0;
         in.getMotion(dx, dy);
         if (dx || dy) uiPointerUpdate(dx, dy, list);
@@ -122,24 +123,27 @@ Result runOptions() {
         char buf[64];
         list.clear();
         std::snprintf(buf, sizeof buf, "Window size: %dx", st.windowScale);
-        list.push_back(makeButton(6, 32, 150, 'a', buf, false));
-        list.push_back(makeButton(6, 52, 150, 'b', "Fullscreen: " + onOff(st.fullscreen), false));
-        list.push_back(makeButton(6, 72, 150, 'c', std::string("Aspect: ") + (st.aspectCorrect ? "4:3 (CRT)" : "Square pixels"), false));
-        list.push_back(makeButton(6, 92, 150, 'd', "Smooth scaling: " + onOff(st.smoothScaling), false));
-        list.push_back(makeButton(6, 112, 150, 'e', std::string("Show this menu: ") + (st.skipLauncher ? "No" : "Yes"), false));
-        list.push_back(makeButton(6, 132, 150, 'l', "Full-screen 3D: " + onOff(st.fullScreen3d), false));
+        // Two columns of 16-pixel buttons, 17 pixels apart from y 28: the
+        // eighth row ends at 163, above the help panel (167).
+        list.push_back(makeButton(6, 28, 150, 'a', buf, false));
+        list.push_back(makeButton(6, 45, 150, 'b', "Fullscreen: " + onOff(st.fullscreen), false));
+        list.push_back(makeButton(6, 62, 150, 'c', std::string("Aspect: ") + (st.aspectCorrect ? "4:3 (CRT)" : "Square pixels"), false));
+        list.push_back(makeButton(6, 79, 150, 'd', "Smooth scaling: " + onOff(st.smoothScaling), false));
+        list.push_back(makeButton(6, 96, 150, 'e', std::string("Show this menu: ") + (st.skipLauncher ? "No" : "Yes"), false));
+        list.push_back(makeButton(6, 113, 150, 'l', "Full-screen 3D: " + onOff(st.fullScreen3d), false));
+        list.push_back(makeButton(6, 130, 150, 'n', "Impact effects: " + onOff(st.impactFx), false));
+        list.push_back(makeButton(6, 147, 150, 'm', "Modern gameplay: " + onOff(st.modernGameplay), false));
         std::snprintf(buf, sizeof buf, "3D resolution: %s", renderScaleName(st.renderScale));
-        list.push_back(makeButton(164, 32, 150, 'f', buf, false));
-        list.push_back(makeButton(164, 52, 150, 'k', std::string("Wide view: ") + (st.wideView ? "Fill" : "4:3"), false));
+        list.push_back(makeButton(164, 28, 150, 'f', buf, false));
+        list.push_back(makeButton(164, 45, 150, 'k', std::string("Wide view: ") + (st.wideView ? "Fill" : "4:3"), false));
         std::snprintf(buf, sizeof buf, "Draw distance: %s", drawDistanceName(st.drawDistancePct));
-        list.push_back(makeButton(164, 72, 150, 'g', buf, false));
-        list.push_back(makeButton(164, 92, 150, 'h', std::string("Music: ") + (st.musicDevice == MusicDevice::AdLib ? "AdLib" : "SB Pro 2"), false));
+        list.push_back(makeButton(164, 62, 150, 'g', buf, false));
+        list.push_back(makeButton(164, 79, 150, 'h', std::string("Music: ") + (st.musicDevice == MusicDevice::AdLib ? "AdLib" : "SB Pro 2"), false));
         std::snprintf(buf, sizeof buf, "Music volume: %d%%", st.musicVolume);
-        list.push_back(makeButton(164, 112, 150, 'i', buf, false));
+        list.push_back(makeButton(164, 96, 150, 'i', buf, false));
         std::snprintf(buf, sizeof buf, "Effects: %s %d%%", st.digitalSfx ? "Digital" : "FM", st.sfxVolume);
-        list.push_back(makeButton(164, 132, 150, 'j', buf, false));
-        list.push_back(makeButton(6, 152, 150, 'n', "Impact effects: " + onOff(st.impactFx), false));
-        list.push_back(makeButton(164, 152, 150, engine::key::Esc, "Back", false));
+        list.push_back(makeButton(164, 113, 150, 'j', buf, false));
+        list.push_back(makeButton(164, 130, 150, engine::key::Esc, "Back", false));
     };
     rebuild();
     const Result r = runScreen(
@@ -160,6 +164,7 @@ Result runOptions() {
             case 'l': st.fullScreen3d = !st.fullScreen3d; help = "Native 3D resolution: the mission view fills the screen, HUD over it."; break;
             case 'g': st.drawDistancePct = cycle(st.drawDistancePct, kDrawDistances); help = "Enhanced game only: how far you can see (Max: the whole world)."; break;
             case 'n': st.impactFx = !st.impactFx; help = "Enhanced game only: blood, sparks, splashes and chips where shots hit."; break;
+            case 'm': st.modernGameplay = !st.modernGameplay; help = "Enhanced only: realistic loadouts and gameplay fixes (see README)."; break;
             case 'h':
                 st.musicDevice = st.musicDevice == MusicDevice::AdLib ? MusicDevice::SoundBlasterPro2 : MusicDevice::AdLib;
                 help = "AdLib (OPL2) or Sound Blaster Pro 2 (OPL3) music.";
@@ -184,7 +189,9 @@ Result runOptions() {
     return r;
 }
 
-const DevCommand kSetupScreen("--setup-screen", "open the start menu's Setup page", [](const DevArgs&) {
+const DevCommand kSetupScreen("--setup-screen", "open the start menu's Setup page [--keys SPEC]", [](const DevArgs& args) {
+    for (size_t i = 0; i + 1 < args.size(); ++i)
+        if (args[i] == "--keys") front::setKeyScript(args[++i]);
     screenTransition(PalMenu, false);
     picLoad(PicMainMenu);
     engine::paletteFade().setLevel(0);

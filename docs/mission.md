@@ -155,6 +155,47 @@ arguments produce identical logs.
 * The four unreferenced 4a37 functions (0248, 110E, 1242, 1435) are not
   ported.
 
+### Modern gameplay
+
+The Enhanced option "Modern gameplay" (`settings().effectiveModernGameplay()`,
+cfg `modern_gameplay`, Setup "Modern gameplay"; always off with the Original
+preset) is the one Enhanced option that changes gameplay rules, not the
+presentation. Every rule applies to the SEAL team only; enemy units, craft
+and NPCs keep the original tables. With the option off nothing changes: the
+`--sim-mission` logs of the Original and of the Enhanced preset are
+byte-identical to those of the build without the code.
+
+* **CAR-15 Commando ammunition like the M16's.** The weapon table (DS:48FE)
+  gives both rifles 8 magazines, but the Commando's hold 20 rounds against
+  the M16's 30 (160 against 240 rounds in the briefing's count). A SEAL's
+  Commando now gets as many 20-round magazines as the M16's rounds fill,
+  8 x 30 / 20 = 12 (240 rounds), computed from the table by
+  `campaign::sealWeaponReloads` (campaign.cpp). That function replaces
+  `weaponReloadsByte` wherever a SEAL loadout slot gets its default or its
+  maximum: `loadoutBuildMember`, the briefing's loadout editor (the default
+  after a weapon change and the cap of '+') and the `--sim-mission` test
+  team. `ent_spawn_seal_team` is unchanged: it copies the record. The load is
+  still computed from the magazines (`loadoutComputeWeight`, 1.1 lb each), so
+  the four extra magazines add 4.4 lb, as in reality.
+* **M79 grenadier carries a full vest of 40 mm.** The table limits the M79
+  to 5 rounds; the option gives 20 (the same function; +15 x 1.3 lb of load).
+  The M203 is not changed: it is not SEAL-selectable (availability 0) and its
+  grenades come three with every rifle magazine (`m203_count`), not from a
+  separate round count.
+* The map's Team Info table (`map.cpp`) has room for one digit of magazines
+  at x 316; with the option on a two-digit count is drawn right-aligned to
+  the same edge (x 312) instead of being clipped.
+
+Verification: `--original --sim-mission 1 --ticks 30000 --script walk` and
+the same with `--enhanced` and `modern_gameplay = 0` give logs identical to
+the build without the option, with `--original --view-world 3`
+pixel-identical; with the option on the only difference in the mission-1 log
+is the spawn line, `M79(1+20)` instead of `M79(1+5)` (the test team has no
+Commando); `--play-mission` logs the team's loadout (`CAR15 x12` with the
+option, `x8` without), the first-person weapon line and the map's Team Info
+show the magazines, and the Setup page fits eight rows per column with the
+new entry.
+
 ## Corrections to the RE notes found while porting
 
 * Bled to death (2dbd:0A9D) does not update DS:0898 and gives no under-fire

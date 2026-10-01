@@ -67,6 +67,16 @@ int playMissionCommand(const DevArgs& args) {
     campaign::rosterNew(pool);
     campaign::missionLoad();
     campaign::loadoutBuildTeam();
+    // The team's loadout (magazines per slot), so a run can be checked.
+    for (int k = 0; k < campaign::kTeamSize; ++k) {
+        const LoadoutRecord& r = campaign::loadout()[k];
+        if (r.se_id == -1) continue;
+        std::string slots;
+        for (int i = 0; i < 4; ++i)
+            if (r.weapons[i] != -1)
+                slots += std::string(" ") + campaign::weapon(r.weapons[i]).short_name + " x" + std::to_string(s8(r.reloads[i]));
+        logInfo("play-mission: member %d SE %d loadout%s", k, r.se_id, slots.c_str());
+    }
     if (!keys.empty()) front::setKeyScript(keys);
     // main loop step 2: fade, "One Moment Please ...", the mission.
     screenTransition(PalMission, true);

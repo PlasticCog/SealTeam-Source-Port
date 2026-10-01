@@ -460,14 +460,14 @@ int editField(int f) {
             sel = k * 12 + 2 + i;
             if (sel != g_editField) return sel;
             r.weapons[i] = s8(campaign::loadoutNextWeapon(r.weapons[i], year, key == engine::key::Enter, sub));
-            r.reloads[i] = campaign::weaponReloadsByte(r.weapons[i]);
+            r.reloads[i] = campaign::sealWeaponReloads(r.weapons[i]);
             return sel;
         }
         if (key == '+' || key == '-') {
             sel = k * 12 + 6 + i;
             if (sel != g_editField) return sel;
             if (key == '+') {
-                const int cap = campaign::weaponReloadsByte(r.weapons[i]);
+                const int cap = campaign::sealWeaponReloads(r.weapons[i]);
                 const int v = s8(r.reloads[i]) + 1;
                 r.reloads[i] = u8(std::min(cap, v));
             } else {

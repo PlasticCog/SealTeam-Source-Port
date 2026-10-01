@@ -2,6 +2,7 @@
 // docs/re/seg_365e_b.md 4 and 12). See campaign.h.
 #include "game/campaign.h"
 
+#include "core/settings.h"
 #include "data/ealib.h"
 #include "data/exeimage.h"
 #include "engine/rng.h"
@@ -368,6 +369,23 @@ const WeaponDef& weapon(int id) {
 }
 
 u8 weaponReloadsByte(int id) { return exe().dgByte(u16(kWeaponTable + 0x20 + id * kWeaponRecord)); }
+
+// Port addition (Enhanced "Modern gameplay", docs/mission.md): the SEAL team's
+// loadout rules; everything else keeps the table's byte.
+u8 sealWeaponReloads(int id) {
+    if (settings().effectiveModernGameplay() && id >= 0 && id < kWeaponCount) {
+        // CAR-15 Commando: as many rounds as the M16 carries, in its own
+        // 20-round magazines (8 x 30 / 20 = 12 magazines = 240 rounds).
+        if (id == int(WeaponId::CAR15)) {
+            const WeaponDef& m16 = weapon(int(WeaponId::M16A2));
+            const WeaponDef& car = weapon(id);
+            if (car.magazine > 0) return u8(m16.default_reloads * m16.magazine / car.magazine);
+        }
+        // M79 grenadier: a full vest of 40 mm rounds instead of five.
+        if (id == int(WeaponId::M79)) return 20;
+    }
+    return weaponReloadsByte(id);
+}
 
 const ItemDef& tool(int id) {
     if (id < 0 || id >= kToolCount) fatal("bad tool id %d", id);
@@ -783,17 +801,17 @@ void loadoutBuildMember(int k, int seId) {
     r.camouflage = se->camouflage;
     r.weapons[0] = se->weapons[0];
     if (k > 0) r.weapons[0] = s8(loadoutFixWeaponForYear(r.weapons[0]));
-    r.reloads[0] = weaponReloadsByte(r.weapons[0]);
+    r.reloads[0] = sealWeaponReloads(r.weapons[0]);
     r.weapons[1] = s8(loadoutFixWeaponForYear(se->weapons[1]));
-    r.reloads[1] = weaponReloadsByte(r.weapons[1]);
+    r.reloads[1] = sealWeaponReloads(r.weapons[1]);
     r.tools[1] = 1;  // two Medical Kits
     r.tools[0] = 1;
     r.weapons[2] = se->weapons[2];
     if (k > 0) r.weapons[2] = s8(loadoutFixWeaponForYear(r.weapons[2]));
-    r.reloads[2] = weaponReloadsByte(r.weapons[2]);
+    r.reloads[2] = sealWeaponReloads(r.weapons[2]);
     r.weapons[3] = se->weapons[3];
     if (k > 0) r.weapons[3] = s8(loadoutFixWeaponForYear(r.weapons[3]));
-    r.reloads[3] = weaponReloadsByte(r.weapons[3]);
+    r.reloads[3] = sealWeaponReloads(r.weapons[3]);
     const GameMode mode = g().gameMode;
     constexpr s8 kDemo = s8(WeaponId::Demo);
     if (k == 0) {
@@ -810,26 +828,26 @@ void loadoutBuildMember(int k, int seId) {
         }
         if (d == -1) d = se->weapons[3];
         r.weapons[3] = s8(d);
-        r.reloads[3] = weaponReloadsByte(s8(d));
+        r.reloads[3] = sealWeaponReloads(s8(d));
         if (findObjectiveTarget(6) != -1) r.tools[0] = 2;  // PHK for a Snatch
         r.tools[1] = 0;                                    // PRC25 radio
     } else if (k == 1) {
         r.weapons[1] = 16;  // M18 smoke
-        r.reloads[1] = weaponReloadsByte(16);
+        r.reloads[1] = sealWeaponReloads(16);
         if (findObjectiveTarget(3) != -1) {
             r.weapons[2] = kDemo;
-            r.reloads[2] = weaponReloadsByte(kDemo);
+            r.reloads[2] = sealWeaponReloads(kDemo);
         }
         r.weapons[3] = 4;   // M39
-        r.reloads[3] = weaponReloadsByte(4);
+        r.reloads[3] = sealWeaponReloads(4);
     } else {
         if (findObjectiveTarget(3) != -1) {
             r.weapons[3] = kDemo;
-            r.reloads[3] = weaponReloadsByte(kDemo);
+            r.reloads[3] = sealWeaponReloads(kDemo);
         }
         if (findObjectiveTarget(2) != -1) {
             r.weapons[2] = 4;  // M39
-            r.reloads[2] = weaponReloadsByte(4);
+            r.reloads[2] = sealWeaponReloads(4);
         }
         if (k == 2) r.tools[0] = 2;  // Corpsman: PHK
     }

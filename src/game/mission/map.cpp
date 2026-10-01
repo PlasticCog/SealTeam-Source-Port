@@ -6,6 +6,7 @@
 // simulation's (orders.cpp: mapOrderKey, mapSetWaypoint, reinsert*).
 #include "game/mission/loop.h"
 
+#include "core/settings.h"
 #include "data/exeimage.h"
 #include "engine/input_layer.h"
 #include "game/campaign.h"
@@ -575,7 +576,13 @@ void mapDrawInfoPanel() {
             const WeaponNode* w = L.teamInfoNames ? u->loadout->secondary : u->loadout->primary;
             if (w) {
                 text(rowY, 0x124, weaponDef(u8(w->type)).short_name);
-                text(rowY, 0x13C, utoa(w->reloads));
+                // The column has room for one digit before the screen edge;
+                // "Modern gameplay" loadouts (12, 20 magazines) are drawn
+                // right-aligned to the same edge (the original never shows
+                // more than one digit here).
+                const std::string mags = utoa(w->reloads);
+                const int x = settings().effectiveModernGameplay() && mags.size() > 1 ? 0x13C - 4 * (int(mags.size()) - 1) : 0x13C;
+                text(rowY, x, mags);
             }
         }
     }

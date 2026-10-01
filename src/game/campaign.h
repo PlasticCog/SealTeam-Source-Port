@@ -46,6 +46,9 @@ const WeaponDef& weapon(int id);            // 0..33
 // Byte W[id]+0x20 exactly as the original reads it (DS:491E + id*0x22), also
 // for id == -1 (empty slot), where it reads the byte before the table.
 u8 weaponReloadsByte(int id);
+// Default and maximum magazines of a SEAL loadout slot: weaponReloadsByte,
+// or the "Modern gameplay" loadout (docs/mission.md) when that option is on.
+u8 sealWeaponReloads(int id);
 const ItemDef& tool(int id);                // 0..11
 const FlowEntry& flow(int year, int mission);   // g_campaign_flow (DS:3C5A -> far 5275)
 u16 promotionThreshold(int rank);           // far 52BB:0002, rank 0..9 (10 = none)
