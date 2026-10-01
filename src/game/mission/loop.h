@@ -135,6 +135,10 @@ const s16* mapButtonRect(int n);                      // x, y, w, h of button n 
 bool inputToggleKeys(int key);                        // 19ac:0B2A
 bool cmdOrderKeys(int key);                           // 19ac:0CC3 (true = key consumed)
 void fieldViewKeys(int key, int dx, int dy);          // 19ac:1A79
+// Port: mouse wheel notches (up = positive) on the map screen and in the
+// chase / team cameras.
+void mapWheelZoom(int notches);
+void fieldViewWheelZoom(int notches);
 void uiResumeAfterOverlay();                          // 19ac:0CA7
 
 } // namespace loop

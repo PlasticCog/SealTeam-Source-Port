@@ -217,6 +217,12 @@ reference only afterwards).
 * Enhanced: `view_clear_map_ground` also fills the high-resolution layer so
   the map view starts from the ground colour; the map markers project with
   the normal page projection (`render::projectPage`).
+* Port: the mouse wheel (`Input::takeWheel`, read once per frame in
+  `frame()` after the key) zooms: on the map screen a notch is one Zoom /
+  Expand press (`mapWheelZoom` -> `map_zoom_keys`), in the chase / team /
+  target cameras (view modes 2 and up, not 7 / 0xC) a notch is four steps of
+  `g_view_distance` on the viewed team (`fieldViewWheelZoom`), exactly what
+  Ctrl+PgUp / PgDn do. First person has no zoom in the original.
 * Port keys: Ctrl+H (`InputLayer::pollBiosKey` keeps its BIOS word 0x2308
   whole so it is not Backspace's ASCII 8; `getKey`) runs
   `uiShowKeyReference` (ui.cpp) in place of the key: a modal card like the

@@ -557,6 +557,8 @@ void pushScriptedKeyEvent(SDL_Scancode scancode, SDL_Keycode keycode, SDL_Keymod
 int parseKey(const std::string& name) {
     struct Named { const char* name; int code; };
     if (name == "CtrlH") return 0x40000;
+    if (name == "WheelUp") return 0x80001;    // a mouse wheel notch (Input::addWheel)
+    if (name == "WheelDown") return 0x80002;
     static const Named kNamed[] = {
         {"Enter", 0x0d}, {"Esc", 0x1b}, {"Space", 0x20}, {"Backspace", 0x08}, {"Up", 0x4800},
         {"Down", 0x5000}, {"Left", 0x4b00}, {"Right", 0x4d00}, {"F10", 0x4400}, {"AltX", 0x2d00},
@@ -602,6 +604,10 @@ int dueKey() {
     const double t = std::chrono::duration<double>(std::chrono::steady_clock::now() - base).count();
     if (k.at > t) return 0;
     const int code = g_script[g_scriptPos++].code;
+    if (code & 0x80000) {  // scripted mouse wheel notch, not a key
+        sys().input().addWheel((code & 1) ? 1 : -1);
+        return 0;
+    }
     if (code & 0x40000) {  // scripted keyboard event (SDL_PushEvent), not a key
         pushScriptedKeyEvent(SDL_SCANCODE_H, SDLK_H, SDL_KMOD_LCTRL);
         return 0;

@@ -379,5 +379,18 @@ void fieldViewKeys(int key, int dx, int dy) {
     }
 }
 
+// Port: the mouse wheel in the chase, team and target cameras (the views
+// from mode 2 up, where Ctrl+PgUp / PgDn zoom); a notch is four key steps.
+// Like field_view_keys it works on the viewed team's distance.
+void fieldViewWheelZoom(int notches) {
+    LoopState& L = ls();
+    const MissionState& S = ms();
+    if (S.viewMode < 2 || S.viewMode == 7 || S.viewMode == 0x0C) return;
+    if (Team* vt = team(L.viewTeam)) L.viewDistance = s32(vt->view_distance);
+    for (int n = notches * 4; n > 0; --n) zoomIn();
+    for (int n = notches * 4; n < 0; ++n) zoomOut();
+    if (Team* vt = team(L.viewTeam)) vt->view_distance = s16(L.viewDistance);
+}
+
 } // namespace loop
 } // namespace st::game::mission

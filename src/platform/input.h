@@ -57,6 +57,10 @@ public:
     void takeMotion(int& dx, int& dy);
     // Inject relative motion (scripted tests).
     void addMotion(int dx, int dy) { relX_ += float(dx); relY_ += float(dy); }
+    // Port: mouse wheel notches since the last call, up = positive (the
+    // fraction of a precision wheel is kept for the next call).
+    int takeWheel();
+    void addWheel(int notches) { wheel_ += float(notches); }  // scripted tests
 
     // Last raw scancode seen (make or break with bit 7), like port 0x60.
     u8 lastScancode() const { return lastScancode_; }
@@ -66,6 +70,7 @@ private:
     std::deque<u16> queue_;
     MouseState mouse_;
     float relX_ = 0.0f, relY_ = 0.0f;
+    float wheel_ = 0.0f;
     u8 lastScancode_ = 0;
 };
 

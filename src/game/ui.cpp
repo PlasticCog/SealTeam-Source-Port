@@ -424,6 +424,7 @@ const KeyRow kFieldKeys[] = {
     {"Space, m, mouse2", "map and orders"},
     {"F1 / F2", "first person / chase"},
     {"F3-F8 / F9 / F10", "team, target, enemy"},
+    {"Mouse wheel", "zoom chase/team view"},
     {"Esc", "end the mission"},
 };
 
@@ -439,7 +440,8 @@ const KeyRow kOrderKeys[] = {
     {"Arrows, mouse", "move the pointer"},
     {"Enter", "press / set waypoint"},
     {"Tab / Shift+Tab", "next / previous team"},
-    {"1..6 / + - x z", "select team / zoom"},
+    {"1..6", "select a team"},
+    {"+ - x z, wheel", "zoom in / out"},
     {"h p l s j", "halt, ASAP, stealth,"},
     {"", "search, join"},
     {"c f t w", "fire: cease, field,"},
@@ -448,7 +450,6 @@ const KeyRow kOrderKeys[] = {
     {"a b u", "air/boat/heli attack"},
     {"k / o", "cease attack, loiter"},
     {"e", "extract at pointer"},
-    {"Space, m", "back to the field"},
 };
 
 const char* const kGeneralKeys[] = {

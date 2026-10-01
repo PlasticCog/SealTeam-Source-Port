@@ -135,7 +135,8 @@ brought back with `--launcher`.
 Keys the port adds on every screen: **Ctrl+H** shows a reference card of
 the game's keys (any key closes it; the mission clock stops meanwhile),
 **Ctrl+Q** quits to the desktop at once, **Alt+Enter** toggles fullscreen,
-**F12** saves a screenshot next to the program.
+**F12** saves a screenshot next to the program. The **mouse wheel** zooms
+the map screen and the chase / team cameras.
 
 | Option | Effect |
 |--------|--------|

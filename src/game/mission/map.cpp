@@ -740,6 +740,13 @@ void mapFocusButtonInternal(int n) {
 
 } // namespace
 
+// Port: the mouse wheel on the map screen, a notch per Zoom / Expand press
+// (map_zoom_keys); up brings the map closer.
+void mapWheelZoom(int notches) {
+    for (; notches > 0; --notches) mapZoomKeys('-');
+    for (; notches < 0; ++notches) mapZoomKeys('+');
+}
+
 // ---------------------------------------------------------------------------
 // map_screen_keys (19ac:52A1)
 // ---------------------------------------------------------------------------

@@ -65,8 +65,9 @@ The start menu offers:
 Settings are saved in sealteam.cfg {settings_where}. On every screen:
 Ctrl+H shows a reference card of the game's keys (any key closes it),
 Ctrl+Q quits to the desktop at once, Alt+Enter toggles fullscreen. The
-mouse is captured by the game window; Alt+Tab releases it and the next
-click takes it back.
+mouse wheel zooms the map and the chase / team cameras. The mouse is
+captured by the game window; Alt+Tab releases it and the next click takes
+it back.
 
 Command line: {cli} [--original | --enhanced | --launcher] [--data DIR]
 Original options still work, e.g. "{cli} 3 t" starts mission 3 without

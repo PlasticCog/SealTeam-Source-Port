@@ -139,6 +139,11 @@ void frame() {
     int key = loopGetKey();
     int dx = 0, dy = 0;
     in.getMotion(dx, dy);
+    // Port: the mouse wheel zooms the map and the chase / team cameras.
+    if (const int wheel = sys().input().takeWheel()) {
+        if (S.viewMode == 1) mapWheelZoom(wheel);
+        else if (!mapView && !L.misFreeze && S.tcState == 0) fieldViewWheelZoom(wheel);
+    }
     if (cmdOrderKeys(key)) key = 0;
     if (S.tcState == 0) {
         if (L.skipPresent) {

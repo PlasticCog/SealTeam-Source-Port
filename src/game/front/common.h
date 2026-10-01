@@ -148,7 +148,8 @@ int scriptedBiosKey();
 // at 1 s). Game controller events: PadA, PadB, PadX, PadY, PadLB, PadRB,
 // PadLS, PadRS, PadStart, PadBack, PadUp/Down/Left/Right (d-pad), PadLT,
 // PadRT (triggers), PadLX+/-, PadLY+/-, PadRX+/-, PadRY+/- (sticks, full
-// deflection); "Pad~A" releases. They are pushed as synthetic SDL gamepad
+// deflection); "Pad~A" releases; CtrlH (a real Ctrl+H key press), WheelUp /
+// WheelDown (a mouse wheel notch). They are pushed as synthetic SDL gamepad
 // events and go through the controller mapping layer (docs/controller.md).
 void setKeyScript(const std::string& spec);
 // A key time may be written "anchor+seconds" (e.g. Esc@mission+4): it counts

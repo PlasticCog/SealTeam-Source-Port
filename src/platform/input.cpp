@@ -156,6 +156,10 @@ void Input::handleEvent(const SDL_Event& ev, int logicalW, int logicalH) {
         relX_ += float(ev.motion.xrel);
         relY_ += float(ev.motion.yrel);
         break;
+    case SDL_EVENT_MOUSE_WHEEL:
+        // Port: notches up are positive ("natural" scrolling systems report them flipped).
+        wheel_ += ev.wheel.direction == SDL_MOUSEWHEEL_FLIPPED ? -ev.wheel.y : ev.wheel.y;
+        break;
     case SDL_EVENT_MOUSE_BUTTON_DOWN:
     case SDL_EVENT_MOUSE_BUTTON_UP: {
         u8 bit = 0;
@@ -195,6 +199,12 @@ void Input::takeMotion(int& dx, int& dy) {
     dy = int(relY_);
     relX_ -= float(dx);
     relY_ -= float(dy);
+}
+
+int Input::takeWheel() {
+    const int n = int(wheel_);
+    wheel_ -= float(n);
+    return n;
 }
 
 void Input::setMousePos(int x, int y) {
