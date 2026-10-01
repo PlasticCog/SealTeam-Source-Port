@@ -1,7 +1,8 @@
-# Linux release build. Runs as a build check on every push to main, and on a
-# published release (or a manual run with a tag) it packages the binary and
-# attaches SealTeam-<version>-linux-x64.tar.gz to that release. The Windows
-# build is made locally (see README); macOS is not built here yet.
+# Linux and macOS release builds. Run as a build check on every push to main,
+# and on a published release (or a manual run with a tag) they package the
+# binaries and attach SealTeam-<version>-linux-x64.tar.gz and
+# SealTeam-<version>-macos-universal.zip to that release. The Windows build
+# is made locally (see README).
 name: Release builds
 
 on:
@@ -66,3 +67,44 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.tag }}
         run: gh release upload "$TAG" dist/*.tar.gz --clobber
+
+  macos:
+    name: macOS universal
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      # SDL3 is built from source by CMake for both architectures (a Homebrew
+      # SDL3 would be arm64 only), so ignore any installed package.
+      - name: Configure
+        run: >
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
+          -DCMAKE_DISABLE_FIND_PACKAGE_SDL3=ON
+
+      - name: Build
+        run: cmake --build build --target sealteam -j "$(sysctl -n hw.ncpu)"
+
+      - name: Smoke test (no game data; the usage text must print)
+        run: |
+          lipo -info build/SealTeam.app/Contents/MacOS/SealTeam
+          ./build/SealTeam.app/Contents/MacOS/SealTeam --help
+
+      - name: Version from CMakeLists.txt
+        id: ver
+        run: echo "version=$(sed -n 's/^project(SealTeam VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)" >> "$GITHUB_OUTPUT"
+
+      - name: Package (ad-hoc signed, not notarized)
+        run: python3 tools/package_release.py "${{ steps.ver.outputs.version }}" build/SealTeam.app --platform macos --out dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SealTeam-${{ steps.ver.outputs.version }}-macos-universal
+          path: dist/*.zip
+
+      - name: Attach to the release
+        if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.tag != '')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.tag }}
+        run: gh release upload "$TAG" dist/*.zip --clobber
