@@ -1,10 +1,12 @@
 // Port addition: the Enhanced "Modern gameplay" rules that change the
 // simulation itself (docs/mission.md "Modern gameplay"): support craft hold
 // their fire near friendlies, squad mates work around obstacles and enemy
-// soldiers throw grenades with discipline. Every entry point does nothing
-// while the option is off, so the original code paths stay byte-for-byte;
-// with it on none of them draws from engine::rng() (deterministic choices
-// only), so enabling the option changes just what it is meant to change.
+// soldiers throw grenades with discipline; and the one presentation rule
+// under the same option, the marked snatch target. Every entry point does
+// nothing while the option is off, so the original code paths stay
+// byte-for-byte; with it on none of them draws from engine::rng()
+// (deterministic choices only), so enabling the option changes just what it
+// is meant to change.
 //
 // Per-unit state lives in ms().portUnits (released by resetMission()).
 #pragma once
@@ -43,5 +45,13 @@ bool modernDetourActive(const Unit* u);
 bool modernGrenadeAllowed(Unit* u, const WeaponNode* w, int dist, bool secondaryRoll);
 // wpn_select_longest skips thrown items while the option is on.
 bool modernSkipThrownForLongest(const WeaponNode* w);
+
+// Rule 6 (presentation only): `u` is the leader of the target team of a
+// Snatch objective of the current mission. The targets are looked up once
+// from the MCI objectives after the teams are built and cached in
+// ms().snatchTargets (cleared with the mission). False while the option is
+// off, so the sprite, map and HUD code that reads it draws the original
+// picture.
+bool modernIsSnatchTarget(const Unit* u);
 
 } // namespace st::game::mission

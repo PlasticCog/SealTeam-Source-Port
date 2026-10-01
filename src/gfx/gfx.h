@@ -88,6 +88,8 @@ public:
     int clipCx() const { return cx_; }
     // Move only the bottom edge (the soldier sprite code writes DS:F242 directly).
     void setClipBottom(int y1) { y1_ = y1; }
+    // Move only the top edge (port: the sprite marker band of render/sprites).
+    void setClipTop(int y0) { y0_ = y0; }
     int clipCy() const { return cy_; }
 
     // --- colour and filled primitives
@@ -110,6 +112,7 @@ public:
     void spriteCentered(const u8* spr, int cx, int cy, int w, int h);  // 28FA
     // Colour remap for sprites (DS:D79A flag, table at far DS:00E6).
     void setSpriteRemap(const u8* table) { remap_ = table; }
+    const u8* spriteRemap() const { return remap_; }
     bool createBitmap(Bitmap& b, int w, int h);          // 2867
     void blit(const Bitmap& src, int sx, int sy, Bitmap& dst, int dx, int dy, int w, int h);  // A7E9
     void blitMasked(const Bitmap& src, int sx, int sy, Bitmap& dst, int dx, int dy, int w, int h,

@@ -13,6 +13,7 @@
 #include "game/mission/entity.h"
 #include "game/mission/exedata.h"
 #include "game/mission/geo.h"
+#include "game/mission/modern.h"
 #include "game/mission/msg.h"
 #include "game/mission/state.h"
 #include "game/mission/world.h"
@@ -280,6 +281,9 @@ void hudDrawTargetInfo() {
         name += dsText(b ? kStrTeamB : kStrTeamA);
         x -= 4;
     }
+    // Port: Modern gameplay names the snatch target ("Viet Cong (target)",
+    // 72 pixels; the line is clipped to the view like the original's).
+    if (modernIsSnatchTarget(u)) name += " (target)";
     if (v.rect_y < y && y < v.rect_y + v.rect_h - 8 && v.rect_x < x && x < v.rect_x + v.rect_w - 0x30) text(y, x, name);
     x = rx - 0x14;
     y = ry + 0x16;

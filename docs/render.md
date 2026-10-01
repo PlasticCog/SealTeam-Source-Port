@@ -398,6 +398,19 @@ the mission's `setEffectPainter` hook; lone muzzle objects draw fxmu with
 remap4. `spr_update_anim` belongs to the mission code and is called through
 `setAnimUpdate`.
 
+Port only: `setUnitMark` is the mission code's "draw this unit marked"
+predicate (the snatch target of the Enhanced "Modern gameplay" option,
+docs/mission.md). For a unit it accepts, `drawSoldierFrame` draws the
+headgear through a red remap of the current base palette (built like the
+impact remaps of `impactfx.cpp`: luminance -> red, nearest entry, 0 and 255
+pinned) and `drawMarkBand` draws the body frame once more through the same
+remap with the clip box reduced (`setClipTop` / `setClipBottom`) to a band
+of rows at the bottom edge of the headgear frame, two sprite pixels scaled
+with the sprite and at least one page pixel, so only the body's own pixels
+change colour and the silhouette is the original's. Without the hook, or
+with it false (the option off, every other unit), the draw calls are
+exactly the original's.
+
 ## Procedural scenery (veg)
 
 Ground cover from the 126 spare world objects on the 0x31/0x62-cell pattern

@@ -231,6 +231,11 @@ struct MissionState {
     // ---- Port only (no original counterpart) ------------------------------
     std::unordered_map<const Unit*, PortUnitState> portUnits;  // Modern gameplay side table
     PortStats portStats;
+    // Leaders of the Snatch objectives' target teams (modernIsSnatchTarget),
+    // looked up once the teams exist; nullptr = none. Read only with the
+    // Modern gameplay option on.
+    const Unit* snatchTargets[3] = {};
+    bool snatchTargetsValid = false;
 };
 
 MissionState& ms();

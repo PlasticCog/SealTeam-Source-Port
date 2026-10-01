@@ -16,6 +16,7 @@
 #include "game/mission/entity.h"
 #include "game/mission/exedata.h"
 #include "game/mission/geo.h"
+#include "game/mission/modern.h"
 #include "game/mission/sim.h"
 #include "game/mission/state.h"
 #include "game/mission/teams.h"
@@ -141,6 +142,36 @@ void drawCross(int x, int y, u16 colour, bool plus) {
         line(colour, y + 3, x, y - 3, x);
         line(colour, y, x + 3, y, x - 3);
     }
+}
+
+// Port (Modern gameplay): the snatch target's mark gets a one-pixel light
+// red ring three pixels outside the disc of radius r and a "!" to its right.
+void drawSnatchMark(int x, int y, int r) {
+    constexpr u16 kColour = 0xFF0C;
+    const int R = r + 3;
+    // Midpoint circle, eight octants.
+    int px = R, py = 0, err = 1 - R;
+    Gfx& gx = gfx();
+    while (px >= py) {
+        gx.pixel(x + px, y + py, kColour);
+        gx.pixel(x - px, y + py, kColour);
+        gx.pixel(x + px, y - py, kColour);
+        gx.pixel(x - px, y - py, kColour);
+        gx.pixel(x + py, y + px, kColour);
+        gx.pixel(x - py, y + px, kColour);
+        gx.pixel(x + py, y - px, kColour);
+        gx.pixel(x - py, y - px, kColour);
+        ++py;
+        if (err < 0) err += 2 * py + 1;
+        else {
+            --px;
+            err += 2 * (py - px) + 1;
+        }
+    }
+    const u8 saved = g_textColour;
+    setColour(0x0C);
+    text(y - 3, x + R + 2, "!");
+    setColour(saved);
 }
 
 // map_draw_button (19ac:3839).
@@ -295,6 +326,10 @@ void mapDrawMarkers() {
             int r = h != 0 ? int((16000 / h) >> 4) * 2 : 1;
             if (r < 1) r = 1;
             gfx().fillCircle(sx, sy, r, u16(colour));
+            // Port: Modern gameplay rings the snatch target's mark and puts a
+            // "!" beside it; only once the original has drawn the mark (his
+            // team selected or he is the player's target), never earlier.
+            if (isEnemyTeam(t) && modernIsSnatchTarget(u)) drawSnatchMark(sx, sy, r);
             if (t->type == TeamType::Seal && unitAlive(u)) fxPlaceUnitMarker(u, n++);
         }
     }

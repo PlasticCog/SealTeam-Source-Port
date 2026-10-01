@@ -145,6 +145,11 @@ far:
 * Enemy grenade discipline: enemy soldiers throw grenades only at close
   range and at most one every four seconds, and a rifleman who runs dry no
   longer turns into a grenade machine.
+* The snatch target is marked: the official, courier or tax collector a
+  Snatch mission has you capture wears his hat and a band at his neck in
+  red, his mark on the map screen gets a light red ring and a "!" once the
+  map shows him at all, and the HUD names him "(target)" when he is your
+  target. Nothing else about him changes.
 
 The briefing's loadout screen shows and limits the magazines accordingly;
 `docs/mission.md` ("Modern gameplay") has the details.

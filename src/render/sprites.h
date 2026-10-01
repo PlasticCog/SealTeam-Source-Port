@@ -45,6 +45,13 @@ using AnimUpdate = int (*)(game::Unit* unit);
 void setUnitLookup(UnitLookup fn);
 void setEffectPainter(EffectPainter fn);
 void setAnimUpdate(AnimUpdate fn);
+// Port only (Enhanced "Modern gameplay"): true for a unit to draw with the
+// red marker (docs/mission.md "Modern gameplay", the snatch target): his
+// headgear goes through a red remap of the current palette and a band of
+// the body's own pixels at the neck line is drawn red again, so the
+// silhouette is the original's. nullptr or false = the original drawing.
+using UnitMark = bool (*)(const game::Unit* unit);
+void setUnitMark(UnitMark fn);
 // The Point Man (team 0 member 0) and his team, for the muzzle-flash and
 // headgear rules; set by the mission code.
 void setPointMan(const game::Unit* pointMan);

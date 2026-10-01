@@ -4,6 +4,7 @@
 #include "render/sprites.h"
 
 #include "data/ealib.h"
+#include "engine/palette_fade.h"
 #include "engine/rng.h"
 #include "gfx/gfx.h"
 #include "render/r3d.h"
@@ -11,6 +12,7 @@
 #include "render/sky.h"
 #include "render/world.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cstring>
 #include <map>
@@ -33,8 +35,48 @@ bool g_loaded = false;
 UnitLookup g_unitLookup = nullptr;
 EffectPainter g_effectPainter = nullptr;
 AnimUpdate g_animUpdate = nullptr;
+UnitMark g_unitMark = nullptr;  // port: Modern gameplay, the marked snatch target
 const game::Unit* g_pointMan = nullptr;
 int g_rotation = 0;  // DS:1284
+
+// Port only: the red remap of a marked unit, built like the impact remaps
+// (render/impactfx.cpp) from the current base palette: every index becomes
+// the palette entry nearest to a red of the source's luminance, so the
+// headgear keeps its shading under every time-of-day palette; 0 (page
+// background) and 255 (the RLE transparent colour) are pinned.
+struct MarkRemap {
+    Palette pal{};
+    bool valid = false;
+    u8 table[256] = {};
+
+    const u8* get() {
+        const Palette& cur = engine::paletteFade().palette();
+        if (!valid || std::memcmp(pal.data(), cur.data(), cur.size()) != 0) rebuild(cur);
+        return table;
+    }
+    void rebuild(const Palette& src) {
+        pal = src;
+        valid = true;
+        for (int i = 0; i < 256; ++i) {
+            const double Y = (299.0 * pal[size_t(i * 3)] + 587.0 * pal[size_t(i * 3 + 1)] + 114.0 * pal[size_t(i * 3 + 2)]) / 1000.0;
+            const double r = std::min(0.7 * Y + 24, 63.0), g = 0.1 * Y, b = 0.1 * Y;
+            int best = 0;
+            double bestD = 1e30;
+            for (int j = 0; j < 256; ++j) {
+                const double dr = pal[size_t(j * 3)] - r, dg = pal[size_t(j * 3 + 1)] - g, db = pal[size_t(j * 3 + 2)] - b;
+                const double d = dr * dr + dg * dg + db * db;
+                if (d < bestD) {
+                    bestD = d;
+                    best = j;
+                }
+            }
+            table[i] = u8(best);
+        }
+        table[0] = 0;
+        table[255] = 255;
+    }
+};
+MarkRemap g_markRemap;
 
 // Soldier sets in the order of 348e:19B0 and their frame counts.
 struct SetDef {
@@ -152,6 +194,45 @@ void drawHelmet(int x, int y, int s, const SpriteImage& body, int hat, int headR
     drawScaled(L, T, s, hi->rle.data());
 }
 
+// Port only (Modern gameplay, the marked unit): the "red scarf". The body
+// frame is drawn once more through the red remap with the clip box reduced
+// to a band of rows at the neck line, the bottom edge of the headgear frame
+// (placed as drawHelmet places it), so only the body's own pixels change
+// and the silhouette stays the original's. The band is two sprite pixels
+// scaled with the sprite and never thinner than one page pixel, so it shows
+// at any distance the sprite is drawn.
+void drawMarkBand(int x, int y, int s, const SpriteImage& body, int hat, int headRot, int depth) {
+    const int bw = body.w(), bh = body.h();
+    int L, T;
+    topLeft(x, y, mul88(bw, s), mul88(bh, s), s, L, T);
+    T += mul88(bh - body.rlx.anchor_y, s);
+    const int hsh = mul88(bh, s);
+    T += hsh - s16(s16((8 - depth) * hsh) >> 3);
+    const SpriteImage* hi = hat ? frameOf(kHeadgear[(hat - 1) % 7], body.rlx.head_frame, headRot) : nullptr;
+    int neck;
+    if (hi) {
+        neck = T + mul88(body.rlx.head_y, s);
+        if (s < 0x100) neck += mul88(body.rlx.head_y, s) & 1;
+        neck += mul88(hi->h(), s);
+    } else {
+        neck = T + mul88(bh / 5, s);  // no headgear frame: a fifth of the body down
+    }
+    const int N = frameScale();
+    const int thick = std::max(N, mul88(2, s));
+    Gfx& gx = gfx();
+    const int top = gx.clipY0(), bottom = gx.clipY1();
+    const int y0 = std::max(top, neck), y1 = std::min(bottom, neck + thick - 1);
+    if (y0 > y1) return;
+    const u8* const prev = gx.spriteRemap();
+    gx.setClipTop(y0);
+    gx.setClipBottom(y1);
+    gx.setSpriteRemap(g_markRemap.get());
+    drawBody(x, y, s, body, depth);
+    gx.setSpriteRemap(prev);
+    gx.setClipTop(top);
+    gx.setClipBottom(bottom);
+}
+
 // spr_calc_rotation (348e:05B9)
 int calcRotation(int heading, const game::Vec3& pos) {
     const game::Vec3& cam = renderContext().cameraPos;
@@ -206,13 +287,24 @@ void drawSoldierFrame(int x, int y, int s, const char* set, int f, int r, const 
     if (!img) return;
     int depth = 0;
     if (u->mover && u->mover->height < 0) depth = u->mover->height / -3;
-    if (img->rlx.layer > 0x80) {
+    // Port: a marked unit (Modern gameplay snatch target) wears his headgear
+    // through the red remap and the neck band; the draw calls are the
+    // original's otherwise.
+    const bool marked = g_unitMark && g_unitMark(u);
+    const u8* const prevRemap = gfx().spriteRemap();
+    auto helmet = [&] {
+        if (marked) gfx().setSpriteRemap(g_markRemap.get());
         drawHelmet(x, y, s, *img, hat, headRot, depth);
+        if (marked) gfx().setSpriteRemap(prevRemap);
+    };
+    if (img->rlx.layer > 0x80) {
+        helmet();
         drawBody(x, y, s, *img, depth);
     } else {
         drawBody(x, y, s, *img, depth);
-        drawHelmet(x, y, s, *img, hat, headRot, depth);
+        helmet();
     }
+    if (marked) drawMarkBand(x, y, s, *img, hat, headRot, depth);
     gfx().setSpriteRemap(nullptr);
     drawGrassTuft(x, y, s, *img, u, depth);
 }
@@ -400,6 +492,7 @@ const SpriteImage* spriteFrame(const char* set, int f, int r) { return frameOf(s
 void setUnitLookup(UnitLookup fn) { g_unitLookup = fn; }
 void setEffectPainter(EffectPainter fn) { g_effectPainter = fn; }
 void setAnimUpdate(AnimUpdate fn) { g_animUpdate = fn; }
+void setUnitMark(UnitMark fn) { g_unitMark = fn; }
 void setPointMan(const game::Unit* pm) { g_pointMan = pm; }
 int spriteRotation() { return g_rotation; }
 

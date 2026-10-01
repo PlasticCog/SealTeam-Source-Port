@@ -181,4 +181,31 @@ bool modernGrenadeAllowed(Unit* u, const WeaponNode* w, int dist, bool secondary
 
 bool modernSkipThrownForLongest(const WeaponNode* w) { return modernGameplayOn() && w && thrownItem(w); }
 
+// ---------------------------------------------------------------------------
+// Rule 6: the snatch target is marked (presentation only)
+// ---------------------------------------------------------------------------
+
+bool modernIsSnatchTarget(const Unit* u) {
+    if (!modernGameplayOn() || !u) return false;
+    MissionState& S = ms();
+    if (!S.snatchTargetsValid) {
+        // The target team of a Snatch objective is MTM team `target_team`
+        // (msn_check_objective, msn_find_objective_target); its leader is
+        // the unit the objective's distance test and camera refer to. Not
+        // before the MTM teams exist (the camp scenes have none: 0xFF).
+        if (S.firstMtmGroup == 0xFF || S.teamCount <= S.firstMtmGroup) return false;
+        for (int i = 0; i < 3; ++i) {
+            const MciObjective& o = S.mci.objective[i];
+            S.snatchTargets[i] = nullptr;
+            if (o.kind != ObjectiveKind::Snatch || o.target_team < 0) continue;
+            const Team* t = team(S.firstMtmGroup + o.target_team);
+            if (t && t->members[0] && (isEnemyTeam(t) || t->type == TeamType::Civilian)) S.snatchTargets[i] = t->members[0];
+        }
+        S.snatchTargetsValid = true;
+    }
+    for (const Unit* t : S.snatchTargets)
+        if (t && t == u) return true;
+    return false;
+}
+
 } // namespace st::game::mission

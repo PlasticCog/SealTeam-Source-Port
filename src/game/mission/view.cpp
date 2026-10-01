@@ -17,6 +17,7 @@
 #include "game/mission/entity.h"
 #include "game/mission/exedata.h"
 #include "game/mission/geo.h"
+#include "game/mission/modern.h"
 #include "game/mission/people.h"
 #include "game/mission/sim.h"
 #include "game/mission/state.h"
@@ -519,6 +520,7 @@ void viewInstallRenderHooks() {
     render::setUnitLookup(unitFromBody);
     render::setEffectPainter(effectPainter);
     render::setAnimUpdate(sprUpdateAnim);
+    render::setUnitMark(modernIsSnatchTarget);  // port: Modern gameplay, the marked snatch target
     render::setBlockerProbe(blockerProbe);
     g_vegPoolMark = nullptr;
     render::impactFxReset();  // port: Enhanced impact effects

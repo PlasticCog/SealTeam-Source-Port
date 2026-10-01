@@ -33,7 +33,7 @@ The original code lives in segments 2dbd, 348e, 365e (0000-29C5), 4a37,
 | `orders.cpp` | 19ac:52A1, 19ac:5C8E | map orders (waypoints, craft attack/cease/loiter/extract/emergency), re-insertion |
 | `camp.cpp` | 19ac:64D4..6B07 | world alone for the briefing/debriefing, SEAL camp cut-scene worlds |
 | `campaign_link.h/.cpp` | 19ac:00B6, 365e:1D1F | mission set-up from the campaign state, hand-over of the results |
-| `modern.h/.cpp` | — | the Enhanced "Modern gameplay" rules that change the simulation (below); no-ops while the option is off |
+| `modern.h/.cpp` | — | the Enhanced "Modern gameplay" rules that change the simulation, and its one presentation rule, the marked snatch target (below); no-ops while the option is off |
 | `sim_cmd.cpp` | — | `--sim-mission` developer command |
 
 Records are the canonical structs of `game/types.h`. They are allocated from
@@ -182,7 +182,8 @@ preset) is the one Enhanced option that changes gameplay rules, not the
 presentation. The loadout rules apply to the SEAL team only; the three
 simulation rules (support craft, obstacle detours, enemy grenades) change
 what the AI of craft, squad mates and enemy soldiers does, as described
-below; all other tables and code paths stay the original's. With the option
+below, and one presentation rule under the same option marks the snatch
+target on screen; all other tables and code paths stay the original's. With the option
 off nothing changes: the `--sim-mission` logs of the Original and of the
 Enhanced preset are byte-identical to those of the build without the code,
 and none of the new code touches `engine::rng()` in either state (every
@@ -321,6 +322,61 @@ counter is kept with the option off too (statistics only).
   3 -> 0), mission 20 9 -> 0 (33 held), mission 14 3 -> 1, missions 7, 18
   and 19 1 -> 0. Missions 33 and 1-6 hold runs engage no grenade-first unit
   and are identical with the option on and off.
+* **The snatch target is marked** (presentation only; nothing here touches
+  the simulation or `engine::rng()`). Mechanism (original): a Snatch
+  objective (`ObjectiveKind::Snatch`, MCI `target_team`) is complete when a
+  member of MTM team `target_team` is secured with the team's leader within
+  3000 units of the Point Man (`msn_check_objective`), but nothing tells
+  the official, courier or tax collector of the briefing from the other
+  enemies of the area: the only hint is the HUD's " Objective" line under
+  the name of a targeted member of any objective team. With the option on,
+  `modernIsSnatchTarget(u)` (modern.cpp) is true for the leader
+  (`members[0]`, the unit the objective's distance test and the mission
+  camera refer to) of the target team (VC, NVA or Civilian) of every Snatch
+  objective; the targets are looked up once from `ms().mci.objective` on
+  the first query after the MTM teams exist and cached in
+  `ms().snatchTargets` (released with the mission; the camp scenes have no
+  MTM teams, `firstMtmGroup` 0xFF, and never match). Three readers, each the
+  original drawing when the function is false:
+  * the sprite renderer (`render::setUnitMark`, installed by
+    `viewInstallRenderHooks`): `drawSoldierFrame` (sprites.cpp) draws the
+    marked unit's headgear - the VC conical hat, the NVA pith helmet -
+    through a red remap built from the current base palette like the impact
+    remaps (luminance -> red, nearest palette entry, 0 and 255 pinned,
+    rebuilt when the palette changes), and `drawMarkBand` draws the body
+    frame once more through the same remap with the clip box reduced to a
+    band of rows at the bottom edge of the headgear frame (placed as
+    `drawHelmet` places it; a fifth of the body down without a headgear
+    frame), two sprite pixels scaled with the sprite and never thinner than
+    one page pixel (`frameScale()`): the "red scarf" is the body's own
+    pixels, so the silhouette is the original's and the marker shows at any
+    distance the sprite is drawn. The remap set by the anim kind, if any, is
+    restored around the headgear.
+  * the map screen (`drawSnatchMark`, map.cpp): a one-pixel light red
+    (0x0C) ring three pixels outside the unit's disc and a "!" to its
+    right, drawn only after the original has drawn the disc (his team
+    selected in the team list or he is the player's target), so the map
+    never reveals him earlier than the original does.
+  * the HUD target name (`hudDrawTargetInfo`): " (target)" is appended to
+    the team-type name when the player's target is the snatch target
+    ("Viet Cong (target)", 72 pixels; the line keeps the original's
+    position test and is clipped to the view).
+
+  Securing any member of the target team still completes the objective, as
+  in the original (mission 74's team has two members, the hamlet chief and
+  his escort; the leader is the marked one). Snatch missions: 11, 35, 36,
+  44, 51, 53, 59, 67, 70, 74 and 80 (`--sim-mission N --ticks 10 --log`
+  lists the objectives, kind 6). Verification (mission 36, "VC procurement
+  officer at the market", a one-man VC team 1400 units from the insertion
+  point): `--enhanced --window 1920x1080 --play-mission 36 --keys
+  "Enter@mission+1,F10@mission+4" --shot ... --shot-after 14` with
+  `modern_gameplay = 1` shows the officer through the enemy camera with a
+  red conical hat and a red band at the neck, the civilians beside him in
+  their own hats; the same run with `modern_gameplay = 0` shows him in the
+  tan hat without a band. With `F1`, four `Up` presses and `Tab` at
+  mission + 50 s the Point Man reaches the market and acquires him: the HUD
+  reads "Viet Cong (target)" over " Objective", and `m` then shows his map
+  mark ringed with the "!" beside it.
 
 Verification of the identity: `--original --sim-mission N --ticks 60000
 --script walk --log` for N = 1, 21, 33 is byte-identical between the build
@@ -329,7 +385,10 @@ without this code and with it, and so is `--enhanced` with a cfg
 `--original --view-world 3 --shot` is bit-identical; `--enhanced --window
 1920x1080 --play-mission 1 --keys "Enter@mission+1,F1@mission+2.5" --shot
 ... --shot-after 8` runs normally with the option on (`CAR15 x12` in the
-loadout line).
+loadout line). For the marked snatch target: `--original --sim-mission N
+--ticks 30000 --script walk --log` for N = 1 and 36 is byte-identical
+between the build without the code and with it, and so are the `--original
+--view-world 3` and `--view-model 51` (a soldier sprite) shots.
 
 ## Corrections to the RE notes found while porting
 
