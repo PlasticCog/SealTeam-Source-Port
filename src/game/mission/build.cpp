@@ -9,6 +9,7 @@
 #include "game/mission/entity.h"
 #include "game/mission/exedata.h"
 #include "game/mission/geo.h"
+#include "game/mission/modern.h"
 #include "game/mission/msg.h"
 #include "game/mission/people.h"
 #include "game/mission/sfx.h"
@@ -361,6 +362,7 @@ void msnBuildWorld() {
     }
     if (S.emergencyGroup == 0xFF) entSpawnSupportCraft(8, ex, ez);
     if (S.fireSupportGroup == 0xFF) S.fireSupportGroup = S.emergencyGroup;
+    modernSpawnPhantomFlight(ix, iz);  // port: Modern gameplay Phantom flight (no-op while off)
     npcSeCacheClear();
     S.firstMtmGroup = S.teamCount;
     for (int i = 0; i < int(S.mci.mtm_count) && i < int(S.mtm.size()); ++i) {

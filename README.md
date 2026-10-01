@@ -154,6 +154,12 @@ far:
   corner of a ground-cover cell and then shifts the plant by up to 128
   units, so plants grow inside huts and show through the walls; the final
   spot is checked too (such a plant also gave cover to anyone inside).
+* Callable F-4 Phantom air strikes: a flight of two Phantoms (the jets the
+  original only shows as fly-overs) waits off-map behind the insertion
+  point. On the map, `g` (or the flight's attack button) sends it over the
+  support waypoint, where each aircraft drops one bomb with the game's
+  biggest blast; three strikes per mission, then "Phantoms are Winchester."
+  The flight holds its bombs when a SEAL is close to the impact point.
 
 The briefing's loadout screen shows and limits the magazines accordingly;
 `docs/mission.md` ("Modern gameplay") has the details.

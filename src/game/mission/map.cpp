@@ -67,6 +67,12 @@ constexpr u16 kStrObjective3 = 0x1039;
 constexpr u16 kStrHeaderPos = 0x1048;   // "TEAM  Pos Spd Hdg Weapon "
 constexpr u16 kStrHeaderName = 0x1062;  // "Rank   Name       Grenade"
 constexpr u16 kStrEmpty = 0x107C;       // ""
+// Port (Modern gameplay): the Phantom flight's entries. The OV-10 attack
+// button (0x19, 96 px = 24 characters) stands for the strike order with the
+// flight selected; the hot key letter is capitalised like the original's.
+const char* const kPhantomButtonLabel = " F-4 Phantom Strike Go";
+constexpr u8 kPhantomButtonUnderline = 19;  // the 'G' (character index - 1, as the table counts)
+const char* const kPhantomTeamName = "Phantom Flight";
 
 struct MapButton {
     s16 x = 0, y = 0, w = 0, h = 0;  // +0..+6
@@ -184,8 +190,13 @@ void drawButton(int n) {
     if (!pressed) gx.rect(b.x - 1, b.y - 1, b.w - 2, b.h - 2, u16(Gfx::kSolid | 0x0F));
     gx.rect(b.x - 2, b.y - 2, b.w - 1, b.h - 1, u16(Gfx::kSolid | 0x07));
     const int p = pressed ? 1 : 0;
-    text(b.y + p, b.x + p, orderName(n));
-    const int ux = b.underline;
+    std::string label = orderName(n);
+    int ux = b.underline;
+    if (n == kPhantomButton && modernIsPhantomGroup(ms().mapSelTeam)) {
+        label = kPhantomButtonLabel;
+        ux = kPhantomButtonUnderline;
+    }
+    text(b.y + p, b.x + p, label);
     line(u16(Gfx::kSolid | 0x08), b.y + p + 6, b.x + 4 * ux + 7, b.y + p + 6, b.x + 4 * (ux + 1));
 }
 
@@ -305,7 +316,8 @@ void mapDrawMarkers() {
         const Team* t = S.teams[i];
         if (!isCraft(t) || !t->members[0] || !t->members[0]->mover) continue;
         const Vec3 dest = t->members[0]->mover->destination;
-        if ((t->order == 5 || t->order == 4) && mapWorldToScreen(dest, sx, sy))
+        const bool strike = modernIsPhantomGroup(i) && modernPhantomPhase() == 1;  // port: the flight's run
+        if ((t->order == 5 || t->order == 4 || strike) && mapWorldToScreen(dest, sx, sy))
             drawTriangle(sx, sy, u16(0xFF00 | shade), 0, true);
     }
     fxMarkersHide(true);
@@ -346,6 +358,11 @@ u8 teamListColour(int index, const Team* t) {
     if (index == ms().mapSelTeam) return 0x01;
     return isEnemyTeam(t) ? 0x0C : 0x09;
 }
+// The type name of a team entry (port: the Phantom flight has its own).
+std::string teamListName(int index, const Team* t) {
+    if (modernIsPhantomGroup(index)) return kPhantomTeamName;
+    return tableStr(kTeamTypeNames, int(t->type));
+}
 } // namespace
 
 void mapDrawTeamList() {
@@ -364,7 +381,7 @@ void mapDrawTeamList() {
             const int x = btn(b).x + p, y = btn(b).y + p;
             text(y, x + 4, utoa(b - 1));
             text(y, x + 8, dsText(kStrDot1));
-            text(y, x + 0x0C, tableStr(kTeamTypeNames, int(t->type)));
+            text(y, x + 0x0C, teamListName(k, t));
             if (k != 0 && t->order != 6) drawTriangle(0xDA, y + 3, u16(0xFF00 | u8(0x25 - 6 * k)), 2, true);
         }
         return;
@@ -384,7 +401,7 @@ void mapDrawTeamList() {
         const int x = btn(b).x + p, y = btn(b).y + p;
         text(y, x + 4, utoa(b - 1));
         text(y, x + 8, dsText(kStrDot2));
-        std::string name = tableStr(kTeamTypeNames, int(t->type));
+        std::string name = teamListName(k, t);
         if (t->type == TeamType::Seal) {
             name += dsText((S.splitGroups == 2 && S.teamCount - k == 1) ? kStrTeamB : kStrTeamA);
         } else if (isCraft(t) && t->order != 6) {
@@ -438,6 +455,10 @@ void mapDrawOrdersMenu() {
                     drawButton(b);
                 }
             }
+        } else if (t && modernIsPhantomGroup(S.mapSelTeam)) {
+            // Port (Modern gameplay): the Phantom flight takes one order, the strike.
+            setColour(modernPhantomPhase() != 0 ? 0x00 : 0x08);
+            drawButton(kPhantomButton);
         } else if (t && isCraft(t)) {
             const int type = int(t->type);
             for (int b = 0x17; b < 0x1E; ++b) {
@@ -635,10 +656,12 @@ int mapHitTest() {
     const Team* sel = team(S.mapSelTeam);
     const int type = sel ? int(sel->type) : 0;
     const UiState& u = ui();
+    const bool phantom = modernIsPhantomGroup(S.mapSelTeam);  // port: only the strike button
     for (int c = 0; c <= 0x28; ++c) {
         if (c == 2 && S.mapSelTeam > 2) c = 5;
         if (c == 0x17 && (type < 1 || type > 3)) c = 0x27;
         if (c == 0x0B && type > 0 && type < 4) c = type == 2 ? 0x18 : type == 3 ? 0x19 : 0x17;
+        if (c == 0x1A && phantom) c = 0x27;
         if (c == 0x1D && S.emergencyGroup != S.mapSelTeam) c = 0x1E;
         const MapButton& b = btn(c);
         if (rectHasPoint(b.x, b.y, b.w, b.h - 2, u.cursorX, u.cursorY)) return c;
@@ -652,6 +675,7 @@ void mapStepFocus(int dir) {
     const Team* sel = team(S.mapSelTeam);
     const int type = sel ? int(sel->type) : 0;
     const bool craft = type > 0 && type < 4;
+    const bool phantom = modernIsPhantomGroup(S.mapSelTeam);  // port: only the strike button
     int& f = ui().focus;
     if (dir < 0) {
         if (f == 0) {
@@ -665,6 +689,7 @@ void mapStepFocus(int dir) {
         }
         if (f == 0x1E && type == 0) f = 0x0E;
         if (f == 0x1D && S.emergencyGroup != S.mapSelTeam) f = 0x1C;
+        if (f == 0x1C && phantom) f = kPhantomButton;
         if (f == 0x1B && type == 3) f = 0x1A;
         if (f == 0x19) {
             if (type == 2) f = 0x18;
@@ -689,6 +714,7 @@ void mapStepFocus(int dir) {
     if (f == 0x0F && type == 0) f = 0x1F;
     if (f == 0x18 && type == 1) f = 0x1A;
     if (f == 0x19 && type == 2) f = 0x1A;
+    if (f == 0x1A && phantom) f = 0x27;
     if (f == 0x1B && type == 3) f = 0x1C;
     if (f == 0x1D && S.emergencyGroup != S.mapSelTeam) f = 0x27;
     if (f == 0x1E) f = 0x27;
@@ -895,6 +921,7 @@ void mapScreenKeys(int key, int dx, int dy) {
     case 'k':
     case 'o':
     case 'e':
+    case 'g':  // port: Modern gameplay Phantom strike
     case 'y': {
         const int b = mapOrderKey(key);
         if (b >= 0) {

@@ -80,6 +80,31 @@ struct PortStats {
     int detours = 0;       // detours started (Modern gameplay)
     int craftHolds = 0;    // support-craft shots held near friendlies (Modern gameplay)
     int grenadeHolds = 0;  // enemy grenade throws held by the discipline rule (Modern gameplay)
+    int phantomBombs = 0;  // bombs released by the Phantom flight (Modern gameplay)
+    int phantomHolds = 0;  // bomb releases held with friendlies near the impact point (Modern gameplay)
+};
+
+// Port-only state of the Modern-gameplay Phantom flight (modern.h, docs/
+// mission.md): the team is ms().teams[ms().portPhantomGroup]; its two bombs
+// are private weapon nodes (not in a loadout, so the AI never fires them).
+struct PortPhantomState {
+    enum class Phase : u8 { Idle = 0, Inbound = 1, Egress = 2 };
+    Phase phase = Phase::Idle;
+    int strikesLeft = 3;
+    Vec3 parking{};                      // loiter point far off-map behind the insertion point
+    Vec3 marker{};                       // ordered strike point (the map's support waypoint)
+    Vec3 aim[2]{};                       // marker + each crew's scatter
+    bool passed[2] = {false, false};     // this run: the aircraft passed its aim point (released or held)
+    int lastDist[2] = {-1, -1};          // this run: distance to the aim point on the previous frame
+    bool aborted = false;                // this run: a release was held (danger close)
+    bool counted = false;                // this run: the strike was counted
+    Ticks runStart = 0;                  // g_time of the order
+    Ticks firstRelease = 0;              // g_time of the first bomb release of the run
+    Ticks egressStart = 0;               // g_time the flight passed the marker
+    WeaponNode* bomb[2] = {nullptr, nullptr};
+    Projectile* round[2] = {nullptr, nullptr};  // the bomb in flight (nullptr when none)
+    bool retargeted[2] = {false, false};        // the shot's blast centre was moved to the impact point
+    u32 lcg = 0x2545F491u;               // private generator for the scatter
 };
 
 struct MissionState {
@@ -236,6 +261,8 @@ struct MissionState {
     // Modern gameplay option on.
     const Unit* snatchTargets[3] = {};
     bool snatchTargetsValid = false;
+    int portPhantomGroup = 0xFF;  // Modern gameplay: the Phantom flight's team index (0xFF none)
+    PortPhantomState portPhantom;
 };
 
 MissionState& ms();

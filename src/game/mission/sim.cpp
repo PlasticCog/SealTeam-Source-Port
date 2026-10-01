@@ -15,6 +15,7 @@
 #include "game/mission/entity.h"
 #include "game/mission/exedata.h"
 #include "game/mission/geo.h"
+#include "game/mission/modern.h"
 #include "game/mission/msg.h"
 #include "game/mission/people.h"
 #include "game/mission/sfx.h"
@@ -241,6 +242,7 @@ void evtMissionTick() {
     for (int i = 0; i < kMaxTeams && S.teams[i]; ++i) evtTeamFormationUpdate(i);
     for (Projectile* p : S.projectiles)
         if (p && (p->state & prj_state::kInUse)) evtUpdateOrdnance(p);
+    modernPhantomUpdate();  // port: Modern gameplay Phantom flight (no-op while off)
     for (Obj3D* o : fxPools().trees)
         if (o && (o->flags & obj3d_flag::kEnabled)) evtUpdateAmbientFlyer(o);
 }

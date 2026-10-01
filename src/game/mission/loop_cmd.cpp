@@ -12,6 +12,7 @@
 #include "game/front/front.h"
 #include "game/globals.h"
 #include "game/mission/mission.h"
+#include "game/mission/msg.h"
 #include "game/mission/state.h"
 #include "game/screens.h"
 
@@ -78,10 +79,16 @@ int playMissionCommand(const DevArgs& args) {
         logInfo("play-mission: member %d SE %d loadout%s", k, r.se_id, slots.c_str());
     }
     if (!keys.empty()) front::setKeyScript(keys);
+    // The mission's messages go to the log too (a scripted run's orders and
+    // their answers can be checked without watching the screen).
+    setMessageObserver([](const Message& m) {
+        if (m.style != 3 && !m.text.empty() && m.text != " ") logInfo("play-mission: message \"%s\"", m.text.c_str());
+    });
     // main loop step 2: fade, "One Moment Please ...", the mission.
     screenTransition(PalMission, true);
     front::showPleaseWait();
     const int rc = run();
+    setMessageObserver(nullptr);
     if (rc != 1) unload();
     const MissionState& S = ms();
     logInfo("play-mission: %s, minutes %d, enemy KIA %d, SEAL KIA %d WIA %d, rounds %d/%d, score %d", rc == 1 ? "quit" : "done",

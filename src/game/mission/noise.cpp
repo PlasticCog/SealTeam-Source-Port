@@ -9,6 +9,7 @@
 #include "game/mission/combat.h"
 #include "game/mission/exedata.h"
 #include "game/mission/geo.h"
+#include "game/mission/modern.h"
 #include "game/mission/sfx.h"
 #include "game/mission/state.h"
 #include "game/mission/wquery.h"
@@ -51,6 +52,9 @@ int noiseAlloc() {
 
 void noiseFromTeam(Team* t) {
     if (!t || !t->members[0]) return;
+    // Port (Modern gameplay): the parked Phantom flight is off-map; it makes
+    // no noise event (and takes no roll) until it is called in.
+    if (modernIsPhantomTeam(t) && modernPhantomPhase() == 0) return;
     bool moving = false;
     Unit* leader = t->members[0];
     s16 level = 0;

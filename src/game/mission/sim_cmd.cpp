@@ -2,7 +2,7 @@
 // the simulation with a scripted player, printing a readable event log.
 //
 //   sealteam --sim-mission <1..80> [--ticks N] [--seed-skip K] [--dt D]
-//            [--script idle|walk|hold|attack] [--craft b|u|a] [--summary]
+//            [--script idle|walk|hold|attack] [--craft b|u|a|g|G] [--summary]
 //            [--log FILE] [--quiet-snapshots]
 //
 // The log lists the spawned teams and units, then every change the frame
@@ -11,7 +11,12 @@
 // the mission. Two runs with the same arguments must give identical logs.
 // The hold and attack scripts (and --summary) add "hit:" lines naming the
 // shooter of every wound and a summary at the end; walk and idle do not, so
-// their logs stay comparable across builds.
+// their logs stay comparable across builds. "--craft g" (attack script,
+// Modern gameplay) orders Phantom strikes at the nearest enemy team until the
+// flight is Winchester and logs the flight's path every 0x400 ticks, the
+// bomb releases and their impacts; "--craft G" orders them 400 units ahead
+// of the running squad instead, so that the danger-close rule holds the
+// releases.
 #include "engine/rng.h"
 #include "engine/sound.h"
 #include "game/campaign.h"
@@ -22,6 +27,7 @@
 #include "game/mission/entity.h"
 #include "game/mission/exedata.h"
 #include "game/mission/geo.h"
+#include "game/mission/modern.h"
 #include "game/mission/msg.h"
 #include "game/mission/people.h"
 #include "game/mission/sfx.h"
@@ -210,6 +216,9 @@ void logSummary() {
          t.sealKia[0], t.sealKia[1], t.sealKia[2], t.sealKia[3], t.sealKia[4], t.sealKia[5], t.sealKia[8]);
     logf("summary: enemy grenade throws held %d; unit bounces %d, detours %d", S.portStats.grenadeHolds,
          S.portStats.bounces, S.portStats.detours);
+    if (modernPhantomAvailable())
+        logf("summary: Phantom bombs released %d, releases held near friendlies %d, strikes left %d",
+             S.portStats.phantomBombs, S.portStats.phantomHolds, modernPhantomStrikesLeft());
 }
 
 void dumpWorld() {
@@ -225,9 +234,10 @@ void dumpWorld() {
         logf("objective %d: kind %d at %s team %d structure %d \"%.40s\"", i + 1, int(o.kind), posStr(o.pos).c_str(),
              o.target_team, o.target_structure, o.description);
     }
-    logf("world objects %d, teams %d (first MTM team %d, insertion %d, extraction %d, emergency %d, fire support %d)",
+    logf("world objects %d, teams %d (first MTM team %d, insertion %d, extraction %d, emergency %d, fire support %d)%s",
          int(worldObjects().size()), S.teamCount, S.firstMtmGroup, S.insertionGroup, S.extractionGroup, S.emergencyGroup,
-         S.fireSupportGroup);
+         S.fireSupportGroup,
+         modernPhantomAvailable() ? (" Phantom flight " + std::to_string(S.portPhantomGroup)).c_str() : "");
     for (int i = 0; i < kMaxTeams && S.teams[i]; ++i) {
         const Team* t = S.teams[i];
         std::string ai;
@@ -346,7 +356,7 @@ void snapshot() {
 int simMissionCommand(const DevArgs& args) {
     if (args.empty()) {
         std::printf("usage: --sim-mission <1..80> [--ticks N] [--seed-skip K] [--dt D] [--script idle|walk|hold|attack] "
-                    "[--craft b|u|a] [--summary] [--log FILE]\n");
+                    "[--craft b|u|a|g|G] [--summary] [--log FILE]\n");
         return 2;
     }
     const int mission = std::atoi(args[0].c_str());
@@ -375,7 +385,7 @@ int simMissionCommand(const DevArgs& args) {
         }
         else if (a == "--craft") {
             const std::string s = next();
-            craftKey = s == "u" ? 'u' : s == "a" ? 'a' : 'b';
+            craftKey = s == "u" ? 'u' : s == "a" ? 'a' : s == "g" ? 'g' : s == "G" ? 'G' : 'b';
         }
         else if (a == "--summary") summary = true;
         else if (a == "--log") logFile = next();
@@ -418,6 +428,7 @@ int simMissionCommand(const DevArgs& args) {
     setSfxObserver([](int id, s32 lifetime, const Vec3* pos, int ch) {
         if (ch >= 0) logf("sfx %d (0x%X ticks) at %s ch %d", id, lifetime, pos ? posStr(*pos).c_str() : "-", ch);
     });
+    setPhantomObserver([](const std::string& s) { logf("phantom: %s", s.c_str()); });
     setShotHitObserver([](const ShotRec& s, const Unit* u, int wound) {
         const Team* st = s.shooter ? s.shooter->team : nullptr;
         const int stt = st ? int(st->type) : -1;
@@ -440,6 +451,13 @@ int simMissionCommand(const DevArgs& args) {
     int holdTeam = -1;        // hold / attack: the enemy team approached
     bool holding = false;     // stopped at ~250 units from it
     bool attackDone = false;  // attack: the craft order was given
+    const bool phantomScript = script == Script::Attack && (craftKey == 'g' || craftKey == 'G');
+    int phantomOrders = 0;    // attack --craft g: strike orders given (the 4th answers Winchester)
+    Ticks nextPhantomOrder = 2000;
+    Ticks nextPhantomSnap = 0;
+    // attack --craft g: the squad stays outside the bomb's danger-close
+    // distance (blast radius 180 + 90) of the enemy it approaches.
+    const int holdDist = phantomScript ? 450 : 250;
     Ticks now = 0;
     Ticks nextSnap = 0x800;
     // Turn the Point Man toward a position, 3 degrees every 4th frame.
@@ -489,7 +507,7 @@ int simMissionCommand(const DevArgs& args) {
                 if (enemy) {
                     steerToward(pm, enemy->body->pos);
                     const int d = geoDistance(pm->body->pos, enemy->body->pos);
-                    if (!holding && d <= 250) {
+                    if (!holding && d <= holdDist) {
                         evtPlayerSpeedStep(0);
                         holding = true;
                         logf("script: holding %d units from team %d", d, holdTeam);
@@ -499,7 +517,36 @@ int simMissionCommand(const DevArgs& args) {
                         running = true;
                     }
                 }
-                if (script == Script::Attack && !attackDone && S.time >= 2000) {
+                if (phantomScript) {
+                    // Port (Modern gameplay): the map's 'g' order, a Phantom strike at
+                    // the nearest enemy team's leader ('G': 400 units ahead of the
+                    // running squad, inside the danger-close distance by the time the
+                    // flight arrives); one order per run while the flight is parked,
+                    // until the fourth is answered with Winchester.
+                    if (phantomOrders < 4 && S.time >= nextPhantomOrder && modernPhantomPhase() == 0) {
+                        ++phantomOrders;
+                        nextPhantomOrder = S.time + 0x1000;
+                        const int target = craftKey == 'G' ? 0 : nearestEnemyTeam(pm->body->pos);
+                        if (!modernPhantomAvailable() || target < 0) {
+                            logf("script: no Phantom strike (flight team %d, enemy team %d)", ms().portPhantomGroup, target);
+                            phantomOrders = 4;
+                        } else {
+                            const int sel = S.mapSelTeam;
+                            S.mapSelTeam = ms().portPhantomGroup;
+                            if (craftKey == 'G') {
+                                S.wpSupport = pm->body->pos;
+                                posMovePolar(s32(400) << 8, 0, pm->body->heading, S.wpSupport);
+                            } else {
+                                S.wpSupport = S.teams[target]->members[0]->body->pos;
+                            }
+                            const int r = mapOrderKey('g');
+                            S.mapSelTeam = sel;
+                            logf("script: Phantom strike order %d at %s (team %d): result %d, phase %d, strikes left %d",
+                                 phantomOrders, posStr(S.wpSupport).c_str(), target, r, modernPhantomPhase(),
+                                 modernPhantomStrikesLeft());
+                        }
+                    }
+                } else if (script == Script::Attack && !attackDone && S.time >= 2000) {
                     // The map's attack order of the support craft at the nearest enemy team.
                     attackDone = true;
                     const TeamType want = craftKey == 'u' ? TeamType::Helicopter
@@ -524,6 +571,17 @@ int simMissionCommand(const DevArgs& args) {
         simFrameUpdate();
         simMsgTick();
         trackChanges();
+        if (phantomScript && modernPhantomAvailable() && S.time >= nextPhantomSnap) {
+            // The flight's path: both aircraft every 0x400 ticks.
+            nextPhantomSnap = S.time + 0x400;
+            const Team* t = team(ms().portPhantomGroup);
+            const Unit* a = t ? t->members[0] : nullptr;
+            const Unit* b = t ? t->members[1] : nullptr;
+            if (a)
+                logf("phantom: phase %d strikes left %d lead %s hdg %d spd %d alt %d%s%s", modernPhantomPhase(),
+                     modernPhantomStrikesLeft(), posStr(a->body->pos).c_str(), a->body->heading >> 3, a->mover->speed,
+                     a->mover->height, b ? " wing " : "", b ? posStr(b->body->pos).c_str() : "");
+        }
         if (snapshots && S.time >= nextSnap) {
             nextSnap += 0x800;
             snapshot();
@@ -537,13 +595,14 @@ int simMissionCommand(const DevArgs& args) {
     setMessageObserver(nullptr);
     setSfxObserver(nullptr);
     setShotHitObserver(nullptr);
+    setPhantomObserver(nullptr);
     if (g_out != stdout) std::fclose(g_out);
     g_out = stdout;
     return 0;
 }
 
 const DevCommand g_cmd("--sim-mission",
-                       "<1..80> [--ticks N] [--seed-skip K] [--dt D] [--script idle|walk|hold|attack] [--craft b|u|a] "
+                       "<1..80> [--ticks N] [--seed-skip K] [--dt D] [--script idle|walk|hold|attack] [--craft b|u|a|g|G] "
                        "[--summary]: headless mission simulation log",
                        simMissionCommand);
 

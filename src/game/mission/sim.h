@@ -122,7 +122,8 @@ bool playerOrderKey(int key);
 // comes from map_screen_to_world(cursor) of the map screen (x/z, 24.8).
 void mapSetWaypoint(s32 x, s32 z);
 // Support-craft and fire orders on the map: a b u k o e y (and f t w for team
-// 0). Returns the map button to show pressed (-1 none).
+// 0; port: g = the Modern-gameplay Phantom strike). Returns the map button to
+// show pressed (-1 none).
 int mapOrderKey(int key);
 // Insertion view 'r' (19ac:5C8E): enter the re-insertion map / confirm it at
 // ms().wpSupport (resets the game clock to 0 like the original clk_reset;

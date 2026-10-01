@@ -8,6 +8,7 @@
 #include "game/mission/entity.h"
 #include "game/mission/exedata.h"
 #include "game/mission/geo.h"
+#include "game/mission/modern.h"
 #include "game/mission/msg.h"
 #include "game/mission/people.h"
 #include "game/mission/sfx.h"
@@ -82,11 +83,17 @@ int mapOrderKey(int key) {
     MissionState& S = ms();
     Team* sel = team(S.mapSelTeam);
     switch (key) {
-    case 'a': return craftAttack(TeamType::Aircraft, 0x1110, 0, 0, 0x1123, 0x19);
+    case 'a':
+        // Port (Modern gameplay): with the Phantom flight selected its attack
+        // button / key is the strike.
+        if (modernIsPhantomGroup(S.mapSelTeam)) return modernPhantomStrikeOrder();
+        return craftAttack(TeamType::Aircraft, 0x1110, 0, 0, 0x1123, 0x19);
+    case 'g':  // port only (Modern gameplay): Phantom strike at the support waypoint
+        return modernPhantomStrikeOrder();
     case 'b': return craftAttack(TeamType::Boat, 0x109A, 0x10A7, 0x2E, 0x10BB, 0x17);
     case 'u': return craftAttack(TeamType::Helicopter, 0x10D1, 0x10E1, 0x2D, 0x10FA, 0x18);
     case 'k': {
-        if (S.mapSelTeam == 0 || S.mapSelTeam >= S.firstMtmGroup || !sel) return -1;
+        if (S.mapSelTeam == 0 || S.mapSelTeam >= S.firstMtmGroup || !sel || modernIsPhantomGroup(S.mapSelTeam)) return -1;
         if (!radioCall(dsText(0x1139), S.mapSelTeam)) return -1;  // "Attack Ceased."
         sel->order = s16(CraftOrder::CeaseAttack);
         Vec3 d = S.wpSupport;
@@ -96,7 +103,7 @@ int mapOrderKey(int key) {
         return 0x1A;
     }
     case 'o': {
-        if (S.mapSelTeam == 0 || S.mapSelTeam >= S.firstMtmGroup || !sel) return -1;
+        if (S.mapSelTeam == 0 || S.mapSelTeam >= S.firstMtmGroup || !sel || modernIsPhantomGroup(S.mapSelTeam)) return -1;
         if (!radioCall(dsText(0x11F8), S.mapSelTeam)) {  // "Loitering."
             if (!S.radioDamaged) {
                 msgShowDs(0x1203, 0x200);  // "Engine malfunction!"
