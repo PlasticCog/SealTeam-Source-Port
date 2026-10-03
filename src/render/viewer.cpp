@@ -34,6 +34,7 @@
 #include "render/world.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cctype>
 #include <cstdio>
 #include <cstdlib>
@@ -589,8 +590,52 @@ int viewModel(const game::DevArgs& a) {
     return 0;
 }
 
+// --test-heading: math_heading (2255:63D7) against atan2 on a grid of
+// offsets from 1 to 70000 units per axis, both signs. The game's arctangent
+// table is coarse, so the check is the error in whole degrees; a sign slip
+// (as in the 128..255-unit band before the fix) shows up as tens of degrees.
+int testHeading(const game::DevArgs&) {
+    if (!mathInit()) return 1;
+    int worst = 0, bad = 0, n = 0;
+    const int spans[] = {1, 7, 50, 100, 127, 128, 129, 150, 200, 255, 256, 257, 300, 500, 1000, 5000, 70000};
+    for (int ax : spans)
+        for (int az : spans)
+            for (int sx = -1; sx <= 1; sx += 2)
+                for (int sz = -1; sz <= 1; sz += 2) {
+                    const s32 dx = sx * ax, dz = sz * az;
+                    const int got = mathHeading(0, 0, s32(u32(dx) << 8), s32(u32(dz) << 8)) >> 3;
+                    // 0 = +z, increasing towards -x (docs/re: math_heading).
+                    int ref = int(std::lround(std::atan2(-double(dx), double(dz)) * 180.0 / 3.14159265358979));
+                    ref = (ref % 360 + 360) % 360;
+                    int err = std::abs(got - ref);
+                    if (err > 180) err = 360 - err;
+                    worst = std::max(worst, err);
+                    if (err > 2) {
+                        if (++bad <= 10) std::printf("  offset (%d, %d): heading %d, atan2 %d\n", dx, dz, got, ref);
+                    }
+                    ++n;
+                    // math_pitch (2255:64FD) up to a point that high, same offsets
+                    // as the horizontal distance: the same 32-bit shift.
+                    const s32 h = 200;
+                    const int p = mathPitch(0, 0, 0, s32(u32(dx) << 8), s32(u32(h) << 8), s32(u32(dz) << 8)) >> 3;
+                    const int pref = int(std::lround(std::atan2(double(h), std::hypot(double(dx), double(dz))) * 180.0 / 3.14159265358979));
+                    int perr = std::abs(p - pref);
+                    if (perr > 180) perr = 360 - perr;
+                    worst = std::max(worst, perr);
+                    if (perr > 2) {
+                        if (++bad <= 20) std::printf("  offset (%d, %d, %d): pitch %d, atan2 %d\n", dx, h, dz, p, pref);
+                    }
+                    ++n;
+                }
+    std::printf("test-heading: %d headings and pitches, worst error %d deg, %d over 2 deg: %s\n", n, worst, bad,
+                bad ? "FAIL" : "ok");
+    return bad ? 1 : 0;
+}
+
 }  // namespace
 
+const game::DevCommand kTestHeading("--test-heading", "check math_heading against atan2 over a grid of offsets",
+                                    testHeading);
 const game::DevCommand kViewWorld("--view-world",
                                   "render a mission's world: <1..80> [x y z heading pitch] "
                                   "[enhanced [native|N [dist%|max]]] [fill|4:3] [size WxH] [detail D] [hour H]",

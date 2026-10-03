@@ -431,7 +431,17 @@ sealteam --view-world <1..80> [x y z heading pitch] [enhanced [native|N [dist%|m
                      [fill|4:3] [size WxH] [detail D] [hour H] [chase]
 sealteam --view-model <0..96> [stand|walk|run|crouch|crawl|prone|dead] [enhanced [native|N]]
 sealteam --bench-view <1..80> [enhanced [native|N [dist%|max]]] [fill|4:3] [size WxH] [frames N]
+sealteam --test-heading
 ```
+`--test-heading` checks `mathHeading` / `mathPitch` (2255:63D7 / 64FD)
+against atan2 over offsets of 1 to 70000 units per axis and fails above 2
+degrees (the resolution of the game's arctangent table). It guards the
+final `>> 2` of their range reduction, which is a 32-bit `SAR` / `RCR` pair
+in the original: done on the signed low word, it flipped offsets of 128..255
+units, and soldier sprites more than 128 units from the camera were drawn
+facing the wrong way (`calcRotation` takes the camera bearing from
+`mathHeading`). The simulation's copy in game/mission/geo.cpp was right.
+
 Mission n's world is loaded from `cYmNN.mci` (world index, start time,
 insertion point); the camera starts at the insertion point, 24 units up,
 facing the primary objective. Keys: arrows turn/move, PgUp/PgDn height,

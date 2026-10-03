@@ -76,7 +76,9 @@ int mathAtan2(int a, int b) {
 namespace {
 
 // Reduce two/three 32-bit deltas by whole bytes until every high word is a
-// pure sign extension, then by 2 more bits (63D7 / 64FD).
+// pure sign extension, then by 2 more bits (63D7 / 64FD). The last shift is
+// 32-bit (SAR / RCR pairs), so a low word with bit 15 set under a high word
+// of 0 keeps its sign.
 void normalizeDeltas(s32* d, int n) {
     for (;;) {
         bool ok = true;
@@ -87,22 +89,19 @@ void normalizeDeltas(s32* d, int n) {
         if (ok) break;
         for (int i = 0; i < n; ++i) d[i] >>= 8;
     }
-    for (int i = 0; i < n; ++i) d[i] = s16(lo16(d[i])) >> 2;
+    for (int i = 0; i < n; ++i) d[i] = s16(lo16(d[i] >> 2));
 }
 
 }  // namespace
 
 int mathHeading(s32 x0, s32 z0, s32 x1, s32 z1) {
     s32 d[2] = {s32(u32(x1) - u32(x0)), s32(u32(z1) - u32(z0))};
-    // 63D7 only tests the high words while shifting both by a byte.
-    for (;;) {
-        const s16 hx = hi16(d[0]), hz = hi16(d[1]);
-        if ((hx == 0 || hx == -1) && (hz == 0 || hz == -1)) break;
-        d[0] >>= 8;
-        d[1] >>= 8;
-    }
-    const int ax = s16(lo16(d[0])) >> 2, az = s16(lo16(d[1])) >> 2;
-    const int t = mathAtan2(ax, az);
+    // 63D7..6428: only the high words are tested while both are shifted by a
+    // byte; the final >> 2 is 32-bit, so an offset of 128..255 units keeps
+    // its sign (shifting the low word as a signed 16-bit value flipped it,
+    // and sprites more than 128 units from the camera faced the wrong way).
+    normalizeDeltas(d, 2);
+    const int t = mathAtan2(d[0], d[1]);
     const int h = t - 720;
     return h < 0 ? t + 2160 : h;
 }
