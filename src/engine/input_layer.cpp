@@ -86,6 +86,10 @@ int InputLayer::getKey() {
     Controller& pad = controller();
     pad.pump(mode_);
     joyPresent_ = pad.present();
+    // Port: the camera recentre key (the middle mouse button, or the pad's
+    // "Recentre camera" action typed by pump above), ahead of the keyboard
+    // throttle like Ctrl+H, so a tap is never flushed away.
+    if (sys().input().takeKey(u16(key::RecentreCamera))) return key::RecentreCamera;
     if (joyPresent_) {
         const int buttons = pad.stickButtons();
         if (buttons == 1 && elapsed(tJoyButton1_, 0x50)) return key::Enter;

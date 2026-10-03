@@ -87,6 +87,8 @@ void viewSetMode(int mode);             // 1000:23FB
 void viewSetTargetCamera();             // 1000:2432 (F9)
 void viewSetEyeHeight(const Unit* u);   // 1000:2462
 void viewInitOrbitAngle(Team* t);       // 1000:24F0
+// Port: the orbit camera back behind the leader it follows (middle mouse button).
+void viewRecentreCamera();
 void viewUpdateCamera(int mode);        // 1000:2544
 void viewNextEnemy();                   // 1000:2D01
 void viewRenderFrame();                 // 1000:1F92

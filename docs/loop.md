@@ -245,6 +245,16 @@ reference only afterwards).
   presented the frame again, the presents blocked, the mission ran at
   ~30 instead of ~46 fps (Enhanced, 1080p) and the 256 Hz service that
   drives music and effects, delivered by the same pump, stalled.
+* Port: a tap of the middle mouse button (or the controller action
+  "Recentre camera", unbound by default) types the synthetic key
+  `key::RecentreCamera` (0xF100, taken from the queue ahead of the keyboard
+  throttle like Ctrl+H); `cmdOrderKeys` calls `viewRecentreCamera`, which
+  sets the orbit angle of the chase / team / target camera to its leader's
+  heading + 180 degrees - what `evt_unit_bounce_off_obstacle` does for the
+  Point Man, the original's only way back behind him once the right button
+  has swung the camera around (its mouse motion with the button orbits 10
+  degrees per frame without turning him; without it, turns him and the
+  camera together, so the offset stays). Both presets.
 * Port: the mouse wheel (`Input::takeWheel`, read once per frame in
   `frame()` after the key) zooms: on the map screen a notch is one Zoom /
   Expand press (`mapWheelZoom` -> `map_zoom_keys`), in the chase / team /

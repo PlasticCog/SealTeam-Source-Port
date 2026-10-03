@@ -73,7 +73,8 @@ The start menu offers:
 Settings are saved in sealteam.cfg {settings_where}. On every screen:
 Ctrl+H shows a reference card of the game's keys (any key closes it),
 Ctrl+Q quits to the desktop at once, Alt+Enter toggles fullscreen. The
-mouse wheel zooms the map and the chase / team cameras. The mouse is
+mouse wheel zooms the map and the chase / team cameras; the middle
+button swings the camera back behind your soldier. The mouse is
 captured by the game window; Alt+Tab releases it and the next click takes
 it back.
 

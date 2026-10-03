@@ -70,6 +70,7 @@ const ActionInfo kActions[] = {
     {PadAction::ExposeTrap, "expose_trap", "Expose trap", 'x', 0, orders(I::Start)},
     {PadAction::Dive, "dive", "Dive", 'q', 0, orders(I::Back)},
     {PadAction::QuitGame, "quit", "Quit game", k::AltX, 0, none},
+    {PadAction::RecentreCamera, "recentre_camera", "Recentre camera", key::RecentreCamera, 0, none},
     {PadAction::OrderFieldOfFire, "order_field_of_fire", "Field of fire", 'f', 0, orders(I::Y)},
     {PadAction::OrderAtTarget, "order_at_target", "Fire at target", 't', 0, orders(I::X)},
     {PadAction::OrderAtWill, "order_at_will", "Fire at will", 'w', 0, orders(I::A)},

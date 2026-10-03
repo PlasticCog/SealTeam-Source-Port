@@ -424,7 +424,7 @@ const KeyRow kFieldKeys[] = {
     {"Space, m, mouse2", "map and orders"},
     {"F1 / F2", "first person / chase"},
     {"F3-F8 / F9 / F10", "team, target, enemy"},
-    {"Mouse wheel", "zoom chase/team view"},
+    {"Wheel/mid button", "zoom/recentre view"},
     {"Esc", "end the mission"},
 };
 

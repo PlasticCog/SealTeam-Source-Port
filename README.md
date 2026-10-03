@@ -173,7 +173,9 @@ Keys the port adds on every screen: **Ctrl+H** shows a reference card of
 the game's keys (any key closes it; the mission clock stops meanwhile),
 **Ctrl+Q** quits to the desktop at once, **Alt+Enter** toggles fullscreen,
 **F12** saves a screenshot next to the program. The **mouse wheel** zooms
-the map screen and the chase / team cameras.
+the map screen and the chase / team cameras, and a tap of the **middle
+mouse button** swings the chase / team camera back behind the soldier it
+follows (after panning it around with the right button).
 
 | Option | Effect |
 |--------|--------|

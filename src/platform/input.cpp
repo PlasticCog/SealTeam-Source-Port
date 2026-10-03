@@ -168,6 +168,9 @@ void Input::handleEvent(const SDL_Event& ev, int logicalW, int logicalH) {
         else if (ev.button.button == SDL_BUTTON_MIDDLE) bit = 4;
         if (ev.type == SDL_EVENT_MOUSE_BUTTON_DOWN) mouse_.buttons |= bit;
         else mouse_.buttons &= u8(~bit);
+        // Port: a tap of the middle button recentres the camera (the game
+        // never read the middle button).
+        if (ev.type == SDL_EVENT_MOUSE_BUTTON_DOWN && bit == 4) pushKey(synth::RecentreCamera);
         break;
     }
     default:

@@ -72,7 +72,7 @@ const Page kPages[] = {
     {"Views",
      {PadAction::ViewPointMan, PadAction::ViewTeam, PadAction::ViewSupport1, PadAction::ViewSupport2,
       PadAction::ViewSupport3, PadAction::ViewSupport4, PadAction::ViewSplitA, PadAction::ViewSplitB,
-      PadAction::ViewTarget, PadAction::QuitGame}},
+      PadAction::ViewTarget, PadAction::RecentreCamera, PadAction::QuitGame}},
     {"Orders",
      {PadAction::OrderFieldOfFire, PadAction::OrderAtTarget, PadAction::OrderAtWill, PadAction::OrderCeaseFire,
       PadAction::OrderHalt, PadAction::OrderSearch, PadAction::OrderSplit, PadAction::OrderJoin,

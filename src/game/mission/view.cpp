@@ -327,6 +327,26 @@ void viewSetEyeHeight(const Unit* u) {
     L.camMain.pos.y = s32(u32(s32(h)) << 8);
 }
 
+// Port: the middle mouse button / the pad's "Recentre camera" action. An
+// orbit view (chase, team, target camera) swings back behind the leader it
+// follows: orbit angle = his heading + 180 degrees, the angle the original
+// itself sets when the Point Man bounces off an obstacle
+// (evt_unit_bounce_off_obstacle). The original has no other way back once
+// the right button has swung the camera around him.
+void viewRecentreCamera() {
+    LoopState& L = ls();
+    const MissionState& S = ms();
+    const int mode = S.viewMode;
+    // First person has no orbit; map, insertion / extraction and the enemy
+    // camera (re-aimed every frame) are left alone.
+    if (mode < 2 || mode == 7 || mode == 8 || mode == 0x0C || mode == 0x0E) return;
+    const Unit* pm = pointMan();
+    Team* t = mode == 2 ? (pm ? pm->team : nullptr) : team(L.viewTeam);
+    if (!t || !t->members[0] || !t->members[0]->body) return;
+    t->view_heading = s16(angleWrap(t->members[0]->body->heading + 0x5A0));
+    if (team(L.viewTeam) == t) L.viewHeading = t->view_heading;
+}
+
 void viewInitOrbitAngle(Team* t) {
     if (!t || t->view_heading != -1) return;
     const Unit* pm = pointMan();

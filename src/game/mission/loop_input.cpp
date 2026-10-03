@@ -205,6 +205,9 @@ bool cmdOrderKeys(int key) {
     case kKeyAltI:
         L.teamInfoNames = !L.teamInfoNames;
         return true;
+    case engine::key::RecentreCamera:  // port: middle mouse button / pad action
+        viewRecentreCamera();
+        return true;
     case kKeyAltP: {
         clkSave();
         std::string buf;

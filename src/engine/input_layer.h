@@ -15,6 +15,9 @@ constexpr int F10 = 0x4400;
 // Port: Ctrl+H as its BIOS word (scan 0x23, ASCII 8), kept apart from
 // Backspace (ASCII 8 too) by InputLayer::pollBiosKey.
 constexpr int Help = 0x2308;
+// Port: the middle mouse button / the controller's "Recentre camera" action
+// (platform/input.h synth::RecentreCamera).
+constexpr int RecentreCamera = 0xF100;
 } // namespace key
 
 enum class InputMode { Action = 0, Menu = 1, Map = 2 };  // g_input_mode DS:D820

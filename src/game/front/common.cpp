@@ -557,6 +557,7 @@ void pushScriptedKeyEvent(SDL_Scancode scancode, SDL_Keycode keycode, SDL_Keymod
 int parseKey(const std::string& name) {
     struct Named { const char* name; int code; };
     if (name == "CtrlH") return 0x40000;
+    if (name == "MiddleClick") return 0x100000;  // a middle mouse button press and release
     if (name == "WheelUp") return 0x80001;    // a mouse wheel notch (Input::addWheel)
     if (name == "WheelDown") return 0x80002;
     static const Named kNamed[] = {
@@ -604,6 +605,16 @@ int dueKey() {
     const double t = std::chrono::duration<double>(std::chrono::steady_clock::now() - base).count();
     if (k.at > t) return 0;
     const int code = g_script[g_scriptPos++].code;
+    if (code & 0x100000) {  // scripted middle mouse button (SDL events, the real path)
+        for (const bool down : {true, false}) {
+            SDL_Event ev{};
+            ev.type = down ? SDL_EVENT_MOUSE_BUTTON_DOWN : SDL_EVENT_MOUSE_BUTTON_UP;
+            ev.button.button = SDL_BUTTON_MIDDLE;
+            ev.button.down = down;
+            SDL_PushEvent(&ev);
+        }
+        return 0;
+    }
     if (code & 0x80000) {  // scripted mouse wheel notch, not a key
         sys().input().addWheel((code & 1) ? 1 : -1);
         return 0;

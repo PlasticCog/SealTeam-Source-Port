@@ -71,7 +71,8 @@ Hold **LB** for the *Shift* layer, **RB** for the *Orders* layer.
 | Back | `m` map screen | Alt-U auto-target | `q` dive |
 
 Unbound by default (bind them on the Controller page): support views 3 / 4
-(F5 / F6), Alt-I team info names, Alt-X quit.
+(F5 / F6), Alt-I team info names, Alt-X quit, and "Recentre camera" (the
+middle mouse button: the chase / team camera back behind its soldier).
 
 Front-end screens: the left stick moves the pointer, A selects, B backs
 out, the D-pad nudges the pointer like the arrow keys. Map screen: the

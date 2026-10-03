@@ -58,6 +58,7 @@ enum class PadAction : u8 {
     ViewPointMan, ViewTeam, ViewSupport1, ViewSupport2, ViewSupport3, ViewSupport4,
     ViewSplitA, ViewSplitB, ViewTarget,
     TimeCompression, AutoTarget, TeamInfo, ExposeTrap, Dive, QuitGame,
+    RecentreCamera,  // port: camera back behind the leader (also the middle mouse button)
     OrderFieldOfFire, OrderAtTarget, OrderAtWill, OrderCeaseFire,
     OrderHalt, OrderSearch, OrderSplit, OrderJoin,
     OrderColumn, OrderInLine, OrderDiamond, OrderVee,

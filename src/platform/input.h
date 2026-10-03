@@ -26,6 +26,12 @@ constexpr u8 Esc = 0x01, Key1 = 0x02, Key0 = 0x0b, Minus = 0x0c, Equals = 0x0d, 
              Del = 0x53, F11 = 0x57, F12 = 0x58;
 }
 
+// Port: synthetic keystroke words that no keyboard sends (scan codes above
+// 0x80), typed into the BIOS queue by the platform and controller layers.
+namespace synth {
+constexpr u16 RecentreCamera = 0xF100;  // middle mouse button: camera back behind the leader
+}
+
 struct MouseState {
     int x = 160, y = 100;  // 320x200 coordinates
     u8 buttons = 0;        // bit0 left, bit1 right, bit2 middle
