@@ -18,6 +18,7 @@
 #include "game/mission/campaign_link.h"
 #include "game/mission/combat.h"
 #include "game/mission/craft.h"
+#include "game/mission/entity.h"
 #include "game/mission/geo.h"
 #include "game/mission/mission.h"
 #include "game/mission/people.h"
@@ -26,7 +27,13 @@
 #include "game/screens.h"
 #include "game/ui.h"
 #include "gfx/gfx.h"
+#include "render/r3d.h"
 #include "render/sky.h"
+
+#include <SDL3/SDL.h>
+
+#include <algorithm>
+#include <cstdlib>
 
 namespace st::game::mission {
 namespace loop {
@@ -97,11 +104,48 @@ void installHooks() {
     viewInstallRenderHooks();
 }
 
+// Port (dev): with ST_PERFLOG set, every 2 s of wall time one log line with
+// the frame time split into render (which includes the frame limiter's
+// wait in tod_draw_sky_ground), present and simulation, and the counts that
+// grow during a mission. Off (one getenv per mission) otherwise.
+struct PerfLog {
+    bool on = false;
+    double start = 0, frameStart = 0, renderMs = 0, presentMs = 0, simMs = 0, worstMs = 0;
+    double animMs = 0, keyMs = 0, updMs = 0;
+    int frames = 0;
+    double now() const { return double(SDL_GetPerformanceCounter()) * 1000.0 / double(SDL_GetPerformanceFrequency()); }
+    void report() {
+        const double t = now();
+        if (t - start < 2000.0 || frames == 0) return;
+        const MissionState& S = ms();
+        int prj = 0;
+        for (const Projectile* p : S.projectiles)
+            if (p && (p->state & prj_state::kInUse)) ++prj;
+        int alive = 0, dead = 0;
+        for (int ti = 0; ti < kMaxTeams && S.teams[ti]; ++ti)
+            for (int mi = 0; mi < 8 && S.teams[ti]->members[mi]; ++mi) (unitAlive(S.teams[ti]->members[mi]) ? alive : dead)++;
+        int sfx = 0;
+        for (int n = 0; n < engine::kSfxChannels; ++n)
+            if (engine::sound().channel(n).flags) ++sfx;
+        const auto& rs = render::renderStats();
+        logInfo("perf: time %d  %d frames %.1f fps  frame avg %.1f max %.1f ms  render %.1f present %.1f sim %.1f ms  "
+                "(anim %.1f key %.1f update %.1f)  drawn %d listed %d  projectiles %d  units %d alive %d dead  sfx %d",
+                S.time, frames, frames * 1000.0 / (t - start), (t - start) / frames, worstMs, renderMs / frames,
+                presentMs / frames, simMs / frames, animMs / frames, keyMs / frames, updMs / frames, rs.drawn, rs.listed, prj, alive, dead, sfx);
+        start = t;
+        frames = 0;
+        renderMs = presentMs = simMs = worstMs = animMs = keyMs = updMs = 0;
+    }
+};
+PerfLog g_perf;
+
 // One iteration of the frame loop (1000:01DE, 6.2).
 void frame() {
     LoopState& L = ls();
     MissionState& S = ms();
     auto& in = engine::input();
+    PerfLog& pf = g_perf;
+    const double fStart = pf.on ? pf.now() : 0;
     engine::ticker().updateGameTime();  // the ticker's own clock (input repeat timers)
     switch (S.tcState) {
     case 0:
@@ -130,13 +174,16 @@ void frame() {
         pageCopyFull();
         break;
     }
+    const double fRendered = pf.on ? pf.now() : 0;
     if (S.tcState == 0) simFrameClock(clkRawTicks());
     else if (S.tcState == 1) simFrameClockCompressed();
     if (S.viewMode != 1 || S.opt.map != 0) simFrameAnimate();
+    const double fAnim = pf.on ? pf.now() : 0;
     if (S.viewMode >= 2 && S.viewMode != 0x0C) in.resetButton2Timers();
     const bool mapView = S.viewMode == 1 || S.viewMode == 0x0C;
     in.setMode(mapView ? engine::InputMode::Map : engine::InputMode::Action);
     int key = loopGetKey();
+    const double fKey = pf.on ? pf.now() : 0;
     int dx = 0, dy = 0;
     in.getMotion(dx, dy);
     // Port: the mouse wheel zooms the map and the chase / team cameras.
@@ -145,6 +192,7 @@ void frame() {
         else if (!mapView && !L.misFreeze && S.tcState == 0) fieldViewWheelZoom(wheel);
     }
     if (cmdOrderKeys(key)) key = 0;
+    const double fPresent0 = pf.on ? pf.now() : 0;
     if (S.tcState == 0) {
         if (L.skipPresent) {
             L.skipPresent = false;
@@ -157,6 +205,7 @@ void frame() {
             if (--L.startFrames == 0) L.fullRedraw = 2;
         }
     }
+    const double fPresented = pf.on ? pf.now() : 0;
     if (S.viewMode == 1 && S.opt.map == 0) {
         // "Map: Freeze": the world stands still while the map is up.
         mapScreenKeys(key, dx, dy);
@@ -171,10 +220,23 @@ void frame() {
                 fieldViewKeys(key, dx, dy);
             }
         }
+        const double u0 = pf.on ? pf.now() : 0;
         const int fade = simFrameUpdate();
+        if (pf.on) pf.updMs += pf.now() - u0;
         if (fade >= 0) engine::paletteFade().request(fade, S.frameTicks);
     }
     simMsgTick();
+    if (pf.on) {
+        const double fEnd = pf.now();
+        pf.renderMs += fRendered - fStart;
+        pf.presentMs += fPresented - fPresent0;
+        pf.animMs += fAnim - fRendered;
+        pf.keyMs += fKey - fAnim;
+        pf.simMs += (fPresent0 - fRendered) + (fEnd - fPresented);
+        pf.worstMs = std::max(pf.worstMs, fEnd - fStart);
+        ++pf.frames;
+        pf.report();
+    }
 }
 
 } // namespace
@@ -232,6 +294,18 @@ int run() {
                            ls().skipPresent = true;
                            ls().fullRedraw = 2;
                        }});
+    // One present per page flip, like the CRTC showing a new display start
+    // (gfx_present 1000:1E87). Without it every event pump in the frame (the
+    // key poll, the frame limiter's wait) composed and presented the frame
+    // again: with presents blocking on the display refresh, the mission ran
+    // at half speed and the 256 Hz service that drives the music and effects
+    // (delivered by the same pump) stalled - lag and late sound that grew
+    // with the amount of drawing. The flag was meant to be set here since
+    // the frame-pacing fix of 0.1 and never was; mis_run's exit clears it.
+    sys().video().setExplicitPresent(true);
+    g_perf = PerfLog{};
+    g_perf.on = std::getenv("ST_PERFLOG") != nullptr;
+    if (g_perf.on) g_perf.start = g_perf.now();
     while (!S.misDone && !S.quitGame) frame();
     uiSetOverlayHooks({});
     logInfo("mission loop: exit at %d ticks (t=%.1fs), done %d quit %d view %d", S.time, sys().timer().seconds(), S.misDone ? 1 : 0, S.quitGame ? 1 : 0, S.viewMode);

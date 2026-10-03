@@ -114,6 +114,15 @@ sealteam [--original|--enhanced] --play-mission <1..80> [--keys SPEC] [--save-di
          [--shot FILE --shot-after S]
 ```
 
+With the environment variable `ST_PERFLOG` set, the mission loop logs a
+`perf:` line every 2 s of wall time: frames per second, average and worst
+frame time split into render (including the frame limiter's 5-tick wait
+in `tod_draw_sky_ground`), present and the rest (animation, key poll,
+simulation update), and the counts that grow during a mission (objects
+drawn, projectiles in use, living / dead units, busy effect channels).
+It found the double present of 0.1.0..0.5.7 (see Deviations): the key
+poll's event pump presented the frame again, 14 ms per frame.
+
 Starts a practice-style mission directly (random Point Man of the year's
 pool, `roster_new`, `loadout_build_team`, fade, "One Moment Please ...",
 `mission::run()`). `--keys` scripts the mission keys (front/common.h now
@@ -227,6 +236,15 @@ reference only afterwards).
   visible lurch in a wide 1080p view (measured per frame: yaw deltas of
   0 / +1 / -3 in Original, all 0 in Enhanced). Original keeps the
   original's yaw.
+* Port: `mission::run` sets the video's explicit-present mode for the
+  mission loop (cleared at the exit, as in 0.1.0), so only the page flip
+  presents a frame, once per frame like the CRTC; the event pump presents
+  only after a window event (the displayed page again). The flag was meant
+  to be set since the frame-pacing fix but the call was missing until
+  0.5.8: every pump (the key poll, the frame limiter's wait) composed and
+  presented the frame again, the presents blocked, the mission ran at
+  ~30 instead of ~46 fps (Enhanced, 1080p) and the 256 Hz service that
+  drives music and effects, delivered by the same pump, stalled.
 * Port: the mouse wheel (`Input::takeWheel`, read once per frame in
   `frame()` after the key) zooms: on the map screen a notch is one Zoom /
   Expand press (`mapWheelZoom` -> `map_zoom_keys`), in the chase / team /

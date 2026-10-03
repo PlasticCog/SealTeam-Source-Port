@@ -36,6 +36,7 @@ void System::shutdown() {
 
 void System::pump() {
     SDL_Event ev;
+    bool windowEvent = false;
     while (SDL_PollEvent(&ev)) {
         if (ev.type == SDL_EVENT_QUIT) throw QuitRequested{};
         if (ev.type >= SDL_EVENT_WINDOW_FIRST && ev.type <= SDL_EVENT_WINDOW_LAST) {
@@ -44,6 +45,7 @@ void System::pump() {
             if (ev.type == SDL_EVENT_WINDOW_FOCUS_LOST) video_.captureMouse(false);
             if (ev.type == SDL_EVENT_WINDOW_FOCUS_GAINED && !scripted_) video_.captureMouse(true);
             video_.markDirty();
+            windowEvent = true;
             continue;
         }
         if (ev.type >= SDL_EVENT_GAMEPAD_AXIS_MOTION && ev.type <= SDL_EVENT_GAMEPAD_STEAM_HANDLE_UPDATED) {
@@ -89,7 +91,11 @@ void System::pump() {
         input_.handleEvent(ev, kScreenW, kScreenH);
     }
     runTicks();
+    // With explicit present (the mission loop) only the page flip shows a
+    // frame; a window event (restore, resize, Alt-Tab back) still re-shows the
+    // displayed page so a paused screen is never left blank.
     if (!video_.explicitPresent()) video_.present();
+    else if (windowEvent) video_.present(true);
     if (!shotPath_.empty() && timer_.seconds() >= shotAt_) {
         saveScreenshot(shotPath_);
         shotPath_.clear();
