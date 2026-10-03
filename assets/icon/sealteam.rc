@@ -4,8 +4,8 @@
 IDI_ICON1 ICON "sealteam.ico"
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 0,5,6,0
- PRODUCTVERSION 0,5,6,0
+ FILEVERSION 0,5,7,0
+ PRODUCTVERSION 0,5,7,0
  FILEOS VOS_NT_WINDOWS32
  FILETYPE VFT_APP
 BEGIN
@@ -15,8 +15,8 @@ BEGIN
         BEGIN
             VALUE "FileDescription", "SEAL Team source port"
             VALUE "ProductName", "SEAL Team source port"
-            VALUE "FileVersion", "0.5.6"
-            VALUE "ProductVersion", "0.5.6"
+            VALUE "FileVersion", "0.5.7"
+            VALUE "ProductVersion", "0.5.7"
             VALUE "OriginalFilename", "sealteam.exe"
         END
     END
