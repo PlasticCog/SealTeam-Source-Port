@@ -194,43 +194,59 @@ void drawHelmet(int x, int y, int s, const SpriteImage& body, int hat, int headR
     drawScaled(L, T, s, hi->rle.data());
 }
 
-// Port only (Modern gameplay, the marked unit): the "red scarf". The body
-// frame is drawn once more through the red remap with the clip box reduced
-// to a band of rows at the neck line, the bottom edge of the headgear frame
-// (placed as drawHelmet places it), so only the body's own pixels change
-// and the silhouette stays the original's. The band is two sprite pixels
-// scaled with the sprite and never thinner than one page pixel, so it shows
-// at any distance the sprite is drawn.
+// Port only (Modern gameplay, the marked unit): a small red neck scarf. The
+// body frame is drawn once more through the red remap with the clip box
+// reduced to a patch at the collar, just under the headgear's brim and
+// centred under it (placed from the same anchor drawHelmet uses), so only
+// the body's own pixels change and the silhouette stays the original's. The
+// patch is 4 x 1 sprite pixels scaled with the sprite and never smaller
+// than one page pixel, so it shows at any distance the sprite is drawn.
 void drawMarkBand(int x, int y, int s, const SpriteImage& body, int hat, int headRot, int depth) {
     const int bw = body.w(), bh = body.h();
     int L, T;
     topLeft(x, y, mul88(bw, s), mul88(bh, s), s, L, T);
+    L += mul88((s16(bw) >> 1) - body.rlx.anchor_x, s);
     T += mul88(bh - body.rlx.anchor_y, s);
     const int hsh = mul88(bh, s);
     T += hsh - s16(s16((8 - depth) * hsh) >> 3);
     const SpriteImage* hi = hat ? frameOf(kHeadgear[(hat - 1) % 7], body.rlx.head_frame, headRot) : nullptr;
-    int neck;
+    // Sprite pixels: the scarf's top below the headgear anchor, its half
+    // width and its height.
+    constexpr int kDrop = 7, kHalf = 2, kRows = 1;
+    int neck, cx;
     if (hi) {
+        // drawScaled places an image by its bottom centre with the bottom 5
+        // sprite pixels below the anchor (spr_sprite_topleft): (L + head_x,
+        // T + head_y) is the middle of the headgear 5 pixels above its brim,
+        // and kDrop puts the scarf at the collar just under the brim.
         neck = T + mul88(body.rlx.head_y, s);
         if (s < 0x100) neck += mul88(body.rlx.head_y, s) & 1;
-        neck += mul88(hi->h(), s);
+        neck += mul88(kDrop, s);
+        cx = L + mul88(body.rlx.head_x, s);
     } else {
         neck = T + mul88(bh / 5, s);  // no headgear frame: a fifth of the body down
+        cx = L + mul88(bw, s) / 2;
     }
     const int N = frameScale();
-    const int thick = std::max(N, mul88(2, s));
+    const int thick = std::max(N, mul88(kRows, s));
+    const int w = std::max(N, mul88(kHalf, s));
     Gfx& gx = gfx();
-    const int top = gx.clipY0(), bottom = gx.clipY1();
+    const int top = gx.clipY0(), bottom = gx.clipY1(), left = gx.clipX0(), right = gx.clipX1();
     const int y0 = std::max(top, neck), y1 = std::min(bottom, neck + thick - 1);
-    if (y0 > y1) return;
+    const int x0 = std::max(left, cx - w), x1 = std::min(right, cx + w - 1);
+    if (y0 > y1 || x0 > x1) return;
     const u8* const prev = gx.spriteRemap();
     gx.setClipTop(y0);
     gx.setClipBottom(y1);
+    gx.setClipLeft(x0);
+    gx.setClipRight(x1);
     gx.setSpriteRemap(g_markRemap.get());
     drawBody(x, y, s, body, depth);
     gx.setSpriteRemap(prev);
     gx.setClipTop(top);
     gx.setClipBottom(bottom);
+    gx.setClipLeft(left);
+    gx.setClipRight(right);
 }
 
 // spr_calc_rotation (348e:05B9)
@@ -287,24 +303,16 @@ void drawSoldierFrame(int x, int y, int s, const char* set, int f, int r, const 
     if (!img) return;
     int depth = 0;
     if (u->mover && u->mover->height < 0) depth = u->mover->height / -3;
-    // Port: a marked unit (Modern gameplay snatch target) wears his headgear
-    // through the red remap and the neck band; the draw calls are the
-    // original's otherwise.
-    const bool marked = g_unitMark && g_unitMark(u);
-    const u8* const prevRemap = gfx().spriteRemap();
-    auto helmet = [&] {
-        if (marked) gfx().setSpriteRemap(g_markRemap.get());
-        drawHelmet(x, y, s, *img, hat, headRot, depth);
-        if (marked) gfx().setSpriteRemap(prevRemap);
-    };
     if (img->rlx.layer > 0x80) {
-        helmet();
+        drawHelmet(x, y, s, *img, hat, headRot, depth);
         drawBody(x, y, s, *img, depth);
     } else {
         drawBody(x, y, s, *img, depth);
-        helmet();
+        drawHelmet(x, y, s, *img, hat, headRot, depth);
     }
-    if (marked) drawMarkBand(x, y, s, *img, hat, headRot, depth);
+    // Port: a marked unit (Modern gameplay snatch target) wears a red neck
+    // scarf; the draw calls are the original's otherwise.
+    if (g_unitMark && g_unitMark(u)) drawMarkBand(x, y, s, *img, hat, headRot, depth);
     gfx().setSpriteRemap(nullptr);
     drawGrassTuft(x, y, s, *img, u, depth);
 }

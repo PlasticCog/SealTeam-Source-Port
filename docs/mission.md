@@ -351,19 +351,19 @@ too (statistics only).
   MTM teams, `firstMtmGroup` 0xFF, and never match). Three readers, each the
   original drawing when the function is false:
   * the sprite renderer (`render::setUnitMark`, installed by
-    `viewInstallRenderHooks`): `drawSoldierFrame` (sprites.cpp) draws the
-    marked unit's headgear - the VC conical hat, the NVA pith helmet -
-    through a red remap built from the current base palette like the impact
-    remaps (luminance -> red, nearest palette entry, 0 and 255 pinned,
-    rebuilt when the palette changes), and `drawMarkBand` draws the body
-    frame once more through the same remap with the clip box reduced to a
-    band of rows at the bottom edge of the headgear frame (placed as
-    `drawHelmet` places it; a fifth of the body down without a headgear
-    frame), two sprite pixels scaled with the sprite and never thinner than
-    one page pixel (`frameScale()`): the "red scarf" is the body's own
-    pixels, so the silhouette is the original's and the marker shows at any
-    distance the sprite is drawn. The remap set by the anim kind, if any, is
-    restored around the headgear.
+    `viewInstallRenderHooks`): after the original body and headgear,
+    `drawSoldierFrame` (sprites.cpp) calls `drawMarkBand`, which draws the
+    body frame once more through a red remap built from the current base
+    palette like the impact remaps (luminance -> red, nearest palette entry,
+    0 and 255 pinned, rebuilt when the palette changes) with the clip box
+    reduced to a patch at the collar: 7 sprite pixels below the headgear
+    anchor (the brim is 5 below it, `spr_sprite_topleft`), centred under
+    it, 4 x 1 sprite pixels scaled with the sprite and never smaller than
+    one page pixel (`frameScale()`); a fifth of the body down without a
+    headgear frame. The small red scarf is the body's own pixels, so the
+    silhouette is the original's and the marker shows at any distance the
+    sprite is drawn. (Until 0.5.7 the headgear was drawn red too and the
+    band ran the width of the shoulders: too much, said the player.)
   * the map screen (`drawSnatchMark`, map.cpp): a one-pixel light red
     (0x0C) ring three pixels outside the unit's disc and a "!" to its
     right, drawn only after the original has drawn the disc (his team
@@ -383,9 +383,9 @@ too (statistics only).
   point): `--enhanced --window 1920x1080 --play-mission 36 --keys
   "Enter@mission+1,F10@mission+4" --shot ... --shot-after 14` with
   `modern_gameplay = 1` shows the officer through the enemy camera with a
-  red conical hat and a red band at the neck, the civilians beside him in
-  their own hats; the same run with `modern_gameplay = 0` shows him in the
-  tan hat without a band. With `F1`, four `Up` presses and `Tab` at
+  small red scarf at the collar under his tan conical hat, the civilians
+  beside him unmarked; the same run with `modern_gameplay = 0` shows him
+  without the scarf. With `F1`, four `Up` presses and `Tab` at
   mission + 50 s the Point Man reaches the market and acquires him: the HUD
   reads "Viet Cong (target)" over " Objective", and `m` then shows his map
   mark ringed with the "!" beside it.

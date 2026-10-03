@@ -90,6 +90,9 @@ public:
     void setClipBottom(int y1) { y1_ = y1; }
     // Move only the top edge (port: the sprite marker band of render/sprites).
     void setClipTop(int y0) { y0_ = y0; }
+    // Move only the left / right edges (port: the same marker band).
+    void setClipLeft(int x0) { x0_ = x0; }
+    void setClipRight(int x1) { x1_ = x1; }
     int clipCy() const { return cy_; }
 
     // --- colour and filled primitives

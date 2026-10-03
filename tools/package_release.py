@@ -61,7 +61,7 @@ The start menu offers:
                    e.g. 240 rounds for the CAR-15 and 20 x 40 mm for the
                    M79; support craft hold fire near friendlies; squad
                    mates walk around obstacles; enemy grenade discipline;
-                   the snatch target wears red and is named on the HUD
+                   the snatch target wears a red scarf, is named on the HUD
                    and map; no bushes inside buildings; F-4 Phantom
                    air strikes callable from the map ('g'); see the
                    project README),
