@@ -135,6 +135,15 @@ deaths, shots and their resolution, objectives, and the end of the mission.
 `--seed-skip K` advances the game RNG K steps first. Two runs with the same
 arguments produce identical logs.
 
+`demo` and `demo-back` test the satchel charge: the Point Man runs at
+objective 1 and, within 60 units of it or at tick 0x1400, selects the
+satchel (next weapon), clears his target and fires it - the charge drops at
+his feet, the shot goes to the aim point 150 units ahead - then runs on
+(`demo`) or turns round (`demo-back`) for `--demo-run` units (default 400)
+and stops; every 0x800 ticks the log gives the charge's position, the
+shot's blast centre and each SEAL's distance from both, and the satchel's
+hits appear as `hit:` lines (`with DEMO`).
+
 Two scripts exercise the combat rules for longer: `hold` runs the Point Man
 at the first enemy (VC / NVA) team of the mission table whose leader is
 visible, stops about 250 units from it and holds there facing it, so that
@@ -401,6 +410,32 @@ too (statistics only).
   corner is blocked (the end of the function then hides and zeroes it).
   Verified: `--original --sim-mission 1 --ticks 30000 --script walk --log`
   byte-identical with and without the code.
+* **A demolition charge explodes where it lies** (reported by a player as
+  "satchel charges kill the squad no matter how far you run"). Mechanism
+  (original): the satchel (weapon 0x0C, DEMO: blast radius 360, maximum
+  range 300, structure damage 80) is a primary weapon fired with Enter;
+  `prj_fire` drops the charge at the placer's feet (`geo_copy_pos` of the
+  shooter, no launch velocity, a 60 s fuse), but the shot record keeps the
+  aim position - the targeted object, or the aim point 150 units ahead of
+  the Point Man along his heading - and `shot_blast_victims` (19ac:76A8)
+  measures the blast from it (shot +0x2C) when the shot resolves. The
+  explosion is drawn at the charge, the damage happens up to 300 units away
+  from it: the squad walking on in the direction the charge was placed (to
+  the next objective) walks into the real blast. With the option on,
+  `modernSatchelBlastAtCharge` (called by `shot_update_all` before the
+  victims are collected) sets the shot's blast centre to the charge's
+  resting place (the slot is still in use then); anything the player could
+  have targeted (at most 300 units away) is still inside the 360-unit
+  radius, so demolition works as before. Counter `satchelsRecentred`.
+  Verification (`--sim-mission 8 --script demo|demo-back`, the VC well of
+  objective 1; distances from the charge / from the blast centre at the
+  explosion): Original, `demo --demo-run 250`: the whole squad killed 259
+  units from the charge (105 from the blast centre); `demo-back`, 400:
+  nobody hit (the blast centre 150 units the other way). Modern: the blast
+  centre is the charge; at 400 and 500 units the Point Man is never hit in
+  either direction, the squad mates trailing him in formation (281-363
+  units from the charge) are, being inside the 360-unit radius. Original:
+  `--script walk` logs byte-identical with and without the code.
 
 * **Callable F-4 Phantom air strikes.** Original: the F-4 (model table entry
   0x37 `f4`, the second "high" flyer 0x38 is the light-bullet shape `bltlt`)

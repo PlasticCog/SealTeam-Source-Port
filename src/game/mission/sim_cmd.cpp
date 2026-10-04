@@ -219,6 +219,7 @@ void logSummary() {
     if (modernPhantomAvailable())
         logf("summary: Phantom bombs released %d, releases held near friendlies %d, strikes left %d",
              S.portStats.phantomBombs, S.portStats.phantomHolds, modernPhantomStrikesLeft());
+    if (S.portStats.satchelsRecentred) logf("summary: satchel blasts centred on the charge %d", S.portStats.satchelsRecentred);
 }
 
 void dumpWorld() {
@@ -367,10 +368,11 @@ int simMissionCommand(const DevArgs& args) {
     int ticks = 0x3C00 * 3;
     int seedSkip = 0;
     int dt = 5;
-    enum class Script { Idle, Walk, Hold, Attack };
+    enum class Script { Idle, Walk, Hold, Attack, Demo, DemoBack };
     Script script = Script::Idle;
     int craftKey = 'b';  // attack script: the map order key of the craft ('b' boat, 'u' helicopter, 'a' aircraft)
     bool summary = false;
+    int demoRun = 400;  // demo / demo-back: units run from the charge before stopping
     bool snapshots = true;
     std::string logFile;
     for (size_t i = 1; i < args.size(); ++i) {
@@ -381,19 +383,22 @@ int simMissionCommand(const DevArgs& args) {
         else if (a == "--dt") dt = std::max(1, std::atoi(next().c_str()));
         else if (a == "--script") {
             const std::string s = next();
-            script = s == "walk" ? Script::Walk : s == "hold" ? Script::Hold : s == "attack" ? Script::Attack : Script::Idle;
+            script = s == "walk" ? Script::Walk : s == "hold" ? Script::Hold : s == "attack" ? Script::Attack
+                   : s == "demo" ? Script::Demo : s == "demo-back" ? Script::DemoBack : Script::Idle;
         }
         else if (a == "--craft") {
             const std::string s = next();
             craftKey = s == "u" ? 'u' : s == "a" ? 'a' : s == "g" ? 'g' : s == "G" ? 'G' : 'b';
         }
         else if (a == "--summary") summary = true;
+        else if (a == "--demo-run") demoRun = std::max(1, std::atoi(next().c_str()));
         else if (a == "--log") logFile = next();
         else if (a == "--quiet-snapshots") snapshots = false;
     }
     const bool walk = script == Script::Walk;
     const bool hold = script == Script::Hold || script == Script::Attack;
-    g_extended = summary || hold;
+    const bool demo = script == Script::Demo || script == Script::DemoBack;
+    g_extended = summary || hold || demo;
     g_tally = Tally{};
     g_lastShooterType.clear();
     if (!logFile.empty()) {
@@ -458,6 +463,15 @@ int simMissionCommand(const DevArgs& args) {
     // attack --craft g: the squad stays outside the bomb's danger-close
     // distance (blast radius 180 + 90) of the enemy it approaches.
     const int holdDist = phantomScript ? 450 : 250;
+    // demo / demo-back: walk to objective 1 (a structure), place a satchel
+    // charge with the aim box pushed out to 300 units, then run on past it
+    // (demo) or back the way the squad came (demo-back) for --demo-run units
+    // (default 400; the blast radius is 360), stop,
+    // and log the charge, the shot's blast centre and every hit until it goes off.
+    int demoPhase = 0;        // 0 approach, 1 placed / running, 2 stopped
+    Vec3 demoStart{};
+    const ShotRec* demoShot = nullptr;
+    Ticks nextDemoLog = 0;
     Ticks now = 0;
     Ticks nextSnap = 0x800;
     // Turn the Point Man toward a position, 3 degrees every 4th frame.
@@ -493,6 +507,68 @@ int simMissionCommand(const DevArgs& args) {
                     evtPlayerSpeedStep(0xC00);
                     evtPlayerSpeedStep(0xC00);
                     running = true;
+                }
+            } else if (demo && pm && unitAlive(pm)) {
+                const MciObjective& o = S.mci.objective[0];
+                const int d = geoDistance(pm->body->pos, o.pos);
+                if (demoPhase == 0) {
+                    steerToward(pm, o.pos);
+                    if (!running) {
+                        evtPlayerSpeedStep(0xC00);
+                        evtPlayerSpeedStep(0xC00);
+                        running = true;
+                    }
+                    if (d <= 60 || S.time >= 0x1400) {
+                        evtPlayerSpeedStep(0);
+                        running = false;
+                        // The satchel is a primary weapon (next weapon stops on it) fired
+                        // with Enter; with nothing targeted the shot goes to the aim point
+                        // 150 units ahead (playerViewPrologue), the charge drops at his feet.
+                        for (int k = 0; k < 8 && pm->loadout && pm->loadout->primary &&
+                                        int(pm->loadout->primary->type) != 12; ++k)
+                            wpnSelectNextWeapon(pm);
+                        tgtClear();
+                        playerViewPrologue(0);
+                        playerFire();
+                        for (const ShotRec& sh : S.shots)
+                            if (sh.state == 0 && sh.shooter == pm && sh.weapon == 12) demoShot = &sh;
+                        logf("script: satchel placed %d units from objective 1 at %s; shot %s, blast centre %s, charge %s",
+                             d, posStr(pm->body->pos).c_str(), demoShot ? "fired" : "NOT fired",
+                             demoShot ? posStr(demoShot->target_pos).c_str() : "-",
+                             demoShot && demoShot->projectile ? posStr(demoShot->projectile->body->pos).c_str() : "-");
+                        demoStart = pm->body->pos;
+                        if (script == Script::DemoBack) for (int k = 0; k < 60; ++k) playerTurn(3);  // 180 degrees
+                        demoPhase = 1;
+                    }
+                } else if (demoPhase == 1) {
+                    if (!running) {
+                        evtPlayerSpeedStep(0xC00);
+                        evtPlayerSpeedStep(0xC00);
+                        running = true;
+                    }
+                    if (geoDistance(pm->body->pos, demoStart) >= demoRun) {
+                        evtPlayerSpeedStep(0);
+                        demoPhase = 2;
+                        logf("script: stopped %d units from the charge", geoDistance(pm->body->pos, demoStart));
+                    }
+                }
+                if (demoShot && demoPhase >= 1 && S.time >= nextDemoLog) {
+                    nextDemoLog = S.time + 0x800;
+                    const bool live = demoShot->state == 0;
+                    logf("script: charge %s, blast centre %s; Point Man %d units from the charge, %d from the blast centre",
+                         live && demoShot->projectile ? posStr(demoShot->projectile->body->pos).c_str() : "(resolved)",
+                         posStr(demoShot->target_pos).c_str(), geoDistance(pm->body->pos, demoStart),
+                         geoDistance(pm->body->pos, demoShot->target_pos));
+                    if (live) {
+                        std::string squad;
+                        const Team* t0 = team(0);
+                        for (int k = 0; t0 && k < 8 && t0->members[k]; ++k) {
+                            const Vec3& at = t0->members[k]->body->pos;
+                            squad += " T0." + std::to_string(k) + " " + std::to_string(geoDistance(at, demoStart)) + "/" +
+                                     std::to_string(geoDistance(at, demoShot->target_pos));
+                        }
+                        logf("script: squad distance from the charge / blast centre:%s", squad.c_str());
+                    }
                 }
             } else if (hold && pm && unitAlive(pm)) {
                 // Run at the first enemy team, stop about 250 units from it and
@@ -602,7 +678,7 @@ int simMissionCommand(const DevArgs& args) {
 }
 
 const DevCommand g_cmd("--sim-mission",
-                       "<1..80> [--ticks N] [--seed-skip K] [--dt D] [--script idle|walk|hold|attack] [--craft b|u|a|g|G] "
+                       "<1..80> [--ticks N] [--seed-skip K] [--dt D] [--script idle|walk|hold|attack|demo|demo-back] [--craft b|u|a|g|G] "
                        "[--summary]: headless mission simulation log",
                        simMissionCommand);
 

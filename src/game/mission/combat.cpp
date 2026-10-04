@@ -774,6 +774,7 @@ void shotUpdateAll(int elapsed) {
         if (!unitProjectileIdle(&s)) continue;
         Victims v{};
         shotClearVictims(v);
+        modernSatchelBlastAtCharge(s);  // port: Modern gameplay (no-op while off)
         const bool any = s.shooter && shotCollectVictims(s, v);
         if (any) shotApplyDamage(s, v);
         unitProjectileStop(&s);  // (the original passes 3 / 0 for hit / nothing; 1000:5790 ignores it)

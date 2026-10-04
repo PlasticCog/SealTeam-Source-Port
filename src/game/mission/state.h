@@ -82,6 +82,7 @@ struct PortStats {
     int grenadeHolds = 0;  // enemy grenade throws held by the discipline rule (Modern gameplay)
     int phantomBombs = 0;  // bombs released by the Phantom flight (Modern gameplay)
     int phantomHolds = 0;  // bomb releases held with friendlies near the impact point (Modern gameplay)
+    int satchelsRecentred = 0;  // satchel blasts centred on the charge (Modern gameplay)
 };
 
 // Port-only state of the Modern-gameplay Phantom flight (modern.h, docs/

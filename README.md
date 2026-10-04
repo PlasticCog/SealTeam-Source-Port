@@ -150,6 +150,11 @@ far:
   his mark on the map screen gets a light red ring and a "!" once the
   map shows him at all, and the HUD names him "(target)" when he is your
   target. Nothing else about him changes.
+* Demolition charges explode where they lie: the original drops the satchel
+  at your feet but centres its 360-unit blast on the point you aimed at -
+  the target, or 150 units ahead of you - so walking on in that direction
+  could kill the squad far from the charge. The blast is now centred on the
+  charge; stay 360 units (about 40 m) from it, squad mates included.
 * No bushes inside buildings: the original checks for a building at the
   corner of a ground-cover cell and then shifts the plant by up to 128
   units, so plants grow inside huts and show through the walls; the final

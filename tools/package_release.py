@@ -62,7 +62,8 @@ The start menu offers:
                    M79; support craft hold fire near friendlies; squad
                    mates walk around obstacles; enemy grenade discipline;
                    the snatch target wears a red scarf, is named on the HUD
-                   and map; no bushes inside buildings; F-4 Phantom
+                   and map; demolition charges explode where they lie;
+                   no bushes inside buildings; F-4 Phantom
                    air strikes callable from the map ('g'); see the
                    project README),
                    music device (AdLib / Sound Blaster Pro 2), digital or

@@ -192,6 +192,22 @@ bool modernGrenadeAllowed(Unit* u, const WeaponNode* w, int dist, bool secondary
 bool modernSkipThrownForLongest(const WeaponNode* w) { return modernGameplayOn() && w && thrownItem(w); }
 
 // ---------------------------------------------------------------------------
+// Rule 8: a demolition charge explodes where it lies
+// ---------------------------------------------------------------------------
+
+void modernSatchelBlastAtCharge(ShotRec& s) {
+    if (!modernGameplayOn() || s.weapon != kSatchelWeapon) return;
+    const Projectile* p = s.projectile;
+    // The charge is still in its slot when the shot resolves (the slot is
+    // released after shot_update_all marks it resolved).
+    if (!p || !(p->state & prj_state::kInUse) || p->weapon != kSatchelWeapon || p->owner != s.shooter) return;
+    Vec3 at = p->body->pos;
+    at.y = 0;
+    s.target_pos = at;
+    ++ms().portStats.satchelsRecentred;
+}
+
+// ---------------------------------------------------------------------------
 // Rule 6: the snatch target is marked (presentation only)
 // ---------------------------------------------------------------------------
 

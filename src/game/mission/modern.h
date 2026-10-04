@@ -51,6 +51,16 @@ bool modernGrenadeAllowed(Unit* u, const WeaponNode* w, int dist, bool secondary
 // wpn_select_longest skips thrown items while the option is on.
 bool modernSkipThrownForLongest(const WeaponNode* w);
 
+// Rule 8 (shot_update_all, before the victims are collected): a satchel
+// charge's blast is centred on the charge where it lies. The original drops
+// the charge at the placer's feet (prj_fire copies the shooter's position)
+// but measures the blast (shot_blast_victims, shot +0x2C) from the shot's
+// aim position - the targeted object, or the aim point 150 units ahead of
+// the Point Man - so the squad could be killed walking on in the direction
+// the charge was placed, far from the charge it saw. No-op while off.
+constexpr int kSatchelWeapon = 0x0C;
+void modernSatchelBlastAtCharge(ShotRec& s);
+
 // Rule 6 (presentation only): `u` is the leader of the target team of a
 // Snatch objective of the current mission. The targets are looked up once
 // from the MCI objectives after the teams are built and cached in
