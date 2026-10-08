@@ -472,6 +472,10 @@ bool playerOrderKey(int key) {
         msgHandSignal(pm, 9);
         return false;
     case 'j': {
+        // Port (Modern gameplay): with a craft or the Phantom flight selected the
+        // original only falls back to team 0 below, so the join took a second
+        // press; the teams now join at once.
+        if (modernGameplayOn() && S.splitGroups != 0 && sel && sel->type != TeamType::Seal) S.mapSelTeam = S.sealTeam;
         int r;
         if (S.mapSelTeam == S.sealTeam) {
             r = entGroupMerge(0, S.teamCount - 1);

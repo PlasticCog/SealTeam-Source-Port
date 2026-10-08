@@ -363,6 +363,32 @@ std::string teamListName(int index, const Team* t) {
     if (modernIsPhantomGroup(index)) return kPhantomTeamName;
     return tableStr(kTeamTypeNames, int(t->type));
 }
+
+// Port (Modern gameplay): the teams on the second page of the team list
+// (buttons 5..7). The original lists the friendly teams from team 3 on but
+// maps the keys '4'..'6' and Tab's focus to them by formulas that assume at
+// most three craft groups ahead of the MTM teams (map_screen_keys); the
+// Phantom flight is one friendly team more, so the list, the keys and the
+// focus could name different teams ("6.SEAL Team a" selected nothing). With
+// the flight in the mission all three come from this list, which scrolls so
+// that the selected team is on it.
+struct TeamPage {
+    int team[3] = {};
+    int count = 0;
+};
+TeamPage modernTeamPage() {
+    const MissionState& S = ms();
+    int all[kMaxTeams];
+    int n = 0, pos = -1;
+    for (int k = 3; k < kMaxTeams && S.teams[k]; ++k) {
+        if (isHostile(S.teams[k])) continue;
+        if (k == S.mapSelTeam) pos = n;
+        all[n++] = k;
+    }
+    TeamPage p;
+    for (int i = pos > 2 ? pos - 2 : 0; i < n && p.count < 3; ++i) p.team[p.count++] = all[i];
+    return p;
+}
 } // namespace
 
 void mapDrawTeamList() {
@@ -389,12 +415,7 @@ void mapDrawTeamList() {
     const Team* sel = team(S.mapSelTeam);
     if (!sel) return;
     if (!((S.mapSelTeam < 6 && !isEnemyTeam(sel)) || sel->type == TeamType::Seal)) return;
-    int k = 3;
-    const Team* t = team(k);
-    while (t && isHostile(t)) t = team(++k);
-    if (!t) return;
-    for (int b = 5; b <= 7; ++b) {
-        if (isHostile(t)) return;
+    auto entry = [&](int b, int k, const Team* t) {
         drawButton(b);
         setColour(teamListColour(k, t));
         const int p = (u.focus == b && u.pressed) ? 1 : 0;
@@ -408,6 +429,19 @@ void mapDrawTeamList() {
             drawTriangle(0xDA, y + 3, u16(0xFF00 | u8(0x25 - 6 * k)), 2, true);
         }
         text(y, x + 0x0C, name);
+    };
+    if (modernPhantomAvailable()) {
+        const TeamPage page = modernTeamPage();
+        for (int i = 0; i < page.count; ++i) entry(5 + i, page.team[i], team(page.team[i]));
+        return;
+    }
+    int k = 3;
+    const Team* t = team(k);
+    while (t && isHostile(t)) t = team(++k);
+    if (!t) return;
+    for (int b = 5; b <= 7; ++b) {
+        if (isHostile(t)) return;
+        entry(b, k, t);
         do {
             t = team(++k);
         } while (t && t->type != TeamType::Seal && isHostile(t));
@@ -809,8 +843,19 @@ void mapFocusButtonInternal(int n) {
 } // namespace
 
 // Port: the mouse wheel on the map screen, a notch per Zoom / Expand press
-// (map_zoom_keys); up brings the map closer.
+// (map_zoom_keys); up brings the map closer. Over the team list it steps
+// through the teams instead (Shift-Tab / Tab), so the list's second page -
+// craft beyond the second, split teams, the Phantom flight - can be reached
+// with the mouse alone.
 void mapWheelZoom(int notches) {
+    const UiState& u = ui();
+    const MapButton& top = btn(2);
+    const MapButton& bottom = btn(4);
+    if (rectHasPoint(top.x, top.y, top.w, bottom.y + bottom.h - top.y, u.cursorX, u.cursorY)) {
+        for (; notches > 0; --notches) mapScreenKeys(0x0F00, 0, 0);
+        for (; notches < 0; ++notches) mapScreenKeys(9, 0, 0);
+        return;
+    }
     for (; notches > 0; --notches) mapZoomKeys('-');
     for (; notches < 0; ++notches) mapZoomKeys('+');
 }
@@ -854,7 +899,12 @@ void mapScreenKeys(int key, int dx, int dy) {
         }
         mapSelectTeamHeight();
         int b;
-        if (S.mapSelTeam < 6) {
+        if (modernPhantomAvailable() && S.mapSelTeam > 2) {
+            const TeamPage page = modernTeamPage();
+            b = 5;
+            for (int i = 0; i < page.count; ++i)
+                if (page.team[i] == S.mapSelTeam) b = 5 + i;
+        } else if (S.mapSelTeam < 6) {
             b = S.mapSelTeam + 2;
         } else {
             int v;
@@ -890,7 +940,12 @@ void mapScreenKeys(int key, int dx, int dy) {
     if (key >= '1' && key <= '6') {
         int k = key - '1';
         const Team* t = team(k);
-        if (k > 2) {
+        if (k > 2 && modernPhantomAvailable()) {
+            const TeamPage page = modernTeamPage();
+            const int i = k - 3;
+            k = i < page.count ? page.team[i] : 0;
+            t = i < page.count ? team(k) : nullptr;
+        } else if (k > 2) {
             int n = (S.firstMtmGroup < 4 ? 1 : 0) + k - 3;
             while (t) {
                 if (isHostile(t)) {

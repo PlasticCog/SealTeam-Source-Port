@@ -161,10 +161,14 @@ far:
   spot is checked too (such a plant also gave cover to anyone inside).
 * Callable F-4 Phantom air strikes: a flight of two Phantoms (the jets the
   original only shows as fly-overs) waits off-map behind the insertion
-  point. On the map, `g` (or the flight's attack button) sends it over the
-  support waypoint, where each aircraft drops one bomb with the game's
+  point. On the map, `g` sends it over the support waypoint from whatever
+  team is selected (no need to split the team); the flight also has its
+  own entry in the team list (keys 4-6, Tab, or the mouse wheel over the
+  list) with a strike button. Each aircraft drops one bomb with the game's
   biggest blast; three strikes per mission, then "Phantoms are Winchester."
   The flight holds its bombs when a SEAL is close to the impact point.
+  `j` (Join) rejoins a split team at once even while a craft or the flight
+  is selected.
 
 The briefing's loadout screen shows and limits the magazines accordingly;
 `docs/mission.md` ("Modern gameplay") has the details.
@@ -178,7 +182,8 @@ Keys the port adds on every screen: **Ctrl+H** shows a reference card of
 the game's keys (any key closes it; the mission clock stops meanwhile),
 **Ctrl+Q** quits to the desktop at once, **Alt+Enter** toggles fullscreen,
 **F12** saves a screenshot next to the program. The **mouse wheel** zooms
-the map screen and the chase / team cameras, and a tap of the **middle
+the map screen and the chase / team cameras (over the map's team list it
+steps through the teams, like Tab), and a tap of the **middle
 mouse button** swings the chase / team camera back behind the soldier it
 follows (after panning it around with the right button).
 

@@ -257,7 +257,10 @@ reference only afterwards).
   camera together, so the offset stays). Both presets.
 * Port: the mouse wheel (`Input::takeWheel`, read once per frame in
   `frame()` after the key) zooms: on the map screen a notch is one Zoom /
-  Expand press (`mapWheelZoom` -> `map_zoom_keys`), in the chase / team /
+  Expand press (`mapWheelZoom` -> `map_zoom_keys`) - over the team list
+  (buttons 2..4) a notch is Shift-Tab (up) / Tab (down) instead, so the
+  list's second page (third craft, split teams, the Phantom flight) is
+  reachable without the keyboard - in the chase / team /
   target cameras (view modes 2 and up, not 7 / 0xC) a notch is four steps of
   `g_view_distance` on the viewed team (`fieldViewWheelZoom`), exactly what
   Ctrl+PgUp / PgDn do. First person has no zoom in the original.

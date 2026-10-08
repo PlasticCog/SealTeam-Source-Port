@@ -64,8 +64,8 @@ The start menu offers:
                    the snatch target wears a red scarf, is named on the HUD
                    and map; demolition charges explode where they lie;
                    no bushes inside buildings; F-4 Phantom
-                   air strikes callable from the map ('g'); see the
-                   project README),
+                   air strikes callable from the map with 'g', no
+                   split needed; see the project README),
                    music device (AdLib / Sound Blaster Pro 2), digital or
                    FM effects, volumes
   Controller     - game controller layout (Xbox-style default) and
@@ -74,8 +74,9 @@ The start menu offers:
 Settings are saved in sealteam.cfg {settings_where}. On every screen:
 Ctrl+H shows a reference card of the game's keys (any key closes it),
 Ctrl+Q quits to the desktop at once, Alt+Enter toggles fullscreen. The
-mouse wheel zooms the map and the chase / team cameras; the middle
-button swings the camera back behind your soldier. The mouse is
+mouse wheel zooms the map and the chase / team cameras (over the map's
+team list it steps through the teams, like Tab); the middle button
+swings the camera back behind your soldier. The mouse is
 captured by the game window; Alt+Tab releases it and the next click takes
 it back.
 

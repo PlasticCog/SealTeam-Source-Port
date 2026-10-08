@@ -451,8 +451,8 @@ too (statistics only).
   `ai_group_support_fire` skip the members, and the enemy AI never gets a
   contact on them; `ms().portPhantomGroup` names the team, which is created
   before `firstMtmGroup` is fixed and therefore sits at index 3..5 (the
-  map's 1..6 keys, Tab and the team list reach it; the list shows it as
-  "Phantom Flight"). `S.fireSupportGroup`, `airGroup` and the other group
+  map's 1..6 keys, Tab, the mouse wheel over the team list and the team
+  list reach it; the list shows it as "Phantom Flight"). `S.fireSupportGroup`, `airGroup` and the other group
   indices are untouched; extraction (`entTeamAllExtracted` walks team 0,
   `entAnyCraftMoving` and the pickup only boats and helicopters), the
   casualty tally (`statCountDead` by type: the jets cannot be hurt, unit
@@ -513,7 +513,24 @@ too (statistics only).
   with an order (`evtForceCraftEngineSound`). Map: the orders menu and the
   team list name, the hit test and the focus chain skip the hidden cease /
   loiter buttons for the flight, the destination triangle is drawn during a
-  run; the key card lists `g`. Verification (`--enhanced`,
+  run; the key card lists `g`. Team list (map.cpp `modernTeamPage`): the
+  original draws the second page (buttons 5..7, "4." .. "6.") as the
+  friendly teams from team 3 on, but `map_screen_keys` maps the keys 4..6
+  to teams by `(firstMtmGroup < 4) + key - 3` friendly teams counted from
+  team `key - 1`, and Tab's focus by `firstMtmGroup > 3` / `< 4`, formulas
+  that hold for two or three craft groups only. The flight is a fourth (or
+  third) one, so in a mission with three craft (3, 5, 12, 21, ...: craft
+  3, flight 4) "6.SEAL Team a" after a split selected nothing (the count
+  ran past the last team) and the second split team was not on the page.
+  With the flight in the mission the page, the keys 4..6 and Tab's focus
+  come from one list (the friendly teams from team 3 on), shown three at a
+  time and scrolled so that the selected team is on it. Join (`j`, sim.cpp)
+  with a craft or the flight selected: the original only falls back to team
+  0 (`S.mapSelTeam = 0`) and does nothing else, so the join needed a second
+  press; with the option on and the team split it joins at once ("Team
+  joined."). Reported by Witchiewoman (issue #6): after a split and a
+  Phantom strike ordered from the list, the teams could hardly be rejoined
+  from the map. Verification (`--enhanced`,
   `modern_gameplay = 1`, `--script attack --craft g`, 60000 ticks):
   mission 1 (flight = team 3, orders at ticks 2570, 6990, 11090; releases
   at 5270 / 5445, 8395 / 8560, 12140 / 12290 from altitude 480, impacts
