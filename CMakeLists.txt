@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.16)
 # macOS: set before project(). Universal (arm64 + x86_64) release builds pass
 # -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" and need the fetched SDL3.
 set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0" CACHE STRING "Minimum macOS version")
-project(SealTeam VERSION 0.6.0 LANGUAGES C CXX)
+project(SealTeam VERSION 0.6.1 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
